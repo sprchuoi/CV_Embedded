@@ -1,5 +1,13 @@
 # CV Build and Deploy Workflow
 #
+# Triggers:
+#   pull_request -> build and verify only. Publishes nothing, deploys nothing.
+#                   The rendered site is attached as a downloadable artifact so
+#                   the result can be reviewed before merging.
+#   push to main -> build, publish both PDFs to the `latest` release, deploy the
+#                   webpage to GitHub Pages. Merging a PR lands here.
+#   workflow_dispatch -> same as a push, for manual runs.
+#
 # The webpage and the PDFs are built in SEPARATE jobs on purpose. Generating
 # docs/index.html needs only Python, while the PDFs need a full TeX Live
 # installation -- so a LaTeX problem must never be able to take the live site
@@ -18,6 +26,16 @@ on:
       - "build_environment/**"
       - ".github/workflows/python-app.yml"
 
+  pull_request:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "build_cv.sh"
+      - "build_sidebar_cv.sh"
+      - "tool/**"
+      - "build_environment/**"
+      - ".github/workflows/python-app.yml"
+
   # Allow manual trigger
   workflow_dispatch:
 
@@ -27,10 +45,11 @@ permissions:
   pages: write
   id-token: write
 
-# Allow only one concurrent deployment
+# Superseded PR runs are cancelled; runs on the same branch are serialised.
+# Deployment is additionally serialised by the "pages" group on deploy-pages.
 concurrency:
-  group: "pages"
-  cancel-in-progress: false
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   # ---------------------------------------------------------------- webpage --
@@ -49,7 +68,7 @@ jobs:
       - name: Update HTML from DOX
         run: python3 tool/update_html_from_dox.py
 
-      - name: Upload docs artifact for Pages deployment
+      - name: Upload docs artifact
         uses: actions/upload-artifact@v4
         with:
           name: docs-site
@@ -114,7 +133,9 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+      # A PR run stops here -- only a push/merge to main republishes the release.
       - name: Publish PDFs to Release page
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         uses: marvinpinto/action-automatic-releases@latest
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
@@ -128,7 +149,13 @@ jobs:
   # ----------------------------------------------------------- github pages --
   deploy-pages:
     needs: build-pages
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+
+    # Serialise deployments independently of the per-branch build concurrency.
+    concurrency:
+      group: "pages"
+      cancel-in-progress: false
 
     environment:
       name: github-pages
