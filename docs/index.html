@@ -69,7 +69,7 @@
 					<div class="media flex-column flex-md-row align-items-center">
 						<div class="media-body text-left">
 							<!-- SUMMARY_START -->
-<p class="mb-0">Detail-oriented and solution-driven Software Engineer with 3+ years of experience in the automotive domain, collaborating with global teams. Enthusiastic about SDV, IOT, open-source software and continuous contribution to the community.</p>
+<p class="mb-0">Embedded software engineer working across bare-metal, RTOS and embedded Linux, with 3+ years spanning automotive and optical communications. Currently developing firmware for optical DSP products at Marvell; previously built Software-Defined Vehicle and AUTOSAR platform software at Bosch. Focused on real-time signal processing, simulation-driven development and early validation, with a habit of open-sourcing what I learn.</p>
 <!-- SUMMARY_END -->
 						</div>
 						<!--//media-body-->
@@ -125,6 +125,41 @@
 							<!--//skills-section-->
 
 							<section class="skills-section py-3">
+								<h3 class="text-uppercase resume-section-heading mb-4">Technical Interests</h3>
+								<!-- INTERESTS_START -->
+<div class="item mb-3">
+	<h4 class="item-title">Optical &amp; Signal Processing</h4>
+	<p class="item-meta text-muted mb-0"><em>FFE, FFT, DFE, PLL and PAM3/PAM4 equalisation for high-speed optical links.</em></p>
+</div>
+<div class="item mb-3">
+	<h4 class="item-title">Software-Defined Vehicle</h4>
+	<p class="item-meta text-muted mb-0"><em>virtual ECU (vECU) simulation, AUTOSAR, Vehicle Signal Specification.</em></p>
+</div>
+<div class="item mb-3">
+	<h4 class="item-title">Secure Boot &amp; Cryptography</h4>
+	<p class="item-meta text-muted mb-0"><em>chain of trust from MCU to SoC, TrustZone, HSM key signing, AES/CMAC/ECDH.</em></p>
+</div>
+<div class="item mb-3">
+	<h4 class="item-title">Embedded Linux</h4>
+	<p class="item-meta text-muted mb-0"><em>Yocto, Buildroot, Linux kernel fundamentals.</em></p>
+</div>
+<div class="item mb-3">
+	<h4 class="item-title">Real-Time Systems</h4>
+	<p class="item-meta text-muted mb-0"><em>Zephyr, FreeRTOS and bare-metal bring-up.</em></p>
+</div>
+<div class="item mb-3">
+	<h4 class="item-title">Emulation &amp; Tooling</h4>
+	<p class="item-meta text-muted mb-0"><em>QEMU machine models, cross-compilation SDKs, Docker build environments.</em></p>
+</div>
+<div class="item mb-3">
+	<h4 class="item-title">Open Source</h4>
+	<p class="item-meta text-muted mb-0"><em>writing up and publishing what I learn.</em></p>
+</div>
+<!-- INTERESTS_END -->
+							</section>
+							<!--//interests-section-->
+
+							<section class="skills-section py-3">
 								<h3 class="text-uppercase resume-section-heading mb-4">Certificates &amp; Awards</h3>
 								<ul class="list-unstyled resume-awards-list mb-0">
 									<!-- AWARDS_START -->
@@ -149,8 +184,21 @@
 								<h3 class="text-uppercase resume-section-heading mb-4">Work Experiences</h3>
 								<!-- WORK_EXPERIENCE_START -->
 <div class="item mb-4">
+	<h4 class="resume-position-title font-weight-bold mb-1">Marvell Technology | Ho Chi Minh City, Vietnam</h4>
+	<div class="resume-position-time text-muted mb-2">Senior Embedded Software/Firmware Engineer | <em>August 2026 - Present</em></div>
+	<p><strong>Domain:</strong> Optical DSP</p>
+	<p><strong>Product:</strong> AEC</p>
+	<p class="mb-2"><strong>Responsibilities:</strong></p>
+	<ul class="resume-list">
+		<li>Develop embedded firmware for optical DSP products in the AEC line, targeting bare-metal and RTOS environments</li>
+		<li>Contribute to the design and implementation of real-time signal-processing blocks, including FFE, FFT, DFE and PLL</li>
+		<li>Work across PAM3 and PAM4 modulation and equalisation paths for high-speed optical links</li>
+	</ul>
+</div>
+
+<div class="item mb-4">
 	<h4 class="resume-position-title font-weight-bold mb-1">Bosch Global Software Technologies | Ho Chi Minh City, Vietnam</h4>
-	<div class="resume-position-time text-muted mb-2">Embedded Software Engineer | <em>April 2024 - Present</em></div>
+	<div class="resume-position-time text-muted mb-2">Embedded Software Engineer | <em>April 2024 - August 2026</em></div>
 	<p><strong>Product:</strong> Perfectly Keyless</p>
 	<p class="mb-2"><strong>Responsibilities:</strong></p>
 	<ul class="resume-list">
@@ -218,6 +266,64 @@
 							</section>
 							<!--//projects-section-->
 
+							<section class="projects-section py-3">
+								<h3 class="text-uppercase resume-section-heading mb-4">Open Source &amp; Side Projects</h3>
+								<!-- OPEN_SOURCE_START -->
+<div class="item mb-4">
+	<h4 class="resume-position-title font-weight-bold mb-1">Secure Boot Study Path (MCU to SoC)</h4>
+	<div class="resume-position-time text-muted mb-2"><em>Documentation site</em></div>
+	<ul class="resume-list">
+		<li>A structured, hands-on study path covering secure boot from Arm Cortex-M up to Cortex-A with TrustZone, ARM Trusted Firmware and HLOS</li>
+		<li>Covers CA hierarchies, secure enclaves, flash secure boot, SSL/TLS and HSM key-signing operations</li>
+		<li>Published as a browsable, searchable documentation site with live diagrams, built with MkDocs Material</li>
+	</ul>
+	<p><strong>Link:</strong> <a href="https://github.com/sprchuoi/securebootloader" target="_blank" rel="noopener">github.com/sprchuoi/securebootloader</a></p>
+</div>
+
+<div class="item mb-4">
+	<h4 class="resume-position-title font-weight-bold mb-1">ESP32 Voice-Activated Smart Home</h4>
+	<div class="resume-position-time text-muted mb-2"><em>ESP-IDF</em></div>
+	<ul class="resume-list">
+		<li>Dual-core FreeRTOS architecture with I2S audio capture and on-device wake-word detection</li>
+		<li>HTTPS OTA updates with progress reporting, and MQTT auto-discovery for Home Assistant</li>
+		<li>Multi-tier power management with configurable wake sources and a task watchdog</li>
+	</ul>
+	<p><strong>Link:</strong> <a href="https://github.com/sprchuoi/smart_home_idf" target="_blank" rel="noopener">github.com/sprchuoi/smart_home_idf</a></p>
+</div>
+
+<div class="item mb-4">
+	<h4 class="resume-position-title font-weight-bold mb-1">Smart Home on Zephyr RTOS</h4>
+	<div class="resume-position-time text-muted mb-2"><em>ESP32</em></div>
+	<ul class="resume-list">
+		<li>Modular, multi-threaded firmware with separate tasks for sensors, BLE, WiFi and display</li>
+		<li>BLE GATT service, WiFi AP+STA mode, and an SSD1306 OLED with power-aware sleep and button wake</li>
+	</ul>
+	<p><strong>Link:</strong> <a href="https://github.com/sprchuoi/smart_home_zephyr" target="_blank" rel="noopener">github.com/sprchuoi/smart_home_zephyr</a></p>
+</div>
+
+<div class="item mb-4">
+	<h4 class="resume-position-title font-weight-bold mb-1">Unit Test Roadmap for C/C++</h4>
+	<div class="resume-position-time text-muted mb-2"><em>Tutorial</em></div>
+	<ul class="resume-list">
+		<li>A docs-as-code tutorial covering GoogleTest, GoogleMock and the Fake Function Framework</li>
+		<li>Captures the patterns for testing embedded code without hardware: init routines, feature flags and dispatch tables</li>
+	</ul>
+	<p><strong>Link:</strong> <a href="https://github.com/sprchuoi/unit_test_rout" target="_blank" rel="noopener">github.com/sprchuoi/unit_test_rout</a></p>
+</div>
+
+<div class="item mb-4">
+	<h4 class="resume-position-title font-weight-bold mb-1">Smart Server for Raspberry Pi</h4>
+	<div class="resume-position-time text-muted mb-2"><em>IoT backend</em></div>
+	<ul class="resume-list">
+		<li>MQTT broker, FastAPI REST/WebSocket API and a real-time device dashboard</li>
+		<li>Local LLM worker for intent processing, with secure remote access over Tailscale</li>
+	</ul>
+	<p><strong>Link:</strong> <a href="https://github.com/sprchuoi/Smart_Server" target="_blank" rel="noopener">github.com/sprchuoi/Smart_Server</a></p>
+</div>
+<!-- OPEN_SOURCE_END -->
+							</section>
+							<!--//open-source-section-->
+
 							<section class="education-section py-3">
 								<h3 class="text-uppercase resume-section-heading mb-4">Education</h3>
 								<!-- EDUCATION_START -->
@@ -237,6 +343,7 @@
 								<ul class="list-unstyled resume-awards-list mb-0">
 									<!-- ACHIEVEMENTS_START -->
 <li class="mb-2"><i class="fas fa-trophy mr-2 text-primary"></i><strong>TOEIC Certificate of Achievement:</strong> 785/990</li>
+<li class="mb-2"><i class="fas fa-trophy mr-2 text-primary"></i><strong>LeetCode:</strong> 406 problems solved (128 Easy, 221 Medium, 57 Hard) - <a href="https://leetcode.com/sprchuoi" target="_blank" rel="noopener">profile</a></li>
 <!-- ACHIEVEMENTS_END -->
 								</ul>
 							</section>
