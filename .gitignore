@@ -1,3 +1,7 @@
+# Generated CV PDFs at the repo root. The GitHub Release asset is the
+# canonical download; these are build outputs and should not be tracked.
+/*.pdf
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

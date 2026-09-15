@@ -1,5 +1,5 @@
 % Professional LaTeX header for CV generation via Doxygen
-% Author: Le Phuc Duc
+% Author: Nguyen Quang Binh
 % Version: 2.0 - Enhanced for professional documentation standards
 
 \documentclass[10pt,a4paper]{article}
@@ -23,6 +23,7 @@
 \usepackage{tabularx}
 \usepackage{array}
 \usepackage{microtype}                % Better typography and spacing
+\usepackage{needspace}                % Keep section headings with their content
 
 % Ultra-compact page geometry
 \geometry{
@@ -127,12 +128,16 @@
 \SetTracking{encoding=*}{-10}
 
 % Define all Doxygen commands with professional spacing
-\newcommand{\doxysection}[1]{\par\addvspace{0.6em}\begin{center}{\fontsize{13pt}{14pt}\selectfont\textbf{#1}}\end{center}\par\addvspace{0.2em}}
-\newcommand{\doxysubsection}[1]{\par\addvspace{0.4em}\begin{center}\textbf{\normalsize #1}\end{center}\par\addvspace{0.15em}}
+% \needspace keeps a heading from being orphaned at the foot of a page with its
+% content overleaf -- which is exactly what happened to ACHIEVEMENTS.
+\newcommand{\doxysection}[1]{\par\needspace{3\baselineskip}\addvspace{0.6em}\begin{center}{\fontsize{13pt}{14pt}\selectfont\textbf{#1}}\end{center}\par\addvspace{0.2em}}
+\newcommand{\doxysubsection}[1]{\par\needspace{3\baselineskip}\addvspace{0.4em}\begin{center}\textbf{\normalsize #1}\end{center}\par\addvspace{0.15em}}
 \newcommand{\doxysubsubsection}[1]{\par\addvspace{0.25em}\noindent\textbf{\small #1}\par\addvspace{0.1em}}
 % Doxygen paragraph levels
 \newcommand{\doxyparagraph}[1]{\par\addvspace{0.2em}\noindent\textbf{\small #1}\par\addvspace{0.1em}}
-\newcommand{\doxysubparagraph}[1]{\par\addvspace{0.15em}\noindent\textbf{\small #1}\par\addvspace{0.08em}}
+% Sub-paragraph = nested project under a role; italic + indented so it reads
+% as subordinate to the bold \doxyparagraph role heading above it.
+\newcommand{\doxysubparagraph}[1]{\par\addvspace{0.15em}\noindent\hspace*{0.8em}\textit{\small #1}\par\addvspace{0.08em}}
 \newcommand{\DoxyHorRuler}[1]{\vspace{0.1em}\noindent\rule{\textwidth}{0.4pt}\vspace{0.1em}}
 \newenvironment{DoxyEnumerate}{\begin{enumerate}[topsep=2pt,itemsep=1pt]}{\end{enumerate}}
 \newenvironment{DoxyItemize}{\begin{itemize}[topsep=2pt,itemsep=1pt]}{\end{itemize}}

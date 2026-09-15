@@ -1,0 +1,108 @@
+/**
+@mainpage Nguyen Quang Binh
+
+2A Trung My Tay St, District 12, Ho Chi Minh City | 0389393615 | quangbinhhtc@gmail.com | [LinkedIn](https://www.linkedin.com/in/sprchuoi) | [GitHub](https://github.com/sprchuoi)
+
+---
+
+@section summary SUMMARY
+
+Detail-oriented and solution-driven Software Engineer with 3+ years of experience in the automotive domain, collaborating with global teams. Enthusiastic about SDV, IOT, open-source software and continuous contribution to the community.
+
+---
+
+@section work_experience WORK EXPERIENCE
+
+@subsection exp_bosch Bosch Global Software Technologies | Ho Chi Minh City, Vietnam
+
+@subsubsection exp_bosch_sdv Embedded Software Engineer | April 2024 - Present
+<b>Product:</b> Perfectly Keyless
+
+<b>Responsibilities:</b>
+- A key member in developing Zone Detection, Security, and Child Presence Detection software for PK products on Linux-based systems using UWB sensors
+- Designed and developed a cross-compilation SDK (C/C++/Linux) for the SDV platform, enabling efficient development workflows on WSL-based environments
+- Developed and optimized C++ applications and system services deployed across Linux and Android platforms
+- Built a real-time monitoring dashboard for PK systems, deployed on cluster-based HMI environments
+- Contributed to BSP and application development for high-performance automotive platforms including NXP HPC and NVIDIA Jetson, within the SDV XC architecture
+- Developed CI/CD pipelines to automate system image builds using the Yocto Project. Link: [auto-build-kit](https://github.com/sprchuoi/auto-build-kit)
+
+@paragraph proj_vecu Virtual ECU Platform
+- Developed a cross-platform C/C++ application to simulate Virtual ECU (vECU) framework across multiple XC domain projects, including iVECU, Honda (Perfectly Keyless), and XMC (Body Control Module).
+- Proficiently developed Virtual ECUs, simulating OS, Virtual Basic Software (BSW), and Virtual driver (MCAL) layers, to enable software testing independent of hardware.
+- Designed and maintained CI/CD pipelines for automated build, integration, and validation of releases, reducing 80% effort on development and testing with virtual ECU environment
+- Implemented cryptographic security features (FOTA) mechanisms, applying cryptographic algorithms including AES, CMAC, and ECDH for authentication and data integrity
+
+<b>Tools:</b> vVirtualTarget, ETAS Builder, OEMU, Docker, Hypervisor (Type 1 - Type 2), Space
+
+@paragraph proj_medac MeDac Platform
+- Develop innovation AI platform for optimizer build for vECU platform base on Chain of Thought
+- Built a knowledge-graph-based system using StarDog DB to model vECU architecture, dependencies, build rules, and historical failures
+- Orchestrated multi-agent AI workflows with LangGraph to automate build optimization and root-cause analysis
+- Reduced build errors and debugging time by enabling knowledge reuse and intelligent dependency analysis
+
+<b>Tools:</b> LangGraph, StarDog DB, CI/CD, AI Automation
+
+@subsubsection exp_bosch_cgw Embedded Software Engineer | October 2023 - April 2024
+<b>Product:</b> Central Gateway
+
+<b>Project:</b> iISUZU, OTS
+
+<b>Responsibilities:</b>
+- Supporting AUTOSAR Basic software, including ComMStack, MemStack, CryptoStack
+- Post-Built Config and Delivery Software for Customer
+- Proficient in developing AUTOSAR Application software components and RTE configuration
+
+---
+
+@section projects PROJECTS
+
+@subsection proj_fuota FUOTA - Firmware Update Over The Air in LoRaWan Network | Graduate Thesis
+- Implemented Bootloader in ARM MCU for Updating Application In sensor collector via LoRaWan Network
+- Design Secure Bootloader for STM32 with 2 partitions swap in Flash memory
+- Optimize Transfer Data in LoRa network, synchronize configuration from Gateway to Sensor and Actuator nodes.
+- Implement AES algorithm to secure data and firmware files
+- Tool for encoding and fragmenting Firmware files
+- Utilize CRC and Checksum in flashing process
+- Integrate FreeRTOS for scheduling multiple task in update Firmware and transfer data
+
+<b>Link:</b> [github.com/sprchuoi/FOTA_LORA](https://github.com/sprchuoi/FOTA_LORA)
+
+<b>Demo:</b> [youtube.com/watch?v=MRfHfBwZU0&t](https://www.youtube.com/watch?v=MRfHfBwZU0&t)
+
+---
+
+@section education EDUCATION
+
+@subsection edu_hcmute Ho Chi Minh City University of Technology and Education (HCMUTE)
+<b>Computer Technology Engineering</b> | <em>Graduated: Jul 2024</em>
+
+GPA: 3.26/4 - Distinction
+
+---
+
+@section achievements ACHIEVEMENTS
+
+- <b>TOEIC Certificate of Achievement:</b> 785/990
+
+---
+
+@section awards CERTIFICATES & AWARDS
+
+- <b>SPOT AWARD</b>
+  - Issued by Direct Manager
+  - Recognized for successfully demonstrating the SDV (Software-Defined Vehicle) solution to key customers including Honda and Toyota.
+  - High willingness to guide new members and associates in problem solving
+
+---
+
+@section skills PROGRAMMING
+
+- <b>Programming Languages</b>: C, C++, Python
+- <b>Scripting</b>: <em>Experienced in Bash scripting for automation and environment setup.</em>
+- <b>CI/CD & DevOps</b>: <em>Skilled in CI/CD pipeline setup, GitHub Actions, and Docker-based deployment.</em>
+- <b>Automotive Software</b>: <em>Solid understanding of AUTOSAR architecture, ECU C Extracts, and practical communication stacks (CAN, LIN, SOME/IP).</em>
+- <b>Linux Development</b>: <em>Hands-on experience with Buildroot, Yocto Project, and inter-process communication (IPC) mechanisms, Concurrency, and Multithreading.</em>
+- <b>Microcontroller & RTOS</b>: FreeRTOS, Zephyr
+- <b>Source Control & Collaboration</b>: <em>Skilled in Git, Bitbucket, and Jenkins-based version management.</em>
+
+*/

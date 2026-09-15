@@ -1,405 +1,409 @@
 #!/usr/bin/env python3
-"""Update docs/index.html placeholders from docs/LePhucDuc_CV.dox.
+"""Update docs/index.html placeholder regions from docs/NguyenQuangBinh_CV.dox.
 
-Markers in HTML:
-  <!-- CONTACT_INFO_START --> ... <!-- CONTACT_INFO_END -->
-  <!-- SKILLS_START --> ... <!-- SKILLS_END -->
-  <!-- EDUCATION_START --> ... <!-- EDUCATION_END -->
-  <!-- WORK_EXPERIENCE_START --> ... <!-- WORK_EXPERIENCE_END -->
+Markers in the HTML delimit each generated region:
 
-Parses the DOX file which uses Doxygen format with <b>, <em> HTML tags.
+    <!-- CONTACT_INFO_START -->    ... <!-- CONTACT_INFO_END -->
+    <!-- SUMMARY_START -->         ... <!-- SUMMARY_END -->
+    <!-- SKILLS_START -->          ... <!-- SKILLS_END -->
+    <!-- AWARDS_START -->          ... <!-- AWARDS_END -->
+    <!-- WORK_EXPERIENCE_START --> ... <!-- WORK_EXPERIENCE_END -->
+    <!-- PROJECTS_START -->        ... <!-- PROJECTS_END -->
+    <!-- EDUCATION_START -->       ... <!-- EDUCATION_END -->
+    <!-- ACHIEVEMENTS_START -->    ... <!-- ACHIEVEMENTS_END -->
+
+Structure and inline-markup parsing live in cv_dox.py, shared with the LaTeX
+sidebar renderer so the two cannot drift.
 """
-import re
-from pathlib import Path
+
+import html as html_mod
 import sys
+from pathlib import Path
+
+import cv_dox as C
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-DOX_FILE = REPO_ROOT / 'docs' / 'LePhucDuc_CV.dox'
+DOX_FILE = REPO_ROOT / 'docs' / 'NguyenQuangBinh_CV.dox'
 HTML_FILE = REPO_ROOT / 'docs' / 'index.html'
 
-SECTION_PATTERN = re.compile(r'@section\s+(\w+)\s+[^\n]+\n(.*?)(?=@section|\*/)', re.DOTALL)
-
 MARKERS = {
-    'contact_info': ('<!-- CONTACT_INFO_START -->', '<!-- CONTACT_INFO_END -->'),
-    'summary': ('<!-- SUMMARY_START -->', '<!-- SUMMARY_END -->'),
-    'skills': ('<!-- SKILLS_START -->', '<!-- SKILLS_END -->'),
-    'certifications': ('<!-- CERTIFICATIONS_START -->', '<!-- CERTIFICATIONS_END -->'),
-    'languages': ('<!-- LANGUAGES_START -->', '<!-- LANGUAGES_END -->'),
-    'education': ('<!-- EDUCATION_START -->', '<!-- EDUCATION_END -->'),
+    'contact_info':    ('<!-- CONTACT_INFO_START -->',    '<!-- CONTACT_INFO_END -->'),
+    'summary':         ('<!-- SUMMARY_START -->',         '<!-- SUMMARY_END -->'),
+    'skills':          ('<!-- SKILLS_START -->',          '<!-- SKILLS_END -->'),
+    'awards':          ('<!-- AWARDS_START -->',          '<!-- AWARDS_END -->'),
     'work_experience': ('<!-- WORK_EXPERIENCE_START -->', '<!-- WORK_EXPERIENCE_END -->'),
+    'projects':        ('<!-- PROJECTS_START -->',        '<!-- PROJECTS_END -->'),
+    'education':       ('<!-- EDUCATION_START -->',       '<!-- EDUCATION_END -->'),
+    'achievements':    ('<!-- ACHIEVEMENTS_START -->',    '<!-- ACHIEVEMENTS_END -->'),
+    # Dormant: no Languages section in the current CV. Kept so re-adding one is
+    # a .dox + HTML edit with no code change.
+    'languages':       ('<!-- LANGUAGES_START -->',       '<!-- LANGUAGES_END -->'),
 }
 
-# Badge colors for different skill categories
-SKILL_BADGE_COLORS = {
-    'Programming Languages': 'primary',
-    'Automotive Standards': 'primary',
-    'Tools & Platforms': 'secondary',
-    'DevOps': 'info',
-    'Methodologies': 'success',
-    'Soft Skills': 'warning',
+CONTACT_ICONS = {
+    'phone':    ('fas fa-phone-square',    0),
+    'email':    ('fas fa-envelope-square', 1),
+    'linkedin': ('fab fa-linkedin',        2),
+    'github':   ('fab fa-github',          3),
+    'link':     ('fas fa-external-link-alt', 4),
+    'location': ('fas fa-map-marker-alt',  5),
 }
 
 
-def extract_sections(text: str):
-    sections = {}
-    for name, body in SECTION_PATTERN.findall(text):
-        sections[name.strip()] = body.strip().strip('\n')
-    return sections
+# --- inline markup -> HTML ------------------------------------------------
+
+def inline_html(text: str) -> str:
+    """Render cv_dox inline tokens to HTML, escaping only literal text."""
+    out = []
+    for tok in C.tokenize_inline(text):
+        if tok[0] == 'text':
+            out.append(html_mod.escape(tok[1]))
+        elif tok[0] == 'bold':
+            out.append(f'<strong>{inline_html(tok[1])}</strong>')
+        elif tok[0] == 'em':
+            out.append(f'<em>{inline_html(tok[1])}</em>')
+        else:
+            url = html_mod.escape(tok[2], quote=True)
+            out.append(f'<a href="{url}" target="_blank" rel="noopener">{inline_html(tok[1])}</a>')
+    return ''.join(out)
 
 
-def extract_contact_from_mainpage(text: str) -> str:
-    """Extract contact info from @mainpage header line."""
-    match = re.search(r'@mainpage\s+[^\n]+\n\n([^\n]+)', text)
-    if match:
-        return match.group(1).strip()
-    return ''
+def split_title_dates(title: str):
+    """Split "Title | Dates" on the first pipe."""
+    if '|' in title:
+        left, right = title.split('|', 1)
+        return left.strip(), right.strip()
+    return title.strip(), ''
 
+
+def _bullet_html(b: C.Bullet) -> str:
+    """Render one bullet, recursing into nested children."""
+    if b.label and b.value:
+        text = f'<strong>{html_mod.escape(b.label)}:</strong> {inline_html(b.value)}'
+    elif b.label and not b.children:
+        text = f'<strong>{html_mod.escape(b.label)}</strong>'
+    else:
+        text = inline_html(b.text)
+
+    if b.children:
+        inner = '\n'.join(f'\t\t\t<li>{_bullet_html(k)}</li>' for k in b.children)
+        return f'{text}\n\t\t<ul class="resume-list">\n{inner}\n\t\t</ul>'
+    return text
+
+
+def render_body_items(items, child_blocks=()) -> list:
+    """Render a parsed body into HTML lines.
+
+    Fields and paragraphs break the bullet run; consecutive bullets are grouped
+    into a single <ul>. Nested @paragraph projects are appended last, which is
+    where they appear in the source.
+    """
+    out = []
+    bullets = []
+
+    def flush():
+        if bullets:
+            out.append('\t<ul class="resume-list">')
+            out.extend(bullets)
+            out.append('\t</ul>')
+            bullets.clear()
+
+    for it in items:
+        if isinstance(it, C.Bullet):
+            bullets.append(f'\t\t<li>{_bullet_html(it)}</li>')
+            continue
+
+        flush()
+        if isinstance(it, C.Field):
+            label = html_mod.escape(it.label)
+            if it.value:
+                out.append(f'\t<p><strong>{label}:</strong> {inline_html(it.value)}</p>')
+            else:
+                out.append(f'\t<p class="mb-2"><strong>{label}:</strong></p>')
+        elif isinstance(it, C.Para):
+            out.append(f'\t<p class="mb-2">{inline_html(it.text)}</p>')
+
+    flush()
+
+    for child in child_blocks:
+        name, sub = split_title_dates(child.title)
+        out.append('\t<div class="item-meta text-muted mt-2"><strong>' + inline_html(name) + '</strong>'
+                   + (f' &mdash; {inline_html(sub)}' if sub else '') + '</div>')
+        out.extend(render_body_items(C.parse_items(child.body)))
+        out.append('\t')
+    return out
+
+
+# --- section renderers ----------------------------------------------------
 
 def build_contact_info(raw: str) -> str:
-    """Build contact info HTML from pipe-separated line."""
-    parts = [p.strip() for p in raw.split('|') if p.strip()]
-    items = []
-    for p in parts:
-        if re.search(r'@', p):  # email
-            items.append('<li class="mb-2"><i class="fas fa-envelope-square fa-fw fa-lg mr-2"></i><a class="resume-link" href="mailto:{0}">{0}</a></li>'.format(p))
-        elif re.search(r'linkedin', p, re.I):
-            url = re.sub(r'^\[LinkedIn\]\((.*?)\).*', r'\1', p)
-            if not url.startswith('http'):
-                url = 'https://' + url
-            items.append('<li class="mb-2"><i class="fab fa-linkedin fa-fw fa-lg mr-2"></i><a class="resume-link" href="{0}" target="_blank">LinkedIn</a></li>'.format(url))
-        elif 'GitHub' in p or 'github' in p:
-            url = re.sub(r'^\[GitHub\]\((.*?)\).*', r'\1', p)
-            if not url.startswith('http'):
-                url = 'https://' + url
-            items.append('<li class="mb-2"><i class="fab fa-github fa-fw fa-lg mr-2"></i><a class="resume-link" href="{0}" target="_blank">GitHub</a></li>'.format(url))
-        elif 'Online CV' in p:
-            url = re.sub(r'^\[Online CV\]\((.*?)\).*', r'\1', p)
-            if not url.startswith('http'):
-                url = 'https://' + url
-            items.append('<li class="mb-2"><i class="fas fa-external-link-alt fa-fw fa-lg mr-2"></i><a class="resume-link" href="{0}" target="_blank">Online CV</a></li>'.format(url))
-        elif re.search(r'\(\+?\d', p):  # phone
-            phone_digits = re.sub(r'[^0-9+]', '', p)
-            items.append('<li class="mb-2"><i class="fas fa-phone-square fa-fw fa-lg mr-2"></i><a class="resume-link" href="tel:{0}">{1}</a></li>'.format(phone_digits, p))
-        else:  # location
-            items.append('<li class="mb-0"><i class="fas fa-map-marker-alt fa-fw fa-lg mr-2"></i>{0}</li>'.format(p))
-    # Sort: phone, email, linkedin, github, location last
-    order = {'fa-phone-square': 0, 'fa-envelope-square': 1, 'fa-linkedin': 2, 'fa-github': 3, 'fa-external-link-alt': 4, 'fa-map-marker-alt': 5}
-    items.sort(key=lambda x: next((v for k, v in order.items() if k in x), 99))
-    return '\n'.join(items)
+    rows = []
+    for part in raw.split('|'):
+        if not part.strip():
+            continue
+        kind, text, href = C.classify_contact(part)
+        icon, order = CONTACT_ICONS.get(kind, CONTACT_ICONS['location'])
+        body = html_mod.escape(text)
+        if href:
+            target = '' if kind in ('email', 'phone') else ' target="_blank" rel="noopener"'
+            body = f'<a class="resume-link" href="{html_mod.escape(href, quote=True)}"{target}>{body}</a>'
+        rows.append([order, f'<li class="mb-2"><i class="{icon} fa-fw fa-lg mr-2"></i>{body}</li>'])
+
+    rows.sort(key=lambda r: r[0])
+    if rows:
+        rows[-1][1] = rows[-1][1].replace('class="mb-2"', 'class="mb-0"', 1)
+    return '\n'.join(r[1] for r in rows)
 
 
-def split_skills(vals: str) -> list:
-    """Split skill values by comma, but not inside parentheses."""
-    result = []
-    current = ''
-    paren_depth = 0
-    for char in vals:
-        if char == '(':
-            paren_depth += 1
-            current += char
-        elif char == ')':
-            paren_depth -= 1
-            current += char
-        elif char == ',' and paren_depth == 0:
-            if current.strip():
-                result.append(current.strip())
-            current = ''
-        else:
-            current += char
-    if current.strip():
-        result.append(current.strip())
-    return result
+def build_summary(block: C.Block) -> str:
+    text = ' '.join(block.body.split())
+    return f'<p class="mb-0">{inline_html(text)}</p>'
 
 
-def build_skills(raw: str) -> str:
-    """Build skills HTML from DOX format with <b>Category</b>: items."""
-    lines = [l.strip() for l in raw.splitlines() if l.strip() and l.strip().startswith('-')]
+def build_skills(block: C.Block) -> str:
+    """Skill categories, written as either "- <b>Cat</b>: v" or "<b>Cat</b>: v"."""
     blocks = []
-    for ln in lines:
-        # Remove leading dash and parse <b>Category</b>: items
-        ln = re.sub(r'^-\s*', '', ln)
-        m = re.match(r'<b>([^<]+)</b>:\s*(.*)', ln)
-        if m:
-            cat, vals = m.groups()
-            cat = cat.strip()
-            badge_color = SKILL_BADGE_COLORS.get(cat, 'primary')
-            vals_list = split_skills(vals)
-            vals_html = '\n\t\t'.join([f'<span class="badge badge-{badge_color} mr-1 mb-1">{v}</span>' for v in vals_list])
-            blocks.append(f'''<div class="item mb-3">
-\t<h4 class="item-title">{cat}</h4>
-\t<div class="item-content">
-\t\t{vals_html}
-\t</div>
-</div>''')
-    if not blocks:
-        return f'<div class="item"><em>{raw}</em></div>'
+    for item in C.parse_items(block.body):
+        if isinstance(item, C.Field):
+            label, value = item.label, item.value
+        elif isinstance(item, C.Bullet) and item.label:
+            label, value = item.label, item.value
+        else:
+            continue
+        if not value:
+            continue
+
+        meta = C.skill_meta(label)
+        if C.is_prose(value):
+            inner = f'<p class="item-meta text-muted mb-0">{inline_html(value)}</p>'
+        else:
+            tags = C.split_tag_list(value)
+            inner = ('<div class="item-content">\n\t\t'
+                     + '\n\t\t'.join(
+                         f'<span class="badge badge-{meta["badge"]} mr-1 mb-1">{html_mod.escape(t)}</span>'
+                         for t in tags)
+                     + '\n\t</div>')
+        blocks.append('<div class="item mb-3">\n'
+                      f'\t<h4 class="item-title">{html_mod.escape(label)}</h4>\n'
+                      f'\t{inner}\n'
+                      '</div>')
     return '\n'.join(blocks)
 
 
-def build_summary(raw: str) -> str:
-    """Build summary HTML from DOX format - just extract the paragraph text."""
-    # Remove any leading/trailing whitespace and return as paragraph
-    text = raw.strip()
-    return f'<p class="mb-0">{text}</p>'
+def build_work(block: C.Block) -> str:
+    """Companies (@subsection) -> roles (@subsubsection) -> projects (@paragraph)."""
+    divs = []
+    for company in block.children:
+        for i, role in enumerate(company.children):
+            first = (i == 0)
+            parts = ['<div class="item mb-4">' if first else '<div class="item mb-3">']
+            if first:
+                parts.append(f'\t<h4 class="resume-position-title font-weight-bold mb-1">'
+                             f'{inline_html(company.title)}</h4>')
+            title, dates = split_title_dates(role.title)
+            meta = inline_html(title) + (f' | <em>{inline_html(dates)}</em>' if dates else '')
+            parts.append(f'\t<div class="resume-position-time text-muted mb-2">{meta}</div>')
+            parts.extend(render_body_items(C.parse_items(role.body), role.children))
+            parts.append('</div>')
+            divs.append('\n'.join(parts))
+    return '\n\n'.join(divs) or '<div class="item mb-3"><em>No work experience parsed.</em></div>'
 
 
-def build_certifications(raw: str) -> str:
-    """Build certifications HTML from DOX format with list items."""
-    lines = [l.strip() for l in raw.splitlines() if l.strip() and l.strip().startswith('-')]
+def build_projects(block: C.Block) -> str:
+    divs = []
+    for proj in block.children:
+        name, sub = split_title_dates(proj.title)
+        parts = ['<div class="item mb-4">',
+                 f'\t<h4 class="resume-position-title font-weight-bold mb-1">{inline_html(name)}</h4>']
+        if sub:
+            parts.append(f'\t<div class="resume-position-time text-muted mb-2"><em>{inline_html(sub)}</em></div>')
+        parts.extend(render_body_items(C.parse_items(proj.body)))
+        parts.append('</div>')
+        divs.append('\n'.join(parts))
+    return '\n\n'.join(divs) or f'<div class="item mb-3"><em>{inline_html(block.body)}</em></div>'
+
+
+def build_education(block: C.Block) -> str:
+    entries = block.children or [C.Block(level=2, key='', title='', body=block.body)]
     items = []
-    for ln in lines:
-        # Remove leading dash
-        cert = re.sub(r'^-\s*', '', ln).strip()
-        items.append(f'<li class="mb-2"><i class="fas fa-certificate mr-2 text-primary"></i>{cert}</li>')
-    return '\n'.join(items) if items else '<li>No certifications listed</li>'
-
-
-def build_languages(raw: str) -> str:
-    """Build languages HTML from DOX format with <b>Language</b>: Level."""
-    lines = [l.strip() for l in raw.splitlines() if l.strip() and l.strip().startswith('-')]
-    items = []
-    for ln in lines:
-        # Remove leading dash and parse <b>Language</b>: Level
-        ln = re.sub(r'^-\s*', '', ln)
-        m = re.match(r'<b>([^<]+)</b>:\s*(.*)', ln)
-        if m:
-            lang, level = m.groups()
-            items.append(f'<li class="mb-2"><strong>{lang.strip()}:</strong> {level.strip()}</li>')
-        else:
-            items.append(f'<li class="mb-2">{ln}</li>')
-    return '\n'.join(items) if items else '<li>No languages listed</li>'
-
-
-def build_education(raw: str) -> str:
-    """Build education HTML from DOX format with @subsection."""
-    # Split by @subsection
-    parts = re.split(r'@subsection\s+\w+\s+', raw)
-    parts = [p.strip() for p in parts if p.strip()]
-    
-    items = []
-    for part in parts:
-        lines = [l.strip() for l in part.splitlines() if l.strip() and not l.strip().startswith('---')]
-        if not lines:
-            continue
-        
-        # First line is university name
-        university = lines[0]
-        
-        # Find degree line with <b> and <em>
-        degree_line = ''
-        gpa_line = ''
-        for line in lines[1:]:
-            if '<b>' in line and '<em>' in line:
-                degree_line = line
-            elif line.startswith('GPA:'):
-                gpa_line = line
-        
-        if degree_line:
-            # Extract degree and dates
-            degree_match = re.search(r'<b>([^<]+)</b>\s*\|\s*<em>([^<]+)</em>', degree_line)
-            if degree_match:
-                degree, dates = degree_match.groups()
-                item_html = f'''<li class="mb-3">
-\t<h4 class="mb-1">{university}</h4>
-\t<strong>{degree.strip()}</strong> | <em>{dates.strip()}</em><br>
-\t{gpa_line}
-</li>'''
-                items.append(item_html)
-    
+    for inst in entries:
+        paras = [inline_html(p.text) for p in C.parse_items(inst.body) if isinstance(p, C.Para)]
+        lines = ['<li class="mb-3">']
+        if inst.title:
+            lines.append(f'\t<h4 class="mb-1">{inline_html(inst.title)}</h4>')
+        if paras:
+            lines.append('\t' + '<br>\n\t'.join(paras))
+        lines.append('</li>')
+        items.append('\n'.join(lines))
     return '<ul class="list-unstyled resume-education-list">\n' + '\n'.join(items) + '\n</ul>'
 
 
-def build_work(raw: str) -> str:
-    """Build work experience HTML from DOX format with @subsection and @subsubsection."""
-    # First, get the company info from @subsection
-    company_match = re.search(r'@subsection\s+\w+\s+(.+?)(?=\n)', raw)
-    company = company_match.group(1).strip() if company_match else 'Company'
-    
-    # Split by @subsubsection for each position
-    positions = re.split(r'@subsubsection\s+\w+\s+', raw)
-    positions = [p.strip() for p in positions[1:] if p.strip()]  # Skip first empty part
-    
-    divs = []
-    for i, pos in enumerate(positions):
-        lines = pos.splitlines()
-        if not lines:
+def _build_list_section(block: C.Block, icon: str) -> str:
+    out = []
+    for it in C.parse_items(block.body):
+        if not isinstance(it, C.Bullet):
             continue
-        
-        # First line has position title and dates
-        title_line = lines[0].strip()
-        # Parse "Software Engineer | Feb 2024 - Present"
-        title_match = re.match(r'(.+?)\s*\|\s*(.+)', title_line)
-        if title_match:
-            position_title, dates = title_match.groups()
+        if it.children:
+            head = it.label or C.strip_inline(it.text)
+            out.append(f'<li class="mb-2"><i class="{icon} mr-2 text-primary"></i>'
+                       f'<strong>{html_mod.escape(head)}</strong>')
+            out.append('\t<ul class="list-unstyled item-meta text-muted mb-0 mt-1">')
+            for kid in it.children:
+                out.append(f'\t\t<li>{_bullet_html(kid)}</li>')
+            out.append('\t</ul>')
+            out.append('</li>')
         else:
-            position_title, dates = title_line, ''
-        
-        # Rest of the content
-        content_lines = lines[1:]
-        
-        # Parse the content into sections
-        sections = []
-        current_section = None
-        current_items = []
-        
-        for line in content_lines:
-            line = line.rstrip()
-            if not line or line.strip() == '---':
-                continue
-            
-            stripped = line.strip()
-            
-            # Check for section header like <b>Customer:</b> or <b>Responsibilities:</b>
-            header_match = re.match(r'^<b>([^<]+):</b>\s*(.*)', stripped)
-            if header_match:
-                # Save previous section
-                if current_section:
-                    sections.append((current_section, current_items))
-                current_section = header_match.group(1).strip()
-                remaining = header_match.group(2).strip()
-                current_items = [remaining] if remaining else []
-            elif stripped.startswith('- '):
-                # List item (top level or nested)
-                if line.startswith('  - ') or line.startswith('  -'):
-                    # Nested item (sub-bullet)
-                    item_text = re.sub(r'^\s*-\s*', '', stripped)
-                    current_items.append(('sub', item_text))
-                else:
-                    # Top level item - could be a category header
-                    item_text = re.sub(r'^-\s*', '', stripped)
-                    # Check if it's a category header like <b>Category:</b> (with nothing after or only sub-items following)
-                    cat_match = re.match(r'<b>([^<]+):</b>\s*(.*)', item_text)
-                    if cat_match:
-                        cat_name = cat_match.group(1).strip()
-                        cat_rest = cat_match.group(2).strip()
-                        if cat_rest:
-                            # This is a bold-prefixed item (like an achievement with description)
-                            current_items.append(('bold_item', cat_name, cat_rest))
-                        else:
-                            # This is a category header (only bold text, sub-items follow)
-                            current_items.append(('category', cat_name))
-                    else:
-                        current_items.append(('item', item_text))
+            out.append(f'<li class="mb-2"><i class="{icon} mr-2 text-primary"></i>{_bullet_html(it)}</li>')
+    return '\n'.join(out)
+
+
+def build_achievements(block: C.Block) -> str:
+    return _build_list_section(block, 'fas fa-trophy')
+
+
+def build_awards(block: C.Block) -> str:
+    return _build_list_section(block, 'fas fa-award')
+
+
+def build_languages(block: C.Block) -> str:
+    items = []
+    for it in C.parse_items(block.body):
+        if isinstance(it, C.Bullet):
+            if it.label:
+                items.append(f'<li class="mb-2"><strong>{html_mod.escape(it.label)}:</strong> '
+                             f'{inline_html(it.value)}</li>')
             else:
-                # Plain text line
-                if current_items or not current_section:
-                    current_items.append(('text', stripped))
-        
-        # Save last section
-        if current_section:
-            sections.append((current_section, current_items))
-        
-        # Build HTML for this position
-        html_parts = []
-        
-        # Add company header only for first position
-        if i == 0:
-            html_parts.append(f'<div class="item mb-4">')
-            html_parts.append(f'\t<h4 class="resume-position-title font-weight-bold mb-1">{company}</h4>')
-        else:
-            html_parts.append(f'<div class="item mb-3">')
-        
-        html_parts.append(f'\t')
-        html_parts.append(f'\t<div class="resume-position-time text-muted mb-2">{position_title.strip()} | <em>{dates.strip()}</em></div>')
-        
-        # Process each section
-        for section_name, items in sections:
-            if section_name == 'Customer':
-                # Simple paragraph
-                value = items[0] if items else ''
-                html_parts.append(f'\t<p><strong>Customer:</strong> {value}</p>')
-            elif section_name == 'Product':
-                value = items[0] if items else ''
-                html_parts.append(f'\t<p><strong>Product:</strong> {value}</p>')
-            elif section_name == 'Responsibilities':
-                # This section has categories with sub-bullets
-                current_category = None
-                for item in items:
-                    if item[0] == 'category':
-                        # Close previous list if any
-                        if current_category:
-                            html_parts.append('\t</ul>')
-                        html_parts.append(f'\t')
-                        html_parts.append(f'\t<p class="mb-2"><strong>{item[1]}:</strong></p>')
-                        html_parts.append('\t<ul class="resume-list">')
-                        current_category = item[1]
-                    elif item[0] == 'sub':
-                        html_parts.append(f'\t\t<li>{item[1]}</li>')
-                if current_category:
-                    html_parts.append('\t</ul>')
-            elif section_name == 'Achievements':
-                html_parts.append(f'\t')
-                html_parts.append(f'\t<p class="mb-2"><strong>Achievements:</strong></p>')
-                html_parts.append('\t<ul class="resume-list">')
-                for item in items:
-                    if item[0] == 'bold_item':
-                        # Bold-prefixed item like "Top Performer Award (2024): description"
-                        text = f'<strong>{item[1]}:</strong> {item[2]}'
-                        html_parts.append(f'\t\t<li>{text}</li>')
-                    elif item[0] == 'item':
-                        # Regular item - convert <b> to <strong>
-                        text = re.sub(r'<b>([^<]+)</b>', r'<strong>\1</strong>', item[1])
-                        html_parts.append(f'\t\t<li>{text}</li>')
-                html_parts.append('\t</ul>')
-        
-        html_parts.append('</div>')
-        divs.append('\n'.join(html_parts))
-    
-    return '\n\n'.join(divs) if divs else '<div class="item mb-3"><em>No work experience parsed.</em></div>'
+                items.append(f'<li class="mb-2">{inline_html(it.text)}</li>')
+    return '\n'.join(items) or '<li>No languages listed</li>'
 
 
-def replace_block(html: str, start: str, end: str, new_inner: str) -> str:
+RENDERERS = {
+    'summary': build_summary,
+    'skills': build_skills,
+    'awards': build_awards,
+    'work_experience': build_work,
+    'projects': build_projects,
+    'education': build_education,
+    'achievements': build_achievements,
+    'languages': build_languages,
+}
+
+
+def replace_block(html: str, start: str, end: str, new_inner: str):
+    """Replace a marked region. Returns (html, found)."""
+    import re
     pattern = re.compile(re.escape(start) + r'.*?' + re.escape(end), re.DOTALL)
-    replacement = f'{start}\n{new_inner}\n{end}'
     if not pattern.search(html):
-        print(f'Warning: markers {start}..{end} not found', file=sys.stderr)
-        return html
-    return pattern.sub(replacement, html, count=1)
+        return html, False
+    return pattern.sub(f'{start}\n{new_inner}\n{end}', html, count=1), True
 
 
-def main():
+VOID_TAGS = {'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
+             'link', 'meta', 'param', 'source', 'track', 'wbr'}
+
+
+def check_structure(html: str) -> list:
+    """Return structural problems: unbalanced markers or unbalanced tags.
+
+    A previous edit deleted a whole <section> including its closing tag, which
+    silently mis-nested everything after it and went unnoticed for weeks.
+    """
+    from html.parser import HTMLParser
+
+    problems = []
+    for key, (start, end) in MARKERS.items():
+        ns, ne = html.count(start), html.count(end)
+        if ns != ne:
+            problems.append(f'marker {key}: {ns} start vs {ne} end')
+        elif ns > 1:
+            problems.append(f'marker {key}: appears {ns} times')
+
+    class Balance(HTMLParser):
+        def __init__(self):
+            super().__init__(convert_charrefs=True)
+            self.stack = []
+            self.problems = []
+
+        def handle_starttag(self, tag, attrs):
+            if tag not in VOID_TAGS:
+                self.stack.append(tag)
+
+        def handle_endtag(self, tag):
+            if tag in VOID_TAGS:
+                return
+            if not self.stack:
+                self.problems.append(f'stray </{tag}>')
+            elif self.stack[-1] == tag:
+                self.stack.pop()
+            elif tag in self.stack:
+                self.problems.append(f'</{tag}> closes <{self.stack[-1]}>')
+                while self.stack and self.stack.pop() != tag:
+                    pass
+            else:
+                self.problems.append(f'stray </{tag}>')
+
+    parser = Balance()
+    parser.feed(html)
+    problems.extend(parser.problems)
+    if parser.stack:
+        problems.append(f'unclosed tags: {parser.stack}')
+    return problems
+
+
+def main() -> int:
     if not DOX_FILE.exists():
-        print('DOX file not found', file=sys.stderr)
+        print(f'DOX file not found: {DOX_FILE}', file=sys.stderr)
         return 1
     if not HTML_FILE.exists():
-        print('HTML file not found', file=sys.stderr)
+        print(f'HTML file not found: {HTML_FILE}', file=sys.stderr)
         return 1
-    
+
     dox_text = DOX_FILE.read_text(encoding='utf-8')
-    sections = extract_sections(dox_text)
+    sections = C.parse_doc(dox_text)
     html = HTML_FILE.read_text(encoding='utf-8')
 
-    # Contact info (from mainpage header)
-    contact_raw = extract_contact_from_mainpage(dox_text)
-    if contact_raw:
-        html = replace_block(html, *MARKERS['contact_info'], build_contact_info(contact_raw))
-    
-    # Professional Summary
-    if 'summary' in sections:
-        html = replace_block(html, *MARKERS['summary'], build_summary(sections['summary']))
-    
-    # Skills
-    if 'skills' in sections:
-        html = replace_block(html, *MARKERS['skills'], build_skills(sections['skills']))
-    
-    # Certifications
-    if 'certifications' in sections:
-        html = replace_block(html, *MARKERS['certifications'], build_certifications(sections['certifications']))
-    
-    # Languages
-    if 'languages' in sections:
-        html = replace_block(html, *MARKERS['languages'], build_languages(sections['languages']))
-    
-    # Education
-    if 'education' in sections:
-        html = replace_block(html, *MARKERS['education'], build_education(sections['education']))
-    
-    # Work Experience
-    if 'work_experience' in sections:
-        html = replace_block(html, *MARKERS['work_experience'], build_work(sections['work_experience']))
+    missing = []
 
-    HTML_FILE.write_text(html + ('\n' if not html.endswith('\n') else ''), encoding='utf-8')
-    print('index.html updated from DOX.')
+    contact = C.extract_contact(dox_text)
+    if contact:
+        html, ok = replace_block(html, *MARKERS['contact_info'], build_contact_info(contact))
+        if not ok:
+            missing.append('contact_info')
+
+    empty = []
+    for key, render in RENDERERS.items():
+        if key not in sections:
+            continue
+        inner = render(sections[key])
+        if not inner.strip():
+            empty.append(key)
+        html, ok = replace_block(html, *MARKERS[key], inner)
+        if not ok:
+            missing.append(key)
+
+    failed = False
+    if missing:
+        # The previous version only warned here, which is exactly how a deleted
+        # Certifications section went unnoticed for weeks.
+        print(f'ERROR: .dox has sections with no matching HTML markers: {missing}', file=sys.stderr)
+        print('Add the markers to docs/index.html or remove the section from the .dox.', file=sys.stderr)
+        failed = True
+    if empty:
+        print(f'ERROR: .dox sections rendered to nothing: {empty}', file=sys.stderr)
+        failed = True
+
+    problems = check_structure(html)
+    if problems:
+        print('ERROR: generated HTML is malformed:', file=sys.stderr)
+        for p in problems:
+            print(f'  - {p}', file=sys.stderr)
+        failed = True
+
+    if failed:
+        return 1
+
+    HTML_FILE.write_text(html + ('' if html.endswith('\n') else '\n'), encoding='utf-8')
+    print(f'index.html updated from {DOX_FILE.name} ({len(sections)} sections).')
     return 0
 
 

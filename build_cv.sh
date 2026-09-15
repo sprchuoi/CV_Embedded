@@ -21,18 +21,17 @@ fi
 # Change to build directory
 cd "$BUILD_DIR"
 
-# Configure with CMake if needed
-if [ ! -f "Makefile" ]; then
-    echo "Configuring project with CMake..."
-    cmake ..
-fi
+# Configure with CMake (always re-run: a stale build dir would otherwise keep
+# an outdated copy target after docs/CMakeLists.txt changes)
+echo "Configuring project with CMake..."
+cmake ..
 
 # Build the documentation
 echo "Building CV PDF..."
 make doc
 
 # Check if PDF was generated
-CV_PDF="$PROJECT_ROOT/LePhucDuc_CV.pdf"
+CV_PDF="$PROJECT_ROOT/NguyenQuangBinh_CV.pdf"
 if [ -f "$CV_PDF" ]; then
     echo "CV PDF generated successfully!"
     echo "CV PDF location: $CV_PDF"
