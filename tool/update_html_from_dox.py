@@ -33,8 +33,10 @@ MARKERS = {
     'awards':          ('<!-- AWARDS_START -->',          '<!-- AWARDS_END -->'),
     'work_experience': ('<!-- WORK_EXPERIENCE_START -->', '<!-- WORK_EXPERIENCE_END -->'),
     'projects':        ('<!-- PROJECTS_START -->',        '<!-- PROJECTS_END -->'),
+    'open_source':     ('<!-- OPEN_SOURCE_START -->',     '<!-- OPEN_SOURCE_END -->'),
     'education':       ('<!-- EDUCATION_START -->',       '<!-- EDUCATION_END -->'),
     'achievements':    ('<!-- ACHIEVEMENTS_START -->',    '<!-- ACHIEVEMENTS_END -->'),
+    'interests':       ('<!-- INTERESTS_START -->',       '<!-- INTERESTS_END -->'),
     # Dormant: no Languages section in the current CV. Kept so re-adding one is
     # a .dox + HTML edit with no code change.
     'languages':       ('<!-- LANGUAGES_START -->',       '<!-- LANGUAGES_END -->'),
@@ -286,6 +288,11 @@ RENDERERS = {
     'education': build_education,
     'achievements': build_achievements,
     'languages': build_languages,
+    # Technical interests share the skills shape ("Category: value"), and open
+    # source entries share the projects shape ("@subsection" + bullets + Link),
+    # so both reuse those renderers rather than duplicating them.
+    'interests': build_skills,
+    'open_source': build_projects,
 }
 
 

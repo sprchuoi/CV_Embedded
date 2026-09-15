@@ -28,8 +28,9 @@ DOX_FILE = REPO_ROOT / 'docs' / 'NguyenQuangBinh_CV.dox'
 TEMPLATE_FILE = REPO_ROOT / 'build_environment' / 'tool' / 'sidebar_cv' / 'sidebar_cv_template.tex'
 OUTPUT_PDF = REPO_ROOT / 'NguyenQuangBinh_CV_Sidebar.pdf'
 
-TOKENS = ('@@NAME@@', '@@CONTACT@@', '@@SUMMARY@@', '@@SKILLS@@', '@@AWARDS@@',
-          '@@EXPERIENCE@@', '@@PROJECTS@@', '@@EDUCATION@@', '@@ACHIEVEMENTS@@')
+TOKENS = ('@@NAME@@', '@@CONTACT@@', '@@SUMMARY@@', '@@SKILLS@@', '@@INTERESTS@@',
+          '@@AWARDS@@', '@@EXPERIENCE@@', '@@PROJECTS@@', '@@OPEN_SOURCE@@',
+          '@@EDUCATION@@', '@@ACHIEVEMENTS@@')
 
 CONTACT_ICONS = {
     'phone': 'phone',
@@ -278,19 +279,21 @@ def render(dox_text: str) -> str:
         '@@NAME@@': latex_escape(C.extract_name(dox_text)),
         '@@CONTACT@@': build_contact(C.extract_contact(dox_text)),
     }
+    # token -> (section key in the .dox, builder). Technical interests reuse the
+    # skills shape and open source reuses the projects shape, so they share
+    # builders rather than duplicating them; the HTML renderer does the same.
     builders = {
-        '@@SUMMARY@@': build_summary,
-        '@@SKILLS@@': build_skills,
-        '@@AWARDS@@': build_awards,
-        '@@EXPERIENCE@@': build_experience,
-        '@@PROJECTS@@': build_projects,
-        '@@EDUCATION@@': build_education,
-        '@@ACHIEVEMENTS@@': build_achievements,
+        '@@SUMMARY@@':      ('summary',         build_summary),
+        '@@SKILLS@@':       ('skills',          build_skills),
+        '@@INTERESTS@@':    ('interests',       build_skills),
+        '@@AWARDS@@':       ('awards',          build_awards),
+        '@@EXPERIENCE@@':   ('work_experience', build_experience),
+        '@@PROJECTS@@':     ('projects',        build_projects),
+        '@@OPEN_SOURCE@@':  ('open_source',     build_projects),
+        '@@EDUCATION@@':    ('education',       build_education),
+        '@@ACHIEVEMENTS@@': ('achievements',    build_achievements),
     }
-    for token, fn in builders.items():
-        key = {'@@SUMMARY@@': 'summary', '@@SKILLS@@': 'skills', '@@AWARDS@@': 'awards',
-               '@@EXPERIENCE@@': 'work_experience', '@@PROJECTS@@': 'projects',
-               '@@EDUCATION@@': 'education', '@@ACHIEVEMENTS@@': 'achievements'}[token]
+    for token, (key, fn) in builders.items():
         block = sections.get(key)
         values[token] = fn(block) if block else ''
 

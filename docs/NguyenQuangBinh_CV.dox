@@ -7,15 +7,27 @@
 
 @section summary SUMMARY
 
-Detail-oriented and solution-driven Software Engineer with 3+ years of experience in the automotive domain, collaborating with global teams. Enthusiastic about SDV, IOT, open-source software and continuous contribution to the community.
+Embedded software engineer working across bare-metal, RTOS and embedded Linux, with 3+ years spanning automotive and optical communications. Currently developing firmware for optical DSP products at Marvell; previously built Software-Defined Vehicle and AUTOSAR platform software at Bosch. Focused on real-time signal processing, simulation-driven development and early validation, with a habit of open-sourcing what I learn.
 
 ---
 
 @section work_experience WORK EXPERIENCE
 
+@subsection exp_marvell Marvell Technology | Ho Chi Minh City, Vietnam
+
+@subsubsection exp_marvell_dsp Senior Embedded Software/Firmware Engineer | August 2026 - Present
+<b>Domain:</b> Optical DSP
+
+<b>Product:</b> AEC
+
+<b>Responsibilities:</b>
+- Develop embedded firmware for optical DSP products in the AEC line, targeting bare-metal and RTOS environments
+- Contribute to the design and implementation of real-time signal-processing blocks, including FFE, FFT, DFE and PLL
+- Work across PAM3 and PAM4 modulation and equalisation paths for high-speed optical links
+
 @subsection exp_bosch Bosch Global Software Technologies | Ho Chi Minh City, Vietnam
 
-@subsubsection exp_bosch_sdv Embedded Software Engineer | April 2024 - Present
+@subsubsection exp_bosch_sdv Embedded Software Engineer | April 2024 - August 2026
 <b>Product:</b> Perfectly Keyless
 
 <b>Responsibilities:</b>
@@ -71,6 +83,42 @@ Detail-oriented and solution-driven Software Engineer with 3+ years of experienc
 
 ---
 
+@section open_source OPEN SOURCE & SIDE PROJECTS
+
+@subsection oss_secureboot Secure Boot Study Path (MCU to SoC) | Documentation site
+- A structured, hands-on study path covering secure boot from Arm Cortex-M up to Cortex-A with TrustZone, ARM Trusted Firmware and HLOS
+- Covers CA hierarchies, secure enclaves, flash secure boot, SSL/TLS and HSM key-signing operations
+- Published as a browsable, searchable documentation site with live diagrams, built with MkDocs Material
+
+<b>Link:</b> [github.com/sprchuoi/securebootloader](https://github.com/sprchuoi/securebootloader)
+
+@subsection oss_smart_home_idf ESP32 Voice-Activated Smart Home | ESP-IDF
+- Dual-core FreeRTOS architecture with I2S audio capture and on-device wake-word detection
+- HTTPS OTA updates with progress reporting, and MQTT auto-discovery for Home Assistant
+- Multi-tier power management with configurable wake sources and a task watchdog
+
+<b>Link:</b> [github.com/sprchuoi/smart_home_idf](https://github.com/sprchuoi/smart_home_idf)
+
+@subsection oss_zephyr Smart Home on Zephyr RTOS | ESP32
+- Modular, multi-threaded firmware with separate tasks for sensors, BLE, WiFi and display
+- BLE GATT service, WiFi AP+STA mode, and an SSD1306 OLED with power-aware sleep and button wake
+
+<b>Link:</b> [github.com/sprchuoi/smart_home_zephyr](https://github.com/sprchuoi/smart_home_zephyr)
+
+@subsection oss_unit_test Unit Test Roadmap for C/C++ | Tutorial
+- A docs-as-code tutorial covering GoogleTest, GoogleMock and the Fake Function Framework
+- Captures the patterns for testing embedded code without hardware: init routines, feature flags and dispatch tables
+
+<b>Link:</b> [github.com/sprchuoi/unit_test_rout](https://github.com/sprchuoi/unit_test_rout)
+
+@subsection oss_smart_server Smart Server for Raspberry Pi | IoT backend
+- MQTT broker, FastAPI REST/WebSocket API and a real-time device dashboard
+- Local LLM worker for intent processing, with secure remote access over Tailscale
+
+<b>Link:</b> [github.com/sprchuoi/Smart_Server](https://github.com/sprchuoi/Smart_Server)
+
+---
+
 @section education EDUCATION
 
 @subsection edu_hcmute Ho Chi Minh City University of Technology and Education (HCMUTE)
@@ -83,6 +131,7 @@ GPA: 3.26/4 - Distinction
 @section achievements ACHIEVEMENTS
 
 - <b>TOEIC Certificate of Achievement:</b> 785/990
+- <b>LeetCode:</b> 406 problems solved (128 Easy, 221 Medium, 57 Hard) - [profile](https://leetcode.com/sprchuoi)
 
 ---
 
@@ -92,6 +141,18 @@ GPA: 3.26/4 - Distinction
   - Issued by Direct Manager
   - Recognized for successfully demonstrating the SDV (Software-Defined Vehicle) solution to key customers including Honda and Toyota.
   - High willingness to guide new members and associates in problem solving
+
+---
+
+@section interests TECHNICAL INTERESTS
+
+- <b>Optical & Signal Processing</b>: <em>FFE, FFT, DFE, PLL and PAM3/PAM4 equalisation for high-speed optical links.</em>
+- <b>Software-Defined Vehicle</b>: <em>virtual ECU (vECU) simulation, AUTOSAR, Vehicle Signal Specification.</em>
+- <b>Secure Boot & Cryptography</b>: <em>chain of trust from MCU to SoC, TrustZone, HSM key signing, AES/CMAC/ECDH.</em>
+- <b>Embedded Linux</b>: <em>Yocto, Buildroot, Linux kernel fundamentals.</em>
+- <b>Real-Time Systems</b>: <em>Zephyr, FreeRTOS and bare-metal bring-up.</em>
+- <b>Emulation & Tooling</b>: <em>QEMU machine models, cross-compilation SDKs, Docker build environments.</em>
+- <b>Open Source</b>: <em>writing up and publishing what I learn.</em>
 
 ---
 
