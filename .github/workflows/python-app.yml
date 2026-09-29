@@ -78,17 +78,34 @@ jobs:
   # ------------------------------------------------------------------ tests --
   # The blog generator is hand-written and is the thing that decides what the
   # published site contains, so it gets its own gate.
+  #
+  # This job runs on 3.11, the version the README declares as the minimum. That
+  # matters: the figure modules are only *imported* when numpy is installed, so
+  # a 3.12-only construct in one of them (a multi-line f-string, say) would slip
+  # past the unit tests and surface as a syntax error in the figures job. The
+  # byte-compile step below closes that gap by parsing every file regardless of
+  # whether anything imports it.
   test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.11 is the declared minimum and the one that matters: it rejects
+        # 3.12-only syntax such as multi-line f-strings. 3.12 is included so
+        # the newest supported interpreter is exercised too.
+        python-version: ["3.11", "3.12"]
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.11
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{ matrix.python-version }}
+
+      - name: Byte-compile every tool
+        run: python3 -m compileall -q tool
 
       - name: Run the unit tests
         run: python3 -m unittest discover -s tool/tests -t . -v

@@ -28,13 +28,19 @@ from typing import Callable
 MODULES: dict[str, tuple[str, ...]] = {
     "diagrams": (
         "diagrams_sampling",
+        "diagrams_fft",
         "diagrams_fir",
+        "diagrams_convolution",
         "diagrams_coherent",
+        "diagrams_dispersion",
     ),
     "plots": (
         "plots_sampling",
+        "plots_fft",
         "plots_fir",
+        "plots_convolution",
         "plots_coherent",
+        "plots_dispersion",
     ),
 }
 
@@ -71,13 +77,24 @@ def collect(*, kinds: tuple[str, ...] | None = None) -> list[Figure]:
             dotted = f"{__name__}.{module_name}"
             try:
                 module = importlib.import_module(dotted)
-            except ImportError as exc:  # pragma: no cover - environment problem
-                if module_name.startswith("plots"):
+            except ModuleNotFoundError as exc:
+                # Distinguish "the numeric stack is not installed" from "the
+                # module itself is missing": both raise, but the fix is
+                # completely different and the old message blamed numpy for
+                # a typo in MODULES.
+                if (exc.name or "").split(".")[0] in ("numpy", "matplotlib",
+                                                      "scipy", "PIL"):
                     raise FigureError(
-                        f"cannot import {dotted} ({exc}). Plot figures need numpy and "
-                        "matplotlib -- run this with build_environment/.venv/bin/python."
+                        f"cannot import {dotted}: {exc}. Plot figures need numpy "
+                        "and matplotlib -- run this with "
+                        "build_environment/.venv/bin/python."
                     ) from exc
-                raise
+                raise FigureError(
+                    f"{dotted} does not exist, but {kind} MODULES lists it. "
+                    "Add the module or remove it from the list."
+                ) from exc
+            except ImportError as exc:  # pragma: no cover - broken module
+                raise FigureError(f"cannot import {dotted}: {exc}") from exc
 
             registry = getattr(module, "FIGURES", None)
             if not isinstance(registry, dict) or not registry:

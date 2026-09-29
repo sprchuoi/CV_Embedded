@@ -1,7 +1,7 @@
 /**
 @mainpage Nguyen Quang Binh
 
-2A Trung My Tay St, District 12, Ho Chi Minh City | 0389393615 | quangbinhhtc@gmail.com | [LinkedIn](https://www.linkedin.com/in/sprchuoi) | [GitHub](https://github.com/sprchuoi)
+2A Trung My Tay St, District 12, Ho Chi Minh City | 0369393615 | quangbinhlxcity@gmail.com | [LinkedIn](https://www.linkedin.com/in/sprchuoi) | [GitHub](https://github.com/sprchuoi)
 
 ---
 
@@ -36,7 +36,7 @@ Embedded software engineer working across bare-metal, RTOS and embedded Linux, w
 - Developed and optimized C++ applications and system services deployed across Linux and Android platforms
 - Built a real-time monitoring dashboard for PK systems, deployed on cluster-based HMI environments
 - Contributed to BSP and application development for high-performance automotive platforms including NXP HPC and NVIDIA Jetson, within the SDV XC architecture
-- Developed CI/CD pipelines to automate system image builds using the Yocto Project. Link: [auto-build-kit](https://github.com/sprchuoi/auto-build-kit)
+- Developed CI/CD pipelines to automate system image builds using the Yocto Project. 
 
 @paragraph proj_vecu Virtual ECU Platform
 - Developed a cross-platform C/C++ application to simulate Virtual ECU (vECU) framework across multiple XC domain projects, including iVECU, Honda (Perfectly Keyless), and XMC (Body Control Module).
@@ -44,7 +44,7 @@ Embedded software engineer working across bare-metal, RTOS and embedded Linux, w
 - Designed and maintained CI/CD pipelines for automated build, integration, and validation of releases, reducing 80% effort on development and testing with virtual ECU environment
 - Implemented cryptographic security features (FOTA) mechanisms, applying cryptographic algorithms including AES, CMAC, and ECDH for authentication and data integrity
 
-<b>Tools:</b> vVirtualTarget, ETAS Builder, OEMU, Docker, Hypervisor (Type 1 - Type 2), Space
+<b>Tools:</b> vVirtualTarget, ETAS Builder, QEMU, Docker, Hypervisor (Type 1 - Type 2), DSpace
 
 @paragraph proj_medac MeDac Platform
 - Develop innovation AI platform for optimizer build for vECU platform base on Chain of Thought
@@ -57,7 +57,7 @@ Embedded software engineer working across bare-metal, RTOS and embedded Linux, w
 @subsubsection exp_bosch_cgw Embedded Software Engineer | October 2023 - April 2024
 <b>Product:</b> Central Gateway
 
-<b>Project:</b> iISUZU, OTS
+<b>Project:</b> ISUZU, OTS
 
 <b>Responsibilities:</b>
 - Supporting AUTOSAR Basic software, including ComMStack, MemStack, CryptoStack

@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The FFT: How It Got Fast - DSP, from First Principles to the Optical Link</title>
+<meta name="description" content="Radix-2 decomposition, the butterfly, and the bit-reversal that everyone gets wrong once. Includes the cost table that explains why 5G and 800G both live on FFTs.">
+<meta name="color-scheme" content="light dark">
+<meta property="og:type" content="article">
+<meta property="og:title" content="The FFT: How It Got Fast - DSP, from First Principles to the Optical Link">
+<meta property="og:description" content="Radix-2 decomposition, the butterfly, and the bit-reversal that everyone gets wrong once. Includes the cost table that explains why 5G and 800G both live on FFTs.">
+<link rel="icon" href="../favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link rel="stylesheet" href="assets/blog.css">
+<script>
+  window.MathJax = {
+  "tex": {
+    "inlineMath": [
+      [
+        "$",
+        "$"
+      ],
+      [
+        "\\(",
+        "\\)"
+      ]
+    ],
+    "displayMath": [
+      [
+        "$$",
+        "$$"
+      ],
+      [
+        "\\[",
+        "\\]"
+      ]
+    ],
+    "processEscapes": true,
+    "tags": "none",
+    "macros": {
+      "twopi": "2\\pi",
+      "dd": "\\mathrm{d}",
+      "E": "\\mathbb{E}",
+      "j": "\\mathrm{j}",
+      "argmin": "\\operatorname*{arg\\,min}"
+    }
+  },
+  "options": {
+    "skipHtmlTags": [
+      "script",
+      "noscript",
+      "style",
+      "textarea",
+      "pre",
+      "code"
+    ],
+    "ignoreHtmlClass": "no-mathjax"
+  },
+  "chtml": {
+    "scale": 1.02
+  }
+};
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="index.html">
+      <span class="mark" aria-hidden="true">DSP</span>
+      <span>Nguyen Quang Binh</span>
+      <span class="sub">signal processing notes</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="index.html" aria-current="page">Curriculum</a>
+      <a href="../index.html">CV</a>
+      <a href="https://github.com/sprchuoi">GitHub</a>
+      <button class="icon-btn" type="button" data-theme-toggle aria-pressed="false"
+              title="Switch theme" aria-label="Switch colour theme"><i class="fa-solid fa-moon" aria-hidden="true"></i></button>
+    </nav>
+  </div>
+  <div class="read-progress" role="presentation"></div>
+</header>
+<div class="layout">
+<nav class="toc" aria-label="On this page">
+<p class="toc-title">On this page</p>
+<ol><li class="lvl-2"><a href="#the-definition-and-the-price-it-implies">The definition, and the price it implies</a></li><li class="lvl-2"><a href="#halving-the-problem-and-halving-it-again">Halving the problem, and halving it again</a></li><li class="lvl-2"><a href="#the-butterfly-and-the-multiply-it-declines-to-spend">The butterfly, and the multiply it declines to spend</a></li><li class="lvl-2"><a href="#what-the-reordering-buys-in-numbers">What the reordering buys, in numbers</a></li><li class="lvl-2"><a href="#the-permutation-nobody-avoids">The permutation nobody avoids</a></li><li class="lvl-2"><a href="#how-you-know-it-is-right">How you know it is right</a></li><li class="lvl-2"><a href="#the-twiddles-are-a-table-not-a-computation">The twiddles are a table, not a computation</a></li><li class="lvl-2"><a href="#what-the-transform-is-for-and-what-it-cannot-buy">What the transform is for, and what it cannot buy</a></li><li class="lvl-2"><a href="#what-to-carry-forward">What to carry forward</a></li></ol>
+</nav>
+<main id="main" class="prose">
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    <a href="index.html">Curriculum</a><span class="sep">/</span>The Frequency Domain
+  </nav>
+  <header class="article-head">
+    <h1>The FFT: How It Got Fast</h1>
+    <p class="article-standfirst">Radix-2 decomposition, the butterfly, and the bit-reversal that everyone gets wrong once. Includes the cost table that explains why 5G and 800G both live on FFTs.</p>
+    <div class="article-meta"><span class="level-badge" data-level="Beginner to Intermediate">Beginner to Intermediate</span><span>17 min read</span><div class="taglist"><span class="tag">fft</span><span class="tag">algorithms</span></div></div>
+  </header>
+<p>Every block in a coherent receiver is physics that has been argued into arithmetic: a photodiode, a transimpedance amplifier, an ADC, and then a long column of multiplies. The fast Fourier transform is the one block that is arithmetic alone. Nothing in it corresponds to a part you could order; it is the same <span class="math">$N^2$</span> complex multiplies the definition asks for, performed in a different order, and the reordering is worth orders of magnitude at the sizes that matter.</p>
+<p>This chapter is about that reordering. I write FFT blocks for coherent optical firmware, where a 512-point transform is both an off-the-shelf component and a line in the power budget, and where the interesting questions are never "what is the FFT" but "which variant, in what order, at what word length, against what reference".</p>
+<p>Four separable decisions make up the algorithm, and hardware prices them very differently. The radix-2 decomposition says how to split the problem. The butterfly says what one unit of work is. The twiddle table says which constants you need and how big it is. The bit-reversal permutation says where the samples have to sit in memory. Get the first three right and the transform is fast; get the fourth wrong and it is either wrong or expensive, depending on which way you guessed.</p>
+<p>And because the transform is exact in exact arithmetic, most of what an implementation team actually argues about is the arithmetic it is <em>not</em> exact in. That argument is the second half of this chapter, and it is the part that decides whether the block ships.</p>
+<h2 id="the-definition-and-the-price-it-implies"><a class="heading-anchor" href="#the-definition-and-the-price-it-implies" aria-hidden="true">#</a>The definition, and the price it implies</h2>
+<p>Start with the definition, because the FFT is not an approximation to it.</p>
+<div class="math-display">$$X[k] = \sum_{n=0}^{N-1} x[n]\, W_N^{nk}, \qquad W_N = e^{-j2\pi/N}, \qquad k = 0, 1, \dots, N-1$$</div>
+<p>That is <span class="math">$N$</span> outputs, each a sum of <span class="math">$N$</span> terms. Evaluate it directly — a double loop, or one <span class="math">$N \times N$</span> matrix of twiddles multiplied into a vector — and the cost is <span class="math">$N^2$</span> complex multiplies. Not "about <span class="math">$N^2$</span>": exactly <span class="math">$N^2$</span>, because every output multiplies every input by a twiddle.</p>
+<p>The DFT is a matrix multiply by a fixed matrix with enormous structure. The twiddle matrix is symmetric, its entries are powers of a single number, and its rows are periodic. The definition spends none of that structure, and the FFT is what happens when you spend all of it.</p>
+<aside class="callout callout-note">
+  <p class="callout-title"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> What a complex multiply counts as</p>
+  <div class="callout-body">
+<p>Every count in this chapter is in <strong>complex multiplies</strong>. A multiply by <span class="math">$1$</span>, <span class="math">$-1$</span> or <span class="math">$\pm j$</span> is counted like any other. That is the honest way to count the definition, and it is the convention the cost figure uses. Real hardware folds the trivial twiddles away, so the advantage on a chip is larger than these ratios.</p>
+  </div>
+</aside>
+<p>The direct evaluation is not a straw man. It is the right implementation for short transforms, it is the reference every FFT is tested against later in this chapter, and it is the only version whose cost you can state without qualification. It is also why the transform sat in textbooks for decades: the mathematics was settled long before anyone could afford to use it at scale.</p>
+<h2 id="halving-the-problem-and-halving-it-again"><a class="heading-anchor" href="#halving-the-problem-and-halving-it-again" aria-hidden="true">#</a>Halving the problem, and halving it again</h2>
+<figure class="figure"><img src="assets/diagrams/fft-radix2-tree.svg" alt="Radix-2 decimation in time for N = 8. Each stage halves the transform size, and the cost falls out of the tree." loading="lazy"><figcaption><span class="fig-label">Figure 1</span><span class="fig-text">Radix-2 decimation in time for N = 8. Each stage halves the transform size, and the cost falls out of the tree.</span></figcaption></figure>
+<p>The decomposition begins with a choice about <em>which</em> inputs to group. Split the sequence into its even- and odd-indexed samples, <span class="math">$e[m] = x[2m]$</span> and <span class="math">$o[m] = x[2m+1]$</span>, and write the sum over the two halves separately:</p>
+<div class="math-display">$$X[k] = \sum_{m=0}^{N/2-1} x[2m]\, W_N^{2mk} \;+\; W_N^{k} \sum_{m=0}^{N/2-1} x[2m+1]\, W_N^{2mk}$$</div>
+<p>Nothing has been approximated; the terms have only been reordered. Now use <span class="math">$W_N^2 = W_{N/2}$</span>, so that each sum is itself a DFT of length <span class="math">$N/2$</span>:</p>
+<div class="math-display">$$X[k] = E[k] + W_N^{k}\, O[k]$$</div>
+<p>with <span class="math">$E$</span> the <span class="math">$N/2$</span>-point DFT of the even samples and <span class="math">$O$</span> the <span class="math">$N/2$</span>-point DFT of the odd ones. That covers <span class="math">$k$</span> from <span class="math">$0$</span> to <span class="math">$N/2-1$</span> — half the spectrum. The other half is free. Both <span class="math">$E$</span> and <span class="math">$O$</span> are periodic with period <span class="math">$N/2$</span>, and the twiddle at <span class="math">$k + N/2$</span> is the negative of the twiddle at <span class="math">$k$</span>:</p>
+<div class="math-display">$$W_N^{k+N/2} = e^{-j\pi} W_N^{k} = -W_N^{k}$$</div>
+<p>so</p>
+<div class="math-display">$$X[k + N/2] = E[k] - W_N^{k}\, O[k], \qquad k = 0, 1, \dots, N/2-1$$</div>
+<p>Two size-<span class="math">$N/2$</span> transforms plus <span class="math">$N/2$</span> twiddle multiplies have produced the whole size-<span class="math">$N$</span> spectrum. Apply the same split to each half and the recursion runs <span class="math">$\log_2 N$</span> levels deep, until the transforms are of size one and there is nothing left to compute. Every level carries <span class="math">$N/2$</span> of those combine operations, so the total is <span class="math">$(N/2)\log_2 N$</span> complex multiplies against the direct <span class="math">$N^2$</span>. For <span class="math">$N = 8$</span> that is twelve against sixty-four.</p>
+<aside class="callout callout-key">
+  <p class="callout-title"><i class="fa-solid fa-key" aria-hidden="true"></i> The symmetry is the whole algorithm</p>
+  <div class="callout-body">
+<p>The two outputs of one combine are <span class="math">$E + WO$</span> and <span class="math">$E - WO$</span>. They share the same product <span class="math">$WO$</span>. One multiply produces two bins, and that reuse is the only reason the FFT is fast.</p>
+  </div>
+</aside>
+<aside class="callout callout-math">
+  <p class="callout-title"><i class="fa-solid fa-square-root-variable" aria-hidden="true"></i> The recurrence, and its solution</p>
+  <div class="callout-body">
+<div class="math-display">$$T(N) = 2\,T(N/2) + \frac{N}{2}, \qquad T(2) = 1 \qquad \Longrightarrow \qquad T(N) = \frac{N}{2}\log_2 N$$</div>
+  </div>
+</aside>
+<p>The important thing about this derivation is what it does <em>not</em> contain. There is no approximation, no truncation, no window, no assumption about the input. Radix-2 decimation is an identity, and every FFT in the world computes exactly the same <span class="math">$N$</span> numbers the definition does. That is what makes the verification section later in this chapter possible at all.</p>
+<h2 id="the-butterfly-and-the-multiply-it-declines-to-spend"><a class="heading-anchor" href="#the-butterfly-and-the-multiply-it-declines-to-spend" aria-hidden="true">#</a>The butterfly, and the multiply it declines to spend</h2>
+<figure class="figure"><img src="assets/diagrams/fft-butterfly.svg" alt="The radix-2 butterfly: two inputs, one complex multiply, two outputs, and a sign that is the only difference between them." loading="lazy"><figcaption><span class="fig-label">Figure 2</span><span class="fig-text">The radix-2 butterfly: two inputs, one complex multiply, two outputs, and a sign that is the only difference between them.</span></figcaption></figure>
+<p>The pair of equations above is called a butterfly, drawn with its inputs on the left and its outputs on the right. Read it as an arithmetic circuit and the economy is visible: node <span class="math">$a$</span> passes straight through to the sum, node <span class="math">$b$</span> is multiplied by the twiddle once, and the product is added to and subtracted from <span class="math">$a$</span>.</p>
+<div class="math-display">\begin{aligned}
+X[k] &amp;= E[k] + W_N^{k}\, O[k] \\
+X[k + N/2] &amp;= E[k] - W_N^{k}\, O[k]
+\end{aligned}
+</div>
+<p>One complex multiply, two complex adds, two outputs. The naive way to see the same pair of bins is to compute each output independently, which spends two twiddle multiplies where the algorithm needs one. That difference is not a micro-optimisation. An FFT that recomputes the product at every node still scales as <span class="math">$N \log N$</span>, but it spends twice the multiplies an FFT should — the entire economy of the decomposition, thrown away once per butterfly.</p>
+<aside class="callout callout-warn">
+  <p class="callout-title"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> One multiply, not two</p>
+  <div class="callout-body">
+<p>A butterfly with a twiddle on each output is a common first implementation. It doubles the multiplier count for no change in the answer. If your FFT costs <span class="math">$N\log_2 N$</span> complex multiplies rather than <span class="math">$(N/2)\log_2 N$</span>, this is the first place to look.</p>
+  </div>
+</aside>
+<p>There is a second family of the same algorithm. Decimation in <em>frequency</em> splits the input into its first and second halves rather than its even and odd samples, and produces a butterfly whose adds come first and whose twiddle multiplies the difference. It costs the same one multiply per two outputs. The two variants differ only in where the results emerge, and that turns out to decide an architectural question three sections from here.</p>
+<p>The trivial twiddles are worth counting, because they are why real FFTs never actually spend <span class="math">$(N/2)\log_2 N$</span> multiplies. At <span class="math">$N = 8$</span>, twelve butterflies contain four distinct twiddle values, and only two of the twelve multiplies are by something other than <span class="math">$1$</span>, <span class="math">$-1$</span> or <span class="math">$\pm j$</span>. A production FFT pulls those stages out of the loop and implements them as adds, subtractions and swaps, which is exactly the arithmetic a radix-4 or split-radix structure is built to expose.</p>
+<h2 id="what-the-reordering-buys-in-numbers"><a class="heading-anchor" href="#what-the-reordering-buys-in-numbers" aria-hidden="true">#</a>What the reordering buys, in numbers</h2>
+<figure class="figure"><img src="assets/plots/fft-cost-scaling.svg" alt="The cost curves. N² against (N/2)·log₂N, and the ratio between them, which grows without bound." loading="lazy"><figcaption><span class="fig-label">Figure 3</span><span class="fig-text">The cost curves. N² against (N/2)·log₂N, and the ratio between them, which grows without bound.</span></figcaption></figure>
+<p>Two working points make the argument concrete, both counted under the convention stated earlier — one complex multiply per butterfly, trivial twiddles included.</p>
+<div class="table-wrap"><table>
+<thead><tr><th style="text-align:left">Transform length</th><th style="text-align:left">Direct DFT</th><th style="text-align:left">Radix-2 FFT</th><th style="text-align:left">Speed-up</th></tr></thead>
+<tbody>
+<tr><td style="text-align:left"><span class="math">$N = 2^{10} = 1024$</span></td><td style="text-align:left">1,048,576 multiplies</td><td style="text-align:left">5,120 multiplies</td><td style="text-align:left">204.8×</td></tr>
+<tr><td style="text-align:left"><span class="math">$N = 2^{20} = 1{,}048{,}576$</span></td><td style="text-align:left">1,099,511,627,776 multiplies</td><td style="text-align:left">10,485,760 multiplies</td><td style="text-align:left">104,858×</td></tr>
+</tbody>
+</table></div>
+<p>The ratio is <span class="math">$R = 2N/\log_2 N$</span>, which is why the two curves on the figure are straight lines of different slope rather than a fast algorithm and a slow one. At <span class="math">$N = 1024$</span> the FFT is two hundred times cheaper. At <span class="math">$N = 2^{20}$</span> it is a hundred thousand times cheaper, and the gap is not a constant factor that a wider machine or a second pipeline closes — it is an exponent, and exponents do not respond to parallelism.</p>
+<p>Put the same numbers in units an engineer feels. One complex multiply is four real multiplies and two adds, so the direct DFT at <span class="math">$N = 2^{20}$</span> is <span class="math">$4.4 \times 10^{12}$</span> real multiplies: over an hour on a single 1 GHz multiplier lane, for a single transform. The FFT does the same job in 10,485,760 multiplies, which is 42 milliseconds on that same lane — an hour against a twenty-fifth of a second — and then it is free to start on the next block.</p>
+<p>The cost figure also shows where the argument stops being about arithmetic. The multiply count is not the reason an FFT block is expensive on a chip; it is the reason it is possible. Above a few hundred points the transform is limited by memory traffic — every stage reads the whole array and writes it back — and that observation is the design brief for every FFT accelerator ever built.</p>
+<h2 id="the-permutation-nobody-avoids"><a class="heading-anchor" href="#the-permutation-nobody-avoids" aria-hidden="true">#</a>The permutation nobody avoids</h2>
+<figure class="figure"><img src="assets/diagrams/fft-bit-reversal.svg" alt="Bit reversal at N = 8. The butterflies only ever combine neighbours, so the samples must be loaded in the order the recursion visited them." loading="lazy"><figcaption><span class="fig-label">Figure 4</span><span class="fig-text">Bit reversal at N = 8. The butterflies only ever combine neighbours, so the samples must be loaded in the order the recursion visited them.</span></figcaption></figure>
+<p>The tree has a consequence that is easy to miss when you read the algebra. Look at which butterflies run first: the innermost level pairs samples whose original indices differ by <span class="math">$N/2$</span> — <span class="math">$x[0]$</span> with <span class="math">$x[4]$</span>, <span class="math">$x[2]$</span> with <span class="math">$x[6]$</span> — and after that the pairs are never adjacent in index order again. Yet every butterfly must read two values that sit next to each other in the array it operates on. The samples have to be <em>stored</em> in the order the recursion reached them, which is the bit-reversed order of their original indices. At <span class="math">$N = 8$</span>, <span class="math">$x[1]$</span> (binary 001) sits in slot 4 (100) and <span class="math">$x[3]$</span> (011) sits in slot 6 (110).</p>
+<p>Decimation in frequency does not remove this. It takes natural-order input and produces bit-reversed output, which is the same permutation moved from one end of the block to the other. That is a genuinely useful choice rather than a cosmetic one, and the reason follows from what comes next in a receiver.</p>
+<p>An FDE does three things per block: transform, multiply bin by bin, inverse transform. If the forward transform is decimation in frequency, its output is bit-reversed; the filter's bins can be stored in the same permuted order; the inverse transform accepts that order and emits natural order. <strong>The permutation then costs nothing at all</strong>, because nobody ever asked to see it. The alternative — a memory-based FFT with a bit-reversed addressing mode — costs an address generator, which is cheap. The alternative in a pipelined streaming FFT costs a commutator and delay lines to sort samples into the right streams, which is not.</p>
+<p>So the honest statement is not that bit reversal is free, but that it is a real cost with three different prices depending on the architecture, and that a system which never asks for natural order pays the smallest one.</p>
+<h2 id="how-you-know-it-is-right"><a class="heading-anchor" href="#how-you-know-it-is-right" aria-hidden="true">#</a>How you know it is right</h2>
+<figure class="figure"><img src="assets/plots/fft-vs-dft-verification.svg" alt="A hand-written direct DFT against numpy&#x27;s FFT: the same spectrum, and the difference between them, swept over transform length." loading="lazy"><figcaption><span class="fig-label">Figure 5</span><span class="fig-text">A hand-written direct DFT against numpy's FFT: the same spectrum, and the difference between them, swept over transform length.</span></figcaption></figure>
+<p>Here is the test that matters more than any other in this chapter. The figure runs a direct <span class="math">$N^2$</span> DFT, built from the definition with no help from a library, against a known-good FFT on the same signal. The markers sit on the line, not near it.</p>
+<p>For a 64-point record of three tones plus noise, the largest difference between the two transforms is <span class="math">$1.6 \times 10^{-13}$</span>, against a peak spectrum magnitude of <span class="math">$31.6$</span> — about <span class="math">$5 \times 10^{-15}$</span> of the peak, some twenty machine epsilons. Sweeping <span class="math">$N$</span> from 8 to 1024, the absolute difference grows from <span class="math">$3.0 \times 10^{-15}$</span> to <span class="math">$7.9 \times 10^{-11}$</span> while the relative difference stays between <span class="math">$10^{-15}$</span> and <span class="math">$10^{-13}$</span>, and the machine epsilon of double precision is <span class="math">$2.2 \times 10^{-16}$</span>.</p>
+<p>That growth is the expected behaviour, not a defect. A floating-point sum of <span class="math">$N$</span> terms accumulates an error of roughly <span class="math">$N\epsilon\max|X|$</span>, and the direct DFT and the FFT add the same numbers in different orders, so they round differently. Both are right. The difference is round-off, and it is <em>bounded</em> and <em>measured</em>.</p>
+<p>This is how a transform should be tested, and it is worth being blunt about the alternative. Eyeballing a spectrum plot proves nothing: the human eye accepts a 2% error on a logarithmic axis, which is exactly the kind of error that ruins an FDE. The test that catches bugs is a reference implementation, a numeric bound, and a sweep of the parameters the block will see.</p>
+<aside class="callout callout-try">
+  <p class="callout-title"><i class="fa-solid fa-flask" aria-hidden="true"></i> The test I would write first</p>
+  <div class="callout-body">
+<ol>
+<li>Write the DFT longhand, with an explicit twiddle matrix. It is ten lines and it is the reference.</li>
+<li>Check the trivial cases by hand: an impulse at <span class="math">$x[1]$</span> must give a flat magnitude and a linear phase ramp; a constant must give all the energy in bin 0.</li>
+<li>Check Parseval: the energy in the time domain equals the energy in the frequency domain over <span class="math">$N$</span>.</li>
+<li>Then sweep <span class="math">$N$</span> over every power of two you ship, compare against a seeded random input, and assert the maximum difference against a bound that grows with <span class="math">$N$</span>.</li>
+</ol>
+  </div>
+</aside>
+<p>The same discipline extends to fixed point, where the bound comes from the word length rather than from epsilon. I want per-stage error reporting, because the first stage whose output leaves the model's bound localises the bug immediately — a wrong twiddle, a scaling schedule off by one, or a permutation applied twice. A single end-to-end number tells you only that something, somewhere, is wrong.</p>
+<h2 id="the-twiddles-are-a-table-not-a-computation"><a class="heading-anchor" href="#the-twiddles-are-a-table-not-a-computation" aria-hidden="true">#</a>The twiddles are a table, not a computation</h2>
+<figure class="figure"><img src="assets/plots/fft-twiddle-geometry.svg" alt="The eighth roots of unity, and the tally of which twiddle each stage of an N = 8 decimation-in-time FFT reaches for." loading="lazy"><figcaption><span class="fig-label">Figure 6</span><span class="fig-text">The eighth roots of unity, and the tally of which twiddle each stage of an N = 8 decimation-in-time FFT reaches for.</span></figcaption></figure>
+<p>A length-<span class="math">$N$</span> transform needs the <span class="math">$N$</span> values <span class="math">$W_N^k$</span>, which are the <span class="math">$N$</span> points of the unit circle at angles <span class="math">$-2\pi k/N$</span>. They are not independent, and the symmetries are worth more than the storage they save.</p>
+<div class="math-display">$$W_N^{k+N/2} = -W_N^{k}, \qquad W_N^{N-k} = \overline{W_N^{k}}$$</div>
+<p>Negation and conjugation generate the whole circle from a quarter of it, and the four points <span class="math">$\pm 1, \pm j$</span> need no arithmetic at all. Sub-transforms use a subset of the same values, because <span class="math">$W_{M}^{j} = W_N^{\,jN/M}$</span> for any <span class="math">$M$</span> dividing <span class="math">$N$</span>, so one table serves every stage of the recursion.</p>
+<p>The right-hand panel of the figure is the tally that turns this into a hardware decision. For <span class="math">$N = 8$</span>, stage 1 uses <span class="math">$W_8^0$</span> four times; stage 2 uses <span class="math">$W_8^0$</span> twice and <span class="math">$W_8^2$</span> twice; stage 3 uses each of <span class="math">$W_8^0$</span> through <span class="math">$W_8^3$</span> once. Twelve butterflies, four distinct twiddle values, and only two of those butterflies multiply by anything other than <span class="math">$1$</span> or <span class="math">$\pm j$</span>. The direct DFT, by contrast, performs sixty-four products drawn from eight distinct twiddles.</p>
+<p>The practical conclusion is unglamorous: <strong>store the twiddles in ROM</strong>. A 512-point transform needs a table only a fraction of the transform's length, at twelve to sixteen bits, which is a fraction of a kilobyte that a synthesis tool will not even notice. Computing sines and cosines on the fly costs an oscillator's worth of logic, burns power on every sample of every block, and adds a rounding error you did not budget for in a place where exactness is cheap. Store them, and let the word length of the table be a deliberate design parameter rather than an accident of a library call.</p>
+<aside class="callout callout-note">
+  <p class="callout-title"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> Real inputs, and the buffer that is always the wrong size</p>
+  <div class="callout-body">
+<p>A real signal has a conjugate-symmetric spectrum, <span class="math">$X[N-k] = \overline{X[k]}$</span>, so only half the bins carry information. A real <span class="math">$N$</span>-point transform therefore costs one <span class="math">$N/2$</span>-point complex transform plus an <span class="math">$O(N)$</span> post-processing pass. That is roughly a factor of two, for free, on the most common input there is. The API returns <span class="math">$N/2 + 1$</span> bins — 33 for <span class="math">$N = 64$</span> — and the trailing bin is real. Code that sizes the output buffer at <span class="math">$N/2$</span> overflows; code that sizes it at <span class="math">$N$</span> works and wastes half. Both mistakes are routine in audio and RF codebases.</p>
+  </div>
+</aside>
+<aside class="callout callout-aside">
+  <p class="callout-title"><i class="fa-solid fa-comment-dots" aria-hidden="true"></i> Cooley and Tukey, and Gauss before both</p>
+  <div class="callout-body">
+<p>The algorithm is named after a 1965 paper, and the paper is honest about it. The idea was already known: Runge published a practical version in 1924. Gauss worked out the same decomposition around 1805 and never published it. A transform with nothing to compute it on is a curiosity. The 1965 paper mattered because the machine to run it existed, and because it appeared where engineers would read it.</p>
+  </div>
+</aside>
+<h2 id="what-the-transform-is-for-and-what-it-cannot-buy"><a class="heading-anchor" href="#what-the-transform-is-for-and-what-it-cannot-buy" aria-hidden="true">#</a>What the transform is for, and what it cannot buy</h2>
+<figure class="figure"><img src="assets/plots/fft-tone-spectrum.svg" alt="Three tones at two record lengths. The same signal gives one line or two; resolution comes from observation time, not from the transform." loading="lazy"><figcaption><span class="fig-label">Figure 7</span><span class="fig-text">Three tones at two record lengths. The same signal gives one line or two; resolution comes from observation time, not from the transform.</span></figcaption></figure>
+<p>Finally, what the transform is actually for, since the cost argument sometimes crowds it out. The figure holds a signal fixed — tones at 10.0 and 10.3 cycles per 64-sample record, plus a third at 3.0 — and changes only the record length.</p>
+<p>At <span class="math">$N = 64$</span> the bin spacing is one cycle per 64-sample record, so the close pair is 0.3 bins apart and the Hann window's main lobe is four bins wide. The two tones appear as one line, and no amount of cleverness in the transform will separate them, because the information is not in the record.</p>
+<p>At <span class="math">$N = 512$</span> the spacing is 0.125 record-cycles and the pair is 2.4 bins apart. Two lines, resolved, with the leakage skirts of a rectangular window either side. Nothing about <span class="math">$N = 512$</span> made the algorithm smarter; the longer record saw more of the signal.</p>
+<p>That is the resolution law, and it is the one people most often try to buy with transform size instead:</p>
+<div class="math-display">$$\Delta f = \frac{f_s}{N}, \qquad T_{\text{obs}} = \frac{N}{f_s}, \qquad \Delta f = \frac{1}{T_{\text{obs}}}$$</div>
+<p>Resolution is observation time. Zero-padding an <span class="math">$N = 64$</span> record out to 512 points gives 512 bins at the same one-cycle spacing — an interpolated curve through the same information, which is occasionally exactly what you want for reading a peak position and never what you want for separating two tones.</p>
+<p>The transform is also not a filter and not an estimator. It reports what the windowed record contains, including the window. If the specification says "resolve two carriers 100 MHz apart", the answer is a record long enough to see them, and the transform size then follows from the record rather than leading it.</p>
+<h2 id="what-to-carry-forward"><a class="heading-anchor" href="#what-to-carry-forward" aria-hidden="true">#</a>What to carry forward</h2>
+<ul>
+<li>The DFT is the definition: <span class="math">$N$</span> outputs, <span class="math">$N$</span> terms each, <span class="math">$N^2$</span> complex multiplies. The FFT is the same answer computed in a different order.</li>
+<li>Decimation in time splits even and odd samples; each half is a DFT of size <span class="math">$N/2$</span>, recombined as <span class="math">$E + WO$</span> and <span class="math">$E - WO$</span> for <span class="math">$k = 0 \dots N/2-1$</span>.</li>
+<li>The butterfly is that pair of outputs, and it costs <strong>one</strong> complex multiply because both outputs reuse the same product. That reuse is the algorithm.</li>
+<li>The cost is <span class="math">$(N/2)\log_2 N$</span> complex multiplies in <span class="math">$\log_2 N$</span> stages: 12 against 64 at <span class="math">$N = 8$</span>, 5,120 against 1,048,576 at <span class="math">$N = 1024$</span>.</li>
+<li>Bit reversal is real. Decimation in frequency moves it to the output rather than removing it, and an implementation that never asks for natural order never pays for it.</li>
+<li>Only a quarter of the twiddle circle is independent, sub-transforms reuse it, and a ROM is cheaper than a sine engine.</li>
+<li>Test against a reference and a bound, not against a picture. The difference between a hand-written DFT and a good FFT sits at machine precision and grows predictably with <span class="math">$N$</span>.</li>
+<li>Real inputs need only <span class="math">$N/2 + 1$</span> bins, and sizing that buffer correctly is a recurring bug in shipping code.</li>
+</ul>
+<aside class="callout callout-optical">
+  <p class="callout-title"><i class="fa-solid fa-tower-broadcast" aria-hidden="true"></i> Where this shows up in an optical link</p>
+  <div class="callout-body">
+<p><strong>The FDE is the FFT's biggest customer in a coherent receiver.</strong> Chromatic dispersion compensation is a frequency-domain multiply. A 512-point overlap-save equaliser is two transforms and a complex multiply per block.</p>
+<p>At 2 samples per symbol, a 64 GBd signal is 128 GSa/s. With 50% overlap the block advances 256 samples, so there are 0.5 G blocks/s.</p>
+<p>Two transforms per block is 1 GFFT/s per polarisation before anything else is counted. Add the transform that keeps an adaptive filter current, and 1.5 GFFT/s is the working figure.</p>
+<p>Each 512-point transform is <span class="math">$(N/2)\log_2 N = 2304$</span> complex multiplies. At 1.5 GFFT/s that is about 3.5 tera complex multiplies per second, per polarisation.</p>
+<p>That is the same order as the adaptive butterfly equaliser. Unlike the butterfly it is static: the filter is known, so nothing has to adapt.</p>
+<p><strong>Block floating point is the standard answer to word growth.</strong> An unscaled <span class="math">$N$</span>-point FFT can grow by <span class="math">$\log_2 N$</span> bits. For a 512-point transform that is nine bits, and the converter does not have them to spare.</p>
+<p>A block exponent with a per-stage scaling schedule recovers the dynamic range. The cost is the scaling logic, and a small SNR loss on low-order signals.</p>
+<p>Getting the schedule wrong has two signatures: clipping on peaks, or six dB of low-order bits quietly lost to over-scaling. The clipping case is the dangerous one, because it is rare enough to survive every simulation you run before silicon.</p>
+<p><strong>The FFT is usually the largest single power consumer in the DSP.</strong> It is also the block where the twiddle ROM, the addressing and the memory bandwidth dominate, not the multipliers.</p>
+<p>A 512-point transform makes nine passes over the array, each reading and writing every sample. That is about 9,200 complex memory accesses against 2,304 complex multiplies.</p>
+<p>That is the useful thing to say to anyone who assumes the MAC count is the whole story. The FFT is a memory machine that happens to do arithmetic. Radix-4 pays off through fewer passes over memory, not through fewer multiplies.</p>
+<p><strong>The input order matters in hardware.</strong> Bit-reversed addressing is cheap in a memory-based FFT: it is an address generator. It is expensive in a pipelined one, where it becomes a commutator and delay lines.</p>
+<p>That is one of the real reasons to choose decimation in frequency in silicon. Natural-order input, bit-reversed output, and a filter ROM stored in the same permuted order. The permutation then costs no cycles at all.</p>
+  </div>
+</aside>
+<nav class="pager" aria-label="Chapter navigation"><a class="prev" href="sampling-and-aliasing.html"><span class="dir">&larr; Previous</span><span class="ttl">Sampling and Aliasing</span></a><a class="next" href="convolution-and-lti.html"><span class="dir">Next &rarr;</span><span class="ttl">Convolution, and Why Every DSP Block Is One</span></a></nav>
+</main>
+</div>
+<footer class="site-footer">
+  <div class="inner">
+    <span>&copy; Nguyen Quang Binh &middot; Embedded Software Engineer - Optical DSP</span>
+    <span class="spacer"></span>
+    <a href="https://github.com/sprchuoi" target="_blank" rel="noopener">GitHub</a> &middot; <a href="https://www.linkedin.com/in/sprchuoi" target="_blank" rel="noopener">LinkedIn</a> &middot; <a href="mailto:quangbinhlxcity@gmail.com">quangbinhlxcity@gmail.com</a> &middot; <a href="../index.html">CV</a>
+  </div>
+</footer>
+<script src="assets/blog.js" defer></script>
+</body>
+</html>

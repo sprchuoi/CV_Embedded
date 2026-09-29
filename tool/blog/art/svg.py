@@ -141,21 +141,23 @@ def _attrs(pairs: dict[str, object]) -> str:
 
 def rect(x, y, w, h, *, fill=PANEL, stroke=None, width=1.5, rx=8, dash=None,
          opacity=None) -> str:
-    return f"<rect{_attrs(dict(x=num(x), y=num(y), width=num(w), height=num(h),
-                               rx=num(rx), fill=fill, stroke=stroke,
-                               stroke_width=width, stroke_dasharray=dash,
-                               opacity=opacity))}/>"
+    attrs = dict(x=num(x), y=num(y), width=num(w), height=num(h), rx=num(rx),
+                 fill=fill, stroke=stroke, stroke_width=width,
+                 stroke_dasharray=dash, opacity=opacity)
+    return f"<rect{_attrs(attrs)}/>"
 
 
 def line(x1, y1, x2, y2, *, stroke=RULE, width=1.5, dash=None, cap="round") -> str:
-    return f"<line{_attrs(dict(x1=num(x1), y1=num(y1), x2=num(x2), y2=num(y2),
-                               stroke=stroke, stroke_width=width,
-                               stroke_dasharray=dash, stroke_linecap=cap))}/>"
+    attrs = dict(x1=num(x1), y1=num(y1), x2=num(x2), y2=num(y2),
+                 stroke=stroke, stroke_width=width, stroke_dasharray=dash,
+                 stroke_linecap=cap)
+    return f"<line{_attrs(attrs)}/>"
 
 
 def circle(cx, cy, r, *, fill=ACCENT, stroke=None, width=1.5) -> str:
-    return f"<circle{_attrs(dict(cx=num(cx), cy=num(cy), r=num(r), fill=fill,
-                                 stroke=stroke, stroke_width=width))}/>"
+    attrs = dict(cx=num(cx), cy=num(cy), r=num(r), fill=fill, stroke=stroke,
+                 stroke_width=width)
+    return f"<circle{_attrs(attrs)}/>"
 
 
 def dot(cx, cy, *, r=3.4, fill=ACCENT, stroke=None, width=1.4) -> str:
@@ -164,10 +166,11 @@ def dot(cx, cy, *, r=3.4, fill=ACCENT, stroke=None, width=1.4) -> str:
 
 def path(d, *, fill="none", stroke=INK, width=1.8, dash=None, cap="round",
          join="round", marker_end=None, marker_start=None, opacity=None) -> str:
-    return f"<path{_attrs(dict(d=d, fill=fill, stroke=stroke, stroke_width=width,
-                               stroke_dasharray=dash, stroke_linecap=cap,
-                               stroke_linejoin=join, marker_end=marker_end,
-                               marker_start=marker_start, opacity=opacity))}/>"
+    attrs = dict(d=d, fill=fill, stroke=stroke, stroke_width=width,
+                 stroke_dasharray=dash, stroke_linecap=cap, stroke_linejoin=join,
+                 marker_end=marker_end, marker_start=marker_start,
+                 opacity=opacity)
+    return f"<path{_attrs(attrs)}/>"
 
 
 def text(x, y, label, *, size=13, fill=INK, anchor="start", weight=400,
@@ -176,21 +179,20 @@ def text(x, y, label, *, size=13, fill=INK, anchor="start", weight=400,
     """A text run. ``rotate`` is degrees about ``(x, y)`` -- used for the
     axis-side labels that would otherwise collide with a curve."""
     transform = f"rotate({num(rotate)} {num(x)} {num(y)})" if rotate else None
-    return (f"<text{_attrs(dict(x=num(x), y=num(y), font_family=family,
-                                font_size=num(size), fill=fill,
-                                text_anchor=anchor, font_weight=weight,
-                                dominant_baseline=baseline, font_style=style,
-                                opacity=opacity, transform=transform))}>"
-            f"{rich(label, size)}</text>")
+    attrs = dict(x=num(x), y=num(y), font_family=family, font_size=num(size),
+                 fill=fill, text_anchor=anchor, font_weight=weight,
+                 dominant_baseline=baseline, font_style=style, opacity=opacity,
+                 transform=transform)
+    return f"<text{_attrs(attrs)}>{rich(label, size)}</text>"
 
 
 def polyline(points, *, stroke=ACCENT, width=2.2, fill="none", dash=None,
              marker_end=None) -> str:
     coords = " ".join(f"{num(px)},{num(py)}" for px, py in points)
-    return (f"<polyline{_attrs(dict(points=coords, fill=fill, stroke=stroke,
-                                    stroke_width=width, stroke_dasharray=dash,
-                                    stroke_linejoin='round', stroke_linecap='round',
-                                    marker_end=marker_end))}/>")
+    attrs = dict(points=coords, fill=fill, stroke=stroke, stroke_width=width,
+                 stroke_dasharray=dash, stroke_linejoin="round",
+                 stroke_linecap="round", marker_end=marker_end)
+    return f"<polyline{_attrs(attrs)}/>"
 
 
 def arrow(x1, y1, x2, y2, *, stroke=INK, width=1.8, dash=None, head=True) -> str:
@@ -224,12 +226,12 @@ def brace(x, y, height, *, side="left", width=10, stroke=RULE, label=None,
     if label:
         lx = x - s * (width + gap)
         # Rotated so a long stage name reads bottom-to-top beside the brace.
-        out += (f'<text{_attrs(dict(x=num(lx), y=num(y + height / 2),
-                                     font_family=FONT, font_size=num(label_size),
-                                     fill=label_fill, text_anchor="middle",
-                                     font_weight=600, letter_spacing="0.08em",
-                                     transform=f"rotate(-90 {num(lx)} {num(y + height / 2)})"))}>'
-                f"{esc(label)}</text>")
+        attrs = dict(x=num(lx), y=num(y + height / 2), font_family=FONT,
+                     font_size=num(label_size), fill=label_fill,
+                     text_anchor="middle", font_weight=600,
+                     letter_spacing="0.08em",
+                     transform=f"rotate(-90 {num(lx)} {num(y + height / 2)})")
+        out += f"<text{_attrs(attrs)}>{esc(label)}</text>"
     return out
 
 
@@ -360,10 +362,53 @@ def matrix(x, y, w, h, rows, cols, *, cell_labels=None, row_labels=(),
     return "".join(out)
 
 
+def wrap(text: object, max_chars: int) -> list[str]:
+    """Greedy word wrap, so a callout can never spill outside its own box.
+
+    The note boxes are a fixed width with no text engine behind them, so a long
+    sentence used to run off the edge of the panel and out of the figure.
+    """
+    words = str(text).split()
+    if not words:
+        return [""]
+    lines: list[str] = []
+    current = words[0]
+    for word in words[1:]:
+        trial = f"{current} {word}"
+        if len(trial) <= max_chars:
+            current = trial
+        else:
+            lines.append(current)
+            current = word
+    lines.append(current)
+    return lines
+
+
+def _wrapped_lines(w, body, body_size, pad) -> list[str]:
+    # 0.52 em per character is a deliberately conservative average: wrapping a
+    # little early is harmless, overflowing the panel is not.
+    per_line = max(20, int((w - 2 * pad) / (body_size * 0.52)))
+    source = body if isinstance(body, (list, tuple)) else [body]
+    lines: list[str] = []
+    for entry in source:
+        lines.extend(wrap(entry, per_line))
+    return lines
+
+
+def callout_height(w, body, *, body_size=11.5, pad=12) -> float:
+    """The height :func:`callout` will occupy, for sizing a canvas around it."""
+    count = len(_wrapped_lines(w, body, body_size, pad))
+    return pad * 2 + 16 + count * (body_size + 4)
+
+
 def callout(x, y, w, label, body, *, kind="note", body_size=11.5, pad=12) -> str:
-    """An inline explanatory note inside a figure."""
+    """An inline explanatory note inside a figure.
+
+    The body is wrapped to the box width and the box height is derived from the
+    wrapped result, so the text and the panel always agree.
+    """
     fill, stroke, ink = KINDS[kind]
-    lines = body if isinstance(body, (list, tuple)) else [body]
+    lines = _wrapped_lines(w, body, body_size, pad)
     h = pad * 2 + 16 + len(lines) * (body_size + 4)
     out = [rect(x, y, w, h, fill=fill, stroke=stroke, rx=6, width=1.2),
            text(x + pad, y + pad + 5, label, size=11, fill=ink, weight=700)]

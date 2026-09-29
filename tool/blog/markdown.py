@@ -27,7 +27,8 @@ Two things are worth knowing before editing this file:
    come out with the ``\\pi`` italicised and the ``_`` mangled.
 2. Figure numbering is per-article and assigned in document order, so prose
    that says "Figure 3" is only correct if figures are not reordered. The
-   renderer records every caption so a test can assert the numbering.
+   renderer records every caption (``RenderResult.figure_captions`` -- captions,
+   not file paths) so a test can assert the numbering.
 """
 
 from __future__ import annotations
@@ -52,7 +53,7 @@ class Heading:
 class RenderResult:
     html: str
     toc: list[Heading] = field(default_factory=list)
-    figures: list[str] = field(default_factory=list)
+    figure_captions: list[str] = field(default_factory=list)
     word_count: int = 0
 
     @property
@@ -221,7 +222,7 @@ class _Renderer:
     def __init__(self) -> None:
         self.anchors = _Anchors()
         self.toc: list[Heading] = []
-        self.figures: list[str] = []
+        self.figure_captions: list[str] = []
 
     # -- entry point ------------------------------------------------------- #
 
@@ -516,8 +517,8 @@ class _Renderer:
         sole_image = re.fullmatch(r'!\[([^\]]*)\]\((\S+?)(?:\s+"([^"]*)")?\)', text)
         if sole_image:
             alt, src, classes = sole_image.group(1), sole_image.group(2), sole_image.group(3) or ""
-            number = len(self.figures) + 1
-            self.figures.append(alt)
+            number = len(self.figure_captions) + 1
+            self.figure_captions.append(alt)
             cls = " ".join(["figure", *classes.split()])
             caption = (
                 f'<figcaption><span class="fig-label">Figure {number}</span>'
@@ -563,5 +564,6 @@ def render(text: str) -> RenderResult:
     """Render article Markdown to HTML plus its table of contents."""
     renderer = _Renderer()
     body = renderer.render(text)
-    return RenderResult(html=body, toc=renderer.toc, figures=renderer.figures,
+    return RenderResult(html=body, toc=renderer.toc,
+                        figure_captions=renderer.figure_captions,
                         word_count=count_words(text))
