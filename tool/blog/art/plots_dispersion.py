@@ -38,19 +38,19 @@ Modelling notes, because the numbers they produce are the chapter's argument:
   by ``B/4`` samples, and every symbol is read back at ``BULK_DELAY + 2k + B/4``.
   What is left over is aliasing of the long chirp into the short block, measured
   as the EVM of the equalised symbols against the transmitted ones.
-* **Coefficient quantisation** (figure 5) keeps ``|H*[k]| = 1`` exactly and
+* **Coefficient quantisation** keeps ``|H*[k]| = 1`` exactly and
   rounds only the phase, uniformly over ``[-pi, pi)``, to ``2**w`` levels.  That
   is a phase-only coefficient word, the representation a designer picks when the
   all-pass is already known to be flat.
-* **The penalty model** (figure 4) is a model, not a measurement, and the figure
+* **The penalty model** is a model, not a measurement, and the figure
   says so.  The gain-normalised distortion power ``D`` (the ISI energy outside
   the main tap, over the main tap -- the chapter's "ISI to main tap") is treated
   as additive Gaussian noise against a 20 dB reference link:
   ``penalty = 10*log10(1 + 10**(20/10) * D)``.  A link is called unusable when
   that penalty reaches 3 dB.
 * The penalty curve for the practical compensator is *not* invented: it is the
-  same block-FDE simulation as figure 3, re-run at each reach with a 512-sample
-  block, plus the 6-bit coefficient error measured in figure 5.
+  same block-FDE simulation as the block-size figure, re-run at each reach, with
+  a 512-sample block plus the 6-bit coefficient error measured in the quantisation figure.
 """
 
 from __future__ import annotations
@@ -340,8 +340,19 @@ def td_macs_per_symbol(ntaps: int, polarisations: int = 2) -> float:
 
 
 def fde_mults_per_sample(block: int, polarisations: int = 2) -> float:
-    """``2*log2(B) + 1`` real multiplies per output sample, times polarisations."""
-    return (2.0 * np.log2(block) + 1.0) * polarisations
+    """Real multiplies per output sample for an overlap-save block FDE.
+
+    Per block of B outputs and per polarisation: a forward and an inverse
+    transform at (B/2)*log2(B) complex butterflies each, plus one complex
+    multiply per bin. That is B*(log2 B + 1) complex multiplies per block, i.e.
+    log2(B) + 1 per output sample, and 4 real multiplies per complex one.
+
+    For B = 512 and two polarisations this gives 80 real multiplies per output
+    sample, which at 2 samples/symbol is 160 real MACs per symbol -- the figure
+    the coherent chapter quotes. Getting this wrong by counting a complex
+    multiply as one real operation understates the FDE by roughly 2x.
+    """
+    return 4.0 * (np.log2(block) + 1.0) * polarisations
 
 
 # --------------------------------------------------------------------------- #
@@ -416,9 +427,13 @@ def dispersion_chirp() -> str:
             * np.exp(-2j * np.pi * f * (BULK_DELAY / FS)))
     after = np.fft.ifft(np.fft.fft(shaped) * disp)
 
+    # Centre on the *known* arrival time (launch + bulk delay), not on argmax:
+    # the dispersed envelope is a chirp with a nearly flat top, so its largest
+    # sample lands wherever the Fresnel ripple happens to peak, tens of symbols
+    # away from the time that f = 0 actually arrives.
+    centre_before = launch
+    centre_after = launch + BULK_DELAY
     env_before, env_after = np.abs(shaped), np.abs(after)
-    centre_before = int(np.argmax(env_before))
-    centre_after = int(np.argmax(env_after))
     peak = env_after.max()
 
     # Instantaneous frequency: the derivative of the dispersed waveform's phase.
@@ -427,12 +442,16 @@ def dispersion_chirp() -> str:
     x_before = (t - t[centre_before]) * BAUD
     live = env_after > 0.05 * peak
 
-    fit = live & (np.abs(x_after) <= 30.0)
+    fit = live & (np.abs(x_after) <= 20.0)
     slope, intercept = np.polyfit(t[fit] * 1e12, inst[fit] / 1e9, 1)
     analytic = -chirp_rate_ghz_per_ps()
     deviation = 100.0 * (slope - analytic) / analytic
 
-    # Energy fit window: 64 symbol periods each side of the pulse.
+    # The chirp runs out where the pulse runs out of spectrum: the raised-cosine
+    # band edge is +/-(1+beta)*baud/2, which the group delay maps to
+    # |t| = |D*L|*lambda^2*f_edge/c seconds, i.e. that many symbol periods.
+    f_edge = (1.0 + BETA) * BAUD / 2.0
+    band_edge = (dl_si(CD_PS_PER_NM) * LAMBDA ** 2 / C_LIGHT * f_edge * BAUD)
     w0 = _rms_width(shaped, centre_before, 64)
     w1 = _rms_width(after, centre_after, 64)
     span = _span_99(after)
@@ -444,7 +463,7 @@ def dispersion_chirp() -> str:
 
     # --- top: the chirp, and the two straight lines it sits on --------------
     centered = t - t[centre_after]
-    line_window = np.abs(x_after) <= 64
+    line_window = np.abs(x_after) <= band_edge
     fitted = slope * centered * 1e12 + intercept
     analytic_line = -centered / (dl_si(CD_PS_PER_NM) * LAMBDA ** 2 / C_LIGHT) / 1e9
 
@@ -452,7 +471,8 @@ def dispersion_chirp() -> str:
     ax_f.plot(x_after, inst_plot, color=P.OPTICAL, zorder=3,
               label="measured  d(phase)/dt / 2$\\pi$")
     ax_f.plot(x_after[line_window], fitted[line_window], color=P.WARN,
-              linewidth=1.4, zorder=4, label="linear fit over $\\pm$30 symbols")
+              linewidth=1.4, zorder=4,
+              label="linear fit over the central $\\pm$20 symbols")
     ax_f.plot(x_after[line_window], analytic_line[line_window], color=P.MUTED,
               linewidth=1.2, linestyle=(0, (5, 3)), zorder=2,
               label="analytic  $f = -t/\\beta$")
@@ -460,49 +480,60 @@ def dispersion_chirp() -> str:
     ax_f.set_ylim(-46, 46)
     ax_f.set_xlim(-64, 64)
     note = (f"fitted rate {slope:+.4f} GHz/ps\n"
-            f"analytic $c/(D\\lambda^2)$ = {analytic:+.4f} GHz/ps  ({deviation:+.1f} %)\n"
-            f"the pulse is {phase_edge:.1f} rad = {phase_edge / np.pi:.0f}$\\pi$ of phase "
-            f"deep, so the line is straight to a few percent")
+            f"analytic $c/(D\\lambda^2)$ = {analytic:+.4f} GHz/ps  "
+            f"({deviation:+.1f} %)\n"
+            f"the sweep stops at the pulse's $\\pm$35 GHz edge,\n"
+            f"{band_edge:.0f} symbol periods out: the pulse is "
+            f"{phase_edge:.0f} rad deep")
     ax_f.text(0.98, 0.96, note, transform=ax_f.transAxes, fontsize=8.6,
               color=P.INK, ha="right", va="top", zorder=6,
               bbox=dict(facecolor=P.PANEL, edgecolor="none", alpha=0.85, pad=2.0))
     ax_f.axhline(0.0, color=P.RULE_SOFT, linewidth=1.0, zorder=1)
-    P.tidy(ax_f, ylabel="instantaneous frequency  [GHz]", legend_loc="lower left")
+    P.tidy(ax_f, ylabel="instantaneous frequency  [GHz]",
+           legend=["measured  d(phase)/dt / 2$\\pi$",
+                   "linear fit over the central $\\pm$20 symbols",
+                   "analytic  $f = -t/\\beta$"], legend_loc="lower left")
     P.title(ax_f, "Dispersion delays each frequency differently",
             subtitle="so a short pulse leaves as a linear chirp  ·  "
                      "1700 ps/nm over 64 GBd")
 
     # --- bottom: the same pulse, before and after ---------------------------
     window = np.abs(x_after) <= 64
-    ax_e.plot(x_after[window], env_before[window] / env_before.max(),
-              color=P.ACCENT, label=f"launched pulse  ·  RMS {w0:.2f} symbol")
     ax_e.plot(x_after[window], env_after[window] / peak, color=P.OPTICAL,
               label=f"after 1700 ps/nm  ·  RMS {w1:.1f} symbol")
     ax_e.plot(x_before[window], env_before[window] / env_before.max(),
-              color=P.ACCENT, zorder=2)
-    ax_e.annotate(f"RMS width $\\times$ {w1 / w0:.0f}",
-                  xy=(0.0, 1.0), xytext=(-52, 0.62), color=P.ACCENT_DARK,
-                  fontsize=9, ha="left", va="center",
-                  arrowprops=dict(arrowstyle="->", color=P.ACCENT_DARK,
-                                  linewidth=1.1, shrinkA=3, shrinkB=3))
-    ax_e.text(0.98, 0.78,
-              f"dispersed pulse spans {span:.0f} symbol periods\n"
-              f"of a 64 GBd link = {span / BAUD * 1e12:.0f} ps",
+              color=P.ACCENT, zorder=3,
+              label=f"launched pulse  ·  RMS {w0:.2f} symbol")
+    ax_e.axvline(0.0, color=P.ACCENT, linewidth=1.2, linestyle=(0, (2, 3)),
+                 zorder=2)
+    ax_e.text(0.015, 0.99,
+              f"one symbol in, {w1 / w0:.1f} wider out: RMS {w0:.2f} "
+              f"$\\rightarrow$ {w1:.1f} symbol periods",
+              transform=ax_e.transAxes, fontsize=8.8, color=P.ACCENT_DARK,
+              ha="left", va="top", zorder=6,
+              bbox=dict(facecolor=P.PANEL, edgecolor="none", alpha=0.85, pad=2.0))
+    ax_e.text(0.985, 0.99,
+              f"spans {span:.0f} symbol periods ($\\pm${span / 2:.0f})\n"
+              f"= {span / BAUD * 1e12:.0f} ps at 64 GBd",
               transform=ax_e.transAxes, fontsize=8.8, color=P.INK,
               ha="right", va="top", zorder=6,
               bbox=dict(facecolor=P.PANEL, edgecolor="none", alpha=0.85, pad=2.0))
-    ax_e.set_ylim(0.0, 1.12)
-    P.tidy(ax_e, xlabel="time, relative to the pulse centre  [symbol periods]",
-           ylabel="|envelope|  (each normalised)", legend_loc="upper left")
+    ax_e.set_ylim(0.0, 1.16)
+    P.tidy(ax_e, xlabel="time, relative to each pulse's own arrival  "
+                        "[symbol periods]",
+           ylabel="|envelope|  (each normalised)", legend_loc="lower right")
 
     _footnote(fig,
               f"A single raised-cosine symbol launched into 1700 ps/nm "
-              f"(100 km, D = {DISPERSION:.0f} ps/(nm$\\cdot$km)). The "
-              f"all-pass is flat, so no energy is lost: the pulse is {w1 / w0:.0f} "
-              f"times wider in RMS, spans {span:.0f} of its own symbol periods, and "
-              f"each frequency arrives at its own time -- a chirp of "
-              f"{abs(analytic):.4f} GHz/ps, which is the 1.7 ns of walk the block "
-              f"equaliser of the next figures has to hold.")
+              f"(100 km, D = {DISPERSION:.0f} ps/(nm$\\cdot$km)), so its spectrum "
+              f"runs out at $\\pm$35 GHz. The all-pass is flat, so no energy is "
+              f"lost: the pulse is {w1 / w0:.1f} times wider in RMS and spans "
+              f"{span:.0f} of its own symbol periods, because each frequency "
+              f"arrives at its own time with a rate of {abs(analytic):.4f} GHz/ps "
+              f"-- the {CD_PS_PER_NM:.0f} ps/nm of walk the block equaliser of the "
+              f"next figures has to hold. Both envelopes are drawn about their own "
+              f"arrival time; the {BULK_DELAY // SPS} symbol bulk delay the all-pass "
+              f"carries is not dispersion and is not shown.")
     return P.render(fig)
 
 
@@ -532,6 +563,7 @@ def dispersion_time_domain_taps() -> str:
     td_tera = td_cost * BAUD / 1e12
     fde_tera = fde_cost * SPS * BAUD / 1e12
     fde_floor = _db(block_residual_power(CD_PS_PER_NM, FDE_BLOCK))
+    body = 2 * int(memory_symbols / 2)
 
     fig, ax = P.figure(height=3.6)
     view = np.abs(index) <= 320
@@ -539,38 +571,38 @@ def dispersion_time_domain_taps() -> str:
     ax.set_xlim(-320, 320)
     ax.set_ylim(-92, 4)
 
-    rows = ["taps (symbol-spaced)   residual   MACs/symbol"]
+    rows = [" taps   residual   MACs/symbol"]
     for level in TAP_LEVELS_DB:
         count = taps[level]
-        rows.append(f"  {count:4d} taps at $\\pm${count // 2:<4d}  "
-                    f"{level:5.0f} dB   {td_macs_per_symbol(count):8.0f}")
-    rows.append(f"  {FDE_BLOCK}-point FDE       {fde_floor:5.0f} dB   "
-                f"{fde_cost * SPS:8.0f}")
-    _box(ax, "\n".join(rows), x=0.985, y=0.05, ha="right", va="bottom")
+        rows.append(f"  {count:4d}   {level:5.0f} dB   "
+                    f"{td_macs_per_symbol(count):8.0f}")
+    rows.append(f"   FDE   {fde_floor:5.0f} dB   {fde_cost * SPS:8.0f}")
+    _box(ax, "\n".join(rows), x=0.985, y=0.97, ha="right", va="top",
+         fontsize=8.3)
 
     for level, colour in zip(TAP_LEVELS_DB, (P.WARN, P.NOTE, P.OPTICAL)):
         ax.axhline(level, color=colour, linewidth=1.0, linestyle=(0, (1.5, 2.5)),
                    zorder=1)
         count = taps[level]
-        ax.text(322, level + 1.5, f"{count} taps", color=colour, fontsize=8.4,
-                ha="right", va="bottom")
+        ax.text(-318, level + 1.2, f"{count} taps", color=colour, fontsize=8.4,
+                ha="left", va="bottom")
         ax.axvline(count / 2.0, color=colour, linewidth=1.0,
                    linestyle=(0, (1.5, 2.5)), zorder=1)
         ax.axvline(-count / 2.0, color=colour, linewidth=1.0,
                    linestyle=(0, (1.5, 2.5)), zorder=1)
 
-    ax.annotate(f"the chirp body: {2 * int(memory_symbols / 2):.0f} taps of nearly "
-                f"equal weight,\nbecause |H*| is flat and only the phase chirps",
-                xy=(-26, -2.0), xytext=(-300, -24), color=P.MUTED, fontsize=8.6,
+    ax.annotate(f"the chirp body: the {body} taps within $\\pm${body // 2} all "
+                f"weigh about the same",
+                xy=(-26, -1.0), xytext=(-315, -6.0), color=P.MUTED, fontsize=8.6,
                 ha="left", va="center", zorder=6,
                 arrowprops=dict(arrowstyle="->", color=P.MUTED, linewidth=1.0,
                                 shrinkA=3, shrinkB=3))
-    ax.annotate("the skirt: -12 dB per doubling\nof tap count, down to -70 dB "
-                "and beyond",
-                xy=(220, -66.0), xytext=(120, -84), color=P.INK, fontsize=8.6,
-                ha="left", va="center", zorder=6,
-                arrowprops=dict(arrowstyle="->", color=P.INK, linewidth=1.0,
-                                shrinkA=3, shrinkB=3))
+    ax.text(0.05, 0.05, "the skirt falls only ~12 dB per doubling of the\n"
+                        "tap count: 65 taps buy -20 dB, 177 buy -40 dB,\n"
+                        "and it is still 1/n$^2$ all the way down",
+            transform=ax.transAxes, fontsize=8.6, color=P.INK, ha="left",
+            va="bottom", zorder=6,
+            bbox=dict(facecolor=P.PANEL, edgecolor="none", alpha=0.85, pad=2.0))
 
     P.tidy(ax, xlabel="tap index, relative to the centre tap",
            ylabel="|tap|  [dB, relative to the centre tap]")
@@ -585,7 +617,7 @@ def dispersion_time_domain_taps() -> str:
               f"{taps[-40.0]} taps hold the residual below -40 dB, and that is "
               f"{td_tera:.0f} Tera real MAC/s at 64 GBd across two polarisations, "
               f"against {fde_tera:.1f} Tera/s for the {FDE_BLOCK}-point FDE of the "
-              f"next figure -- a factor {td_cost / fde_cost:.0f} more arithmetic "
+              f"block-size figure -- a factor {td_cost / fde_cost:.0f} more arithmetic "
               f"for the same job.")
     return P.render(fig)
 
@@ -625,16 +657,16 @@ def fde_residual_vs_blocksize() -> str:
     ax_e.axhline(quant_db, color=P.NOTE, linewidth=1.3, linestyle=(0, (5, 3)),
                  zorder=2)
     ax_e.text(blocks[0] * 1.15, quant_db + 2.0,
-              f"{FDE_PHASE_BITS}-bit coefficient phase, figure 5: {quant_db:.0f} dB",
+              f"{FDE_PHASE_BITS}-bit coefficient phase: {quant_db:.0f} dB",
               color=P.NOTE, fontsize=8.6, ha="left", va="bottom")
     ax_e.axvline(memory, color=P.MUTED, linewidth=1.2, linestyle=(0, (2, 3)),
                  zorder=1)
     ax_e.text(memory * 0.96, -88, f"memory {memory:.0f} samples", color=P.MUTED,
               fontsize=8.4, ha="right", va="bottom", rotation=90)
     ax_e.axvline(knee, color=P.WARN, linewidth=1.6, zorder=3)
-    ax_e.annotate(f"knee: B = {knee} samples = {knee / 2:.0f} symbols = "
-                  f"{knee / FS * 1e9:.1f} ns",
-                  xy=(knee, knee_evm), xytext=(760, -20), color=P.WARN,
+    ax_e.annotate(f"knee: B = {knee} samples\n"
+                  f"= {knee / 2:.0f} symbols = {knee / FS * 1e9:.1f} ns",
+                  xy=(knee, knee_evm), xytext=(620, -18), color=P.WARN,
                   fontsize=9, ha="left", va="center", zorder=7,
                   arrowprops=dict(arrowstyle="->", color=P.WARN, linewidth=1.2,
                                   shrinkA=3, shrinkB=3))
@@ -665,7 +697,7 @@ def fde_residual_vs_blocksize() -> str:
     ax_c.axvline(knee, color=P.WARN, linewidth=1.6, zorder=3)
 
     ax_c.text(0.03, 0.92,
-              f"cost: $2\\log_2 B + 1$ real multiplies per output sample,\n"
+              f"cost: $4(\\log_2 B + 1)$ real multiplies per output sample,\n"
               f"times two polarisations  ·  {cost[0]:.0f} -> {cost[-1]:.0f} "
               f"real multiplies: {cost[-1] / cost[0]:.1f}$\\times$ the arithmetic",
               transform=ax_c.transAxes, fontsize=8.6, color=P.OPTICAL, ha="left",
@@ -795,7 +827,7 @@ def dispersion_penalty_vs_reach() -> str:
               f"A perfect all-pass inverse costs nothing: |H*| = 1, so the ideal "
               f"curve sits on 0 dB for 2000 km and 34000 ps/nm. That is the "
               f"idealisation, not a budget. The practical curve is the same "
-              f"overlap-save simulation as figure 3 re-run at every reach with a "
+              f"overlap-save simulation as the block-size figure re-run at every reach "
               f"{FDE_BLOCK}-sample block and {FDE_PHASE_BITS}-bit coefficients "
               f"({10 * np.log10(quant_power):.0f} dB of coefficient EVM): it holds "
               f"the link to {reach_practical:.0f} km and then fails as fast as no "
