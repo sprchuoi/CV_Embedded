@@ -1,17 +1,11 @@
 # CV Build and Deploy Workflow
 #
-# Triggers:
-#   pull_request -> build and verify only. Publishes nothing, deploys nothing.
-#                   The rendered site is attached as a downloadable artifact so
-#                   the result can be reviewed before merging.
-#   push to main -> build, publish both PDFs to the `latest` release, deploy the
-#                   webpage to GitHub Pages. Merging a PR lands here.
-#   workflow_dispatch -> same as a push, for manual runs.
-#
-# The webpage and the PDFs are built in SEPARATE jobs on purpose. Generating
-# docs/index.html needs only Python, while the PDFs need a full TeX Live
-# installation -- so a LaTeX problem must never be able to take the live site
-# down with it. deploy-pages depends only on build-pages.
+# The webpage, the PDFs and the blog figures are built in SEPARATE jobs on
+# purpose. Generating docs/index.html and docs/blog/*.html needs only Python;
+# the PDFs need a full TeX Live installation; the blog's computed figures need
+# numpy and matplotlib. A problem in any one of those must never be able to take
+# the live site down with it, so deploy-pages depends only on build-pages, and
+# the figure SVGs are committed rather than generated at deploy time.
 
 name: Build CV and Deploy
 
@@ -20,6 +14,7 @@ on:
     branches: [main]
     paths:
       - "docs/**"
+      - "blog/**"
       - "build_cv.sh"
       - "build_sidebar_cv.sh"
       - "tool/**"
@@ -68,12 +63,67 @@ jobs:
       - name: Update HTML from DOX
         run: python3 tool/update_html_from_dox.py
 
-      - name: Upload docs artifact
+      # Fails the deploy on a broken figure or a dangling link rather than
+      # publishing one. Standard library only: the figure SVGs are committed.
+      - name: Build the DSP blog
+        run: python3 tool/build_blog.py
+
+      - name: Upload docs artifact for Pages deployment
         uses: actions/upload-artifact@v4
         with:
           name: docs-site
           path: ./docs
           retention-days: 1
+
+  # ------------------------------------------------------------------ tests --
+  # The blog generator is hand-written and is the thing that decides what the
+  # published site contains, so it gets its own gate.
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run the unit tests
+        run: python3 -m unittest discover -s tool/tests -t . -v
+
+  # ---------------------------------------------------------------- figures --
+  # Regenerates every figure from its script and fails if the committed SVG no
+  # longer matches. Deliberately NOT a dependency of deploy-pages: the SVGs are
+  # checked in, so a matplotlib or scipy failure cannot take the site down.
+  figures:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install the figure toolchain
+        run: python3 -m pip install numpy matplotlib scipy
+
+      - name: Regenerate all figures
+        run: python3 tool/build_blog_assets.py --quiet
+
+      - name: Fail if a committed figure is out of date
+        run: |
+          if ! git diff --quiet -- docs/blog/assets; then
+            echo "::error::Committed figure SVGs differ from a fresh build."
+            echo "Run 'tool/build_blog_assets.py' locally and commit the result."
+            git diff --stat -- docs/blog/assets
+            exit 1
+          fi
+          echo "All committed figures match a fresh build."
 
   # ------------------------------------------------------------------ PDFs --
   build-pdf:

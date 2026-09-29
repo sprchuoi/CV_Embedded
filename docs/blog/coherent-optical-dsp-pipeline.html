@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Coherent Optical Receiver: A DSP Pipeline Tour - DSP, from First Principles to the Optical Link</title>
+<meta name="description" content="From the 90-degree hybrid to decoded bits, block by block, with the sample-rate and resolution budget for each stage.">
+<meta name="color-scheme" content="light dark">
+<meta property="og:type" content="article">
+<meta property="og:title" content="The Coherent Optical Receiver: A DSP Pipeline Tour - DSP, from First Principles to the Optical Link">
+<meta property="og:description" content="From the 90-degree hybrid to decoded bits, block by block, with the sample-rate and resolution budget for each stage.">
+<link rel="icon" href="../favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link rel="stylesheet" href="assets/blog.css">
+<script>
+  window.MathJax = {
+  "tex": {
+    "inlineMath": [
+      [
+        "$",
+        "$"
+      ],
+      [
+        "\\(",
+        "\\)"
+      ]
+    ],
+    "displayMath": [
+      [
+        "$$",
+        "$$"
+      ],
+      [
+        "\\[",
+        "\\]"
+      ]
+    ],
+    "processEscapes": true,
+    "tags": "none",
+    "macros": {
+      "twopi": "2\\pi",
+      "dd": "\\mathrm{d}",
+      "E": "\\mathbb{E}",
+      "j": "\\mathrm{j}",
+      "argmin": "\\operatorname*{arg\\,min}"
+    }
+  },
+  "options": {
+    "skipHtmlTags": [
+      "script",
+      "noscript",
+      "style",
+      "textarea",
+      "pre",
+      "code"
+    ],
+    "ignoreHtmlClass": "no-mathjax"
+  },
+  "chtml": {
+    "scale": 1.02
+  }
+};
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="index.html">
+      <span class="mark" aria-hidden="true">DSP</span>
+      <span>Nguyen Quang Binh</span>
+      <span class="sub">signal processing notes</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="index.html" aria-current="page">Curriculum</a>
+      <a href="../index.html">CV</a>
+      <a href="https://github.com/sprchuoi">GitHub</a>
+      <button class="icon-btn" type="button" data-theme-toggle aria-pressed="false"
+              title="Switch theme" aria-label="Switch colour theme"><i class="fa-solid fa-moon" aria-hidden="true"></i></button>
+    </nav>
+  </div>
+  <div class="read-progress" role="presentation"></div>
+</header>
+<div class="layout">
+<nav class="toc" aria-label="On this page">
+<p class="toc-title">On this page</p>
+<ol><li class="lvl-2"><a href="#the-chain-and-the-one-decision-at-the-end">The chain, and the one decision at the end</a></li><li class="lvl-2"><a href="#where-the-complex-signal-comes-from">Where the complex signal comes from</a></li><li class="lvl-2"><a href="#iq-imbalance-is-the-tightest-analogue-number-in-the-receiver">I/Q imbalance is the tightest analogue number in the receiver</a></li><li class="lvl-2"><a href="#the-alphabet-the-decisions-are-made-against">The alphabet the decisions are made against</a></li><li class="lvl-2"><a href="#chromatic-dispersion-is-an-all-pass-filter">Chromatic dispersion is an all-pass filter</a></li><li class="lvl-3"><a href="#what-the-damage-looks-like-before-you-undo-it">What the damage looks like before you undo it</a></li><li class="lvl-2"><a href="#the-frequency-domain-equaliser-by-overlap-save">The frequency-domain equaliser, by overlap-save</a></li><li class="lvl-2"><a href="#adaptive-equalisation-the-butterfly-and-cma">Adaptive equalisation: the butterfly and CMA</a></li><li class="lvl-2"><a href="#carrier-phase-a-rotation-not-a-translation">Carrier phase: a rotation, not a translation</a></li><li class="lvl-2"><a href="#the-decision-and-what-the-fec-pays-for">The decision, and what the FEC pays for</a></li><li class="lvl-2"><a href="#what-to-carry-forward">What to carry forward</a></li></ol>
+</nav>
+<main id="main" class="prose">
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    <a href="index.html">Curriculum</a><span class="sep">/</span>Optical DSP
+  </nav>
+  <header class="article-head">
+    <h1>The Coherent Optical Receiver: A DSP Pipeline Tour</h1>
+    <p class="article-standfirst">From the 90-degree hybrid to decoded bits, block by block, with the sample-rate and resolution budget for each stage.</p>
+    <div class="article-meta"><span class="level-badge" data-level="Specialist">Specialist</span><span>16 min read</span><div class="taglist"><span class="tag">coherent</span><span class="tag">optical</span><span class="tag">architecture</span></div></div>
+  </header>
+<p>A 64 GBd dual-polarisation 16-QAM link puts 512 Gb/s on one wavelength. Recovering it takes an optical hybrid, four photodiodes, four ADCs and six DSP blocks in series — and the most interesting thing about the chain is how little any block may assume about its input. The adaptive equaliser cannot use decisions; the carrier estimator cannot see one polarisation until the equaliser has separated them; the dispersion equaliser can use neither decisions nor a training sequence. Only the last block may commit to a bit.</p>
+<p>That order is forced by what each impairment does, and getting it wrong is one of the few genuinely unrecoverable DSP mistakes: put the polarisation-mixing equaliser before the dispersion equaliser and it converges onto the wrong answer, because at 134% EVM every decision it sees is noise.</p>
+<p>Every earlier post on this blog is one block of this pipeline. Here they run in series, on one waveform, sharing a power budget and a converter that delivers 5.5 effective bits.</p>
+<h2 id="the-chain-and-the-one-decision-at-the-end"><a class="heading-anchor" href="#the-chain-and-the-one-decision-at-the-end" aria-hidden="true">#</a>The chain, and the one decision at the end</h2>
+<figure class="figure"><img src="assets/diagrams/coherent-receiver-dsp-chain.svg" alt="The whole chain. An optical front end that produces I and Q, then six DSP blocks in series — four of them equalisers, and not one of them making a decision." loading="lazy"><figcaption><span class="fig-label">Figure 1</span><span class="fig-text">The whole chain. An optical front end that produces I and Q, then six DSP blocks in series — four of them equalisers, and not one of them making a decision.</span></figcaption></figure>
+<p>The front end is four optical blocks and one converter: a 1550 nm signal and a local oscillator, a 90° hybrid with four outputs, balanced photodiodes subtracting them in pairs into I and Q photocurrents, and ADCs sampling both at 2 samples per symbol — 128 GSa/s at 64 GBd — with 8 or 9 nominal bits that behave like 5.5.</p>
+<p>After the ADC it is all arithmetic, and the figure groups it deliberately. I/Q correction, the dispersion equaliser, timing recovery and the adaptive equaliser form four filters in series with no decision anywhere in them. Then carrier phase. Then, alone, the decision and the FEC.</p>
+<aside class="callout callout-key">
+  <p class="callout-title"><i class="fa-solid fa-key" aria-hidden="true"></i> Only one block decides</p>
+  <div class="callout-body">
+<p>Four equalisers in series, adapting blind, and no bit committed until the end — because no bit can be trusted before then. The FEC is not a clean-up stage bolted onto a finished receiver; it is what makes blind operation affordable.</p>
+  </div>
+</aside>
+<div class="table-wrap"><table>
+<thead><tr><th style="text-align:left">Block</th><th style="text-align:left">What it removes</th><th style="text-align:left">The number that sets it</th></tr></thead>
+<tbody>
+<tr><td style="text-align:left">90° hybrid, balanced PDs</td><td style="text-align:left">the real-signal ambiguity</td><td style="text-align:left">a few degrees of phase error</td></tr>
+<tr><td style="text-align:left">I/Q correction</td><td style="text-align:left">the mirror image</td><td style="text-align:left">40 dB of image rejection</td></tr>
+<tr><td style="text-align:left">CD equaliser (FDE)</td><td style="text-align:left">1700 ps/nm of quadratic phase</td><td style="text-align:left">an 83-symbol channel</td></tr>
+<tr><td style="text-align:left">Timing recovery</td><td style="text-align:left">sampling phase error</td><td style="text-align:left">2 samples per symbol</td></tr>
+<tr><td style="text-align:left">Butterfly equaliser</td><td style="text-align:left">the 2×2 polarisation mixing</td><td style="text-align:left">320 real multiplies per symbol</td></tr>
+<tr><td style="text-align:left">Carrier phase</td><td style="text-align:left">laser phase drift</td><td style="text-align:left">0.57°/symbol at 1 MHz</td></tr>
+<tr><td style="text-align:left">Decision and FEC</td><td style="text-align:left">whatever is left</td><td style="text-align:left">2e-2 in, 1e-15 out</td></tr>
+</tbody>
+</table></div>
+<p>Two numbers set the budget. Two samples per symbol: at one, the sampler must land on the pulse peak and timing recovery always has residual jitter, whereas the second sample gives the equaliser a half-symbol grid and turns timing recovery into a filtering problem. And 5.5 effective bits, which is what an 8-bit converter degrades to across 64 GHz of input bandwidth.</p>
+<h2 id="where-the-complex-signal-comes-from"><a class="heading-anchor" href="#where-the-complex-signal-comes-from" aria-hidden="true">#</a>Where the complex signal comes from</h2>
+<figure class="figure"><img src="assets/diagrams/ninety-degree-hybrid.svg" alt="The 90° hybrid. Four optical outputs, two balanced subtractions, and a quarter-wave delay in one local-oscillator arm that puts Q a quarter cycle behind I." loading="lazy"><figcaption><span class="fig-label">Figure 2</span><span class="fig-text">The 90° hybrid. Four optical outputs, two balanced subtractions, and a quarter-wave delay in one local-oscillator arm that puts Q a quarter cycle behind I.</span></figcaption></figure>
+<p>The most underrated component in a coherent receiver computes nothing. The 90° hybrid mixes the signal field <span class="math">$E_s$</span> with the local oscillator <span class="math">$E_{lo}$</span> and, via a quarter-wave delay in one LO arm, produces <span class="math">$E_s \pm E_{lo}$</span> and <span class="math">$E_s \pm jE_{lo}$</span>. Subtract each pair on a balanced photodiode and the in-phase output is</p>
+<div class="math-display">$$|E_s + E_{lo}|^2 - |E_s - E_{lo}|^2 = 4\,\mathrm{Re}\{E_s E_{lo}^{*}\}$$</div>
+<p>with the same expression on the delayed pair giving <span class="math">$4\,\mathrm{Im}\{E_s E_{lo}^{*}\}$</span>.</p>
+<p>The LO's intensity noise is common to both arms of a pair, so the subtraction cancels it — which is why the local oscillator can be far stronger than the signal. The signal–LO beat survives, four times larger in amplitude than a single-ended detector gives, and the <span class="math">$\lambda/4$</span> delay makes the two beats orthogonal: I and Q are independent measurements, not two copies of one.</p>
+<aside class="callout callout-note">
+  <p class="callout-title"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> No Hilbert transform anywhere</p>
+  <div class="callout-body">
+<p>The DSP never sees a real signal. I and Q are physically separate photocurrents, so there is no analytic-signal trick, no 3 dB penalty for the imaginary part, and no spectrum-image ambiguity.</p>
+  </div>
+</aside>
+<p>That is the sampling chapter's argument one level up: direct detection discards the phase of the field, while a coherent receiver keeps it optically. The first job of the DSP is not to create the complex signal but to repair the optics that made it.</p>
+<h2 id="iq-imbalance-is-the-tightest-analogue-number-in-the-receiver"><a class="heading-anchor" href="#iq-imbalance-is-the-tightest-analogue-number-in-the-receiver" aria-hidden="true">#</a>I/Q imbalance is the tightest analogue number in the receiver</h2>
+<p>A gain error <span class="math">$\epsilon$</span> between I and Q, or a quadrature error <span class="math">$\phi$</span> in radians, turns the constellation into itself plus a mirrored copy reflected about DC. The image rejection ratio is roughly</p>
+<div class="math-display">$$\mathrm{IRR} \approx \frac{4}{\epsilon^2 + \phi^2}$$</div>
+<p>so 1% of amplitude error alone gives about 46 dB, 1° of quadrature error about 41 dB, and both together almost exactly 40 dB. That is not a statement about one component but about the match between two photodiodes, two transimpedance amplifiers and two ADC input networks, held across 32 GHz. Calibrating at DC is easy; holding 1% and 1° at 32 GHz is why this is usually the tightest analogue requirement in the receiver.</p>
+<p>The digital fix is Gram-Schmidt, and it is almost embarrassingly cheap: estimate the 2×2 covariance of I and Q over a few thousand samples, form the decorrelating matrix, apply it. Four multiplies per sample, against the thousands per symbol the butterfly will spend later.</p>
+<p>Where it runs is what matters. It must precede anything that assumes circular symmetry: the <span class="math">$M$</span>-th power in Viterbi–Viterbi assumes an undistorted constellation, and CMA's modulus assumes known rings. An image breaks both. The butterfly can absorb a static imbalance into its 2×2 matrix, but that spends taps on something four multiplies remove exactly.</p>
+<h2 id="the-alphabet-the-decisions-are-made-against"><a class="heading-anchor" href="#the-alphabet-the-decisions-are-made-against" aria-hidden="true">#</a>The alphabet the decisions are made against</h2>
+<figure class="figure"><img src="assets/plots/coherent-constellations.svg" alt="QPSK, 16-QAM and 64-QAM at unit average symbol energy. Buying bits per symbol is paid for in minimum distance: 1.414, then 0.632, then 0.309." loading="lazy"><figcaption><span class="fig-label">Figure 3</span><span class="fig-text">QPSK, 16-QAM and 64-QAM at unit average symbol energy. Buying bits per symbol is paid for in minimum distance: 1.414, then 0.632, then 0.309.</span></figcaption></figure>
+<p>Every equaliser here is restoring these three constellations, normalised to the same average symbol energy. The distance a decision must resolve falls from 1.414 for QPSK to 0.632 for 16-QAM to 0.309 for 64-QAM — the same numbers as 7.0 dB and 6.2 dB of required SNR. That ladder is why FEC overhead exists, and why a 400G and a 600G link on the same fibre are different products, not different settings.</p>
+<p>It is also where converter resolution becomes a link-budget term. At 5.5 effective bits the quantisation SNR is <span class="math">$6.02 \times 5.5 + 1.76 \approx 35$</span> dB, which sounds like ample headroom over the roughly 20 dB that 16-QAM needs at 2e-2 pre-FEC. But the AGC must leave backoff for the waveform's peak-to-average ratio, and every dB of backoff goes straight back to the quantisation floor: at 5 dB of backoff the converter costs about 0.4 dB. The ADC is before every equaliser, so nothing downstream can take it out.</p>
+<h2 id="chromatic-dispersion-is-an-all-pass-filter"><a class="heading-anchor" href="#chromatic-dispersion-is-an-all-pass-filter" aria-hidden="true">#</a>Chromatic dispersion is an all-pass filter</h2>
+<figure class="figure"><img src="assets/plots/cd-frequency-response.svg" alt="Dispersion is an all-pass. The magnitude never leaves 0 dB, the phase is a parabola, and the group delay is a straight line — 61 symbol periods of walk at 64 GBd." loading="lazy"><figcaption><span class="fig-label">Figure 4</span><span class="fig-text">Dispersion is an all-pass. The magnitude never leaves 0 dB, the phase is a parabola, and the group delay is a straight line — 61 symbol periods of walk at 64 GBd.</span></figcaption></figure>
+<p>Chromatic dispersion delays different optical frequencies by different amounts, and as a baseband filter on the frequency offset it is</p>
+<div class="math-display">$$H(f) = \exp\!\left(j\pi \frac{D \lambda^2 L f^2}{c}\right)$$</div>
+<p>with <span class="math">$D$</span> in ps/(nm·km) and <span class="math">$L$</span> in km. The phase is quadratic; the magnitude is exactly one. The standard single-mode figure is <span class="math">$D = 17$</span> ps/(nm·km), and over 100 km that is 1700 ps/nm — 1.7 s/m in SI, since 1 ps/nm is exactly <span class="math">$10^{-3}$</span> s/m.</p>
+<p>The figure shows what that means. The magnitude is flat at 0 dB across the band, deviating from unity only at the level of floating-point noise. The phase has swung <span class="math">$\pm 43.8$</span> rad — nearly fourteen full turns — by the edge of the 32 GHz Nyquist band, and flips sign with frequency. The group delay is a straight line: a chirp, 954 ps of walk across the band, 61 symbol periods at 64 GBd. A pulse leaves smeared over tens of symbols, and <strong>not one photon is lost</strong>.</p>
+<aside class="callout callout-math">
+  <p class="callout-title"><i class="fa-solid fa-square-root-variable" aria-hidden="true"></i> Why this belongs in the frequency domain</p>
+  <div class="callout-body">
+<p>In time, undoing the parabola costs a filter as long as its impulse response: 83 symbol-spaced taps above 1% of the main tap, and more to reach 0.1%. In frequency it is one complex multiply per bin, and the bin count does not change when the dispersion doubles.</p>
+  </div>
+</aside>
+<p>The judgement is blunt: dispersion is the one impairment here you should never track adaptively. It is known from the route, it changes only when the route changes, and it is identical on both polarisations. Estimate <span class="math">$D \cdot L$</span> once and hold it — the hard part is knowing it, not undoing it.</p>
+<h3 id="what-the-damage-looks-like-before-you-undo-it"><a class="heading-anchor" href="#what-the-damage-looks-like-before-you-undo-it" aria-hidden="true">#</a>What the damage looks like before you undo it</h3>
+<figure class="figure"><img src="assets/plots/cd-constellation-recovery.svg" alt="16-QAM through 1700 ps/nm before and after a single multiplication by $H^{}(f)$. Before: 134% EVM and a channel 83 symbols wide. After: the 26 dB receiver noise floor, exactly." loading="lazy"><figcaption><span class="fig-label">Figure 5</span><span class="fig-text">16-QAM through 1700 ps/nm before and after a single multiplication by <span class="math">$H^{*}(f)$</span>. Before: 134% EVM and a channel 83 symbols wide. After: the 26 dB receiver noise floor, exactly.</span></figcaption></figure>
+<p>Two panels, same symbols, same noise draw, same time base — symbol <span class="math">$k$</span> is read at output sample <span class="math">$256 + 2k$</span> in both. The only difference is one multiplication by <span class="math">$H^{*}(f)$</span>.</p>
+<p>Before it, the EVM is +2.55 dB, or 134%, and the symbol-spaced channel spans 83 symbols with ISI energy 16.4 dB above the main tap: more energy arrives in the echoes than in the symbol you want. That is why nothing decision-directed can run first.</p>
+<p>After it, the EVM is -26.1 dB — 4.97% — exactly the 26 dB receiver noise floor the simulation ran at. The all-pass rotates the noise with the signal, and no equaliser undoes noise it did not add, so this is the best any equaliser can do. It is also the test I would run on any FDE: known <span class="math">$H(f)$</span>, known SNR, and check that the equalised EVM equals the noise floor.</p>
+<h2 id="the-frequency-domain-equaliser-by-overlap-save"><a class="heading-anchor" href="#the-frequency-domain-equaliser-by-overlap-save" aria-hidden="true">#</a>The frequency-domain equaliser, by overlap-save</h2>
+<figure class="figure"><img src="assets/diagrams/fde-overlap-save.svg" alt="Overlap-save. An N-point FFT turns convolution into a bin-by-bin multiply, and the first half of every IFFT is discarded rather than repaired." loading="lazy"><figcaption><span class="fig-label">Figure 6</span><span class="fig-text">Overlap-save. An N-point FFT turns convolution into a bin-by-bin multiply, and the first half of every IFFT is discarded rather than repaired.</span></figcaption></figure>
+<p>An <span class="math">$N$</span>-point FFT makes an <span class="math">$N$</span>-tap convolution cost <span class="math">$N \log N$</span> instead of <span class="math">$N^2$</span>. Implement that 512-tap filter directly in time and it costs 512 complex multiplies per sample; the overlap-save equaliser costs about <span class="math">$\log_2 512 + 1 = 10$</span> — a factor of fifty for this link, and worse for every extra 100 km of fibre.</p>
+<p>The catch is the boundary. Two multiplied DFTs give a <em>circular</em> convolution: the tail wraps onto the front of the block, at the same size as the signal rather than as a rounding error. Overlap-save does not repair it. Buffer <span class="math">$N$</span> samples whose first <span class="math">$N/2$</span> are the previous block's second half; transform, multiply by <span class="math">$H[k]$</span>, inverse-transform; discard the first <span class="math">$N/2$</span> outputs and keep the second half.</p>
+<p>That 50% overlap is the price of never thinking about the boundary again. Zero-padding to <span class="math">$2N$</span> so the transform cannot wrap costs about the same for the same useful output; both pay roughly a factor of two, and overlap-save has one fewer buffer and no state to unwind, which is why it ships.</p>
+<aside class="callout callout-warn">
+  <p class="callout-title"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> Block size is a latency decision</p>
+  <div class="callout-body">
+<p>The block must be at least as long as the channel it inverts — 83 meaningful symbols at 2 samples per symbol wants 512 points with room to spare. But the equaliser cannot transform a block it has not finished filling, so the block length <em>is</em> the latency.</p>
+  </div>
+</aside>
+<p>The filter <span class="math">$H[k]$</span> is static, so it is computed once and stored. It need not be: the same bin-wise multiply can carry a frequency-domain LMS update at the same cost per bin, which is how you handle unknown dispersion. It also mops up front-end skew, the match filter and any fixed phase tilt — one multiply per bin, several jobs.</p>
+<h2 id="adaptive-equalisation-the-butterfly-and-cma"><a class="heading-anchor" href="#adaptive-equalisation-the-butterfly-and-cma" aria-hidden="true">#</a>Adaptive equalisation: the butterfly and CMA</h2>
+<figure class="figure"><img src="assets/diagrams/cma-butterfly.svg" alt="The 2×2 butterfly with CMA adaptation. Four FIR filters untangle two mixed polarisations, and the error term $e = 1 - |y|^2$ updates all four of them every symbol, blind." loading="lazy"><figcaption><span class="fig-label">Figure 7</span><span class="fig-text">The 2×2 butterfly with CMA adaptation. Four FIR filters untangle two mixed polarisations, and the error term <span class="math">$e = 1 - |y|^2$</span> updates all four of them every symbol, blind.</span></figcaption></figure>
+<p>After dispersion is gone, the polarisations are still superimposed. The fibre's polarisation state is an unknown 2×2 unitary matrix — rotation, polarisation-mode dispersion, polarisation-dependent loss, and whatever I/Q error the front end left behind. It drifts with temperature, mechanical stress and acoustic vibration: too fast for static calibration, slow enough for a filter with a few tens of taps.</p>
+<p>The butterfly applies four FIR filters,</p>
+<div class="math-display">$$y_h[n] = w_{xx}^{H} x_h[n] + w_{xy}^{H} x_v[n], \qquad y_v[n] = w_{yx}^{H} x_h[n] + w_{yy}^{H} x_v[n]$$</div>
+<p>and its input rails cross without joining. The figure labels that crossing, because it is the demultiplexing. CMA adapts the filters with a cost function that never mentions the transmitted data:</p>
+<div class="math-display">$$J = \mathbb{E}\left[\left(|y|^2 - 1\right)^2\right], \qquad e = 1 - |y|^2, \qquad w \leftarrow w + \mu\, e\, x^{*}$$</div>
+<p>It is blind: no training sequence, no decisions. That is the only thing that can work here, where the constellation is a 134% smear and a decision-directed LMS would train on noise. CMA asks only that the output modulus stay constant, which is a property of the alphabet rather than of a decision.</p>
+<p>Which modulus depends on the alphabet. QPSK has one radius, and plain CMA is exactly right. 16-QAM has three rings and 64-QAM nine, and a single-modulus error term drags the inner rings out and the outer rings in, settling at a compromise with several dB of residual error — plain CMA on 64-QAM is visibly wrong, corners eroded and centre bloated. Multi-modulus CMA and radius-directed equalisation pick the modulus from the nearest ring, which needs a rough amplitude estimate first. Start-up is CMA on the outer ring, then a hand-off to MMA once carrier recovery locks.</p>
+<p>The tap count is a power decision, not an algorithmic one. Twenty taps across four filters is 80 complex multiply-accumulates per symbol — 320 real multiplies, sustained at 64 GBd — and another 16 real MACs per symbol for every extra tap. Twenty taps buys a few tens of ps of PMD and the residual dispersion error; it does not buy long channel memory, which is why the FDE sits in front.</p>
+<aside class="callout callout-key">
+  <p class="callout-title"><i class="fa-solid fa-key" aria-hidden="true"></i> Blind beats trained when the constellation is the problem</p>
+  <div class="callout-body">
+<p>CMA is not a cheap approximation to a trained equaliser; it is the only option before a decision means anything. The price is slower convergence and a few tenths of a dB of residual error. Pay it.</p>
+  </div>
+</aside>
+<h2 id="carrier-phase-a-rotation-not-a-translation"><a class="heading-anchor" href="#carrier-phase-a-rotation-not-a-translation" aria-hidden="true">#</a>Carrier phase: a rotation, not a translation</h2>
+<figure class="figure"><img src="assets/plots/phase-noise-rings.svg" alt="One SNR, three linewidths. Additive noise grows a cloud around each ideal symbol; phase noise rotates every symbol about the origin, which is a different impairment and needs a different fix." loading="lazy"><figcaption><span class="fig-label">Figure 8</span><span class="fig-text">One SNR, three linewidths. Additive noise grows a cloud around each ideal symbol; phase noise rotates every symbol about the origin, which is a different impairment and needs a different fix.</span></figcaption></figure>
+<p>The laser's phase wanders, and transmitter and local oscillator both contribute. Each symbol collects a Gaussian phase increment of variance <span class="math">$2\pi \Delta\nu T_s$</span> and accumulates it, so the carrier phase is a Wiener process: at 1 MHz of combined linewidth and 64 GBd, 0.57° per symbol. The figure varies only that linewidth, over three panels.</p>
+<p>Additive noise grows a round cloud about each ideal point. Phase noise <em>rotates</em> the whole constellation by a common angle, so points wander along arcs about the origin: 22° RMS over 3000 symbols at 1 MHz, 70° RMS at 10 MHz, where the constellation has become rings. Averaging cannot help — the average of a rotating constellation is a shorter rotating constellation — and the walk grows only as the square root of elapsed symbols.</p>
+<p>Viterbi–Viterbi handles constant-modulus formats. Raise the symbol to the <span class="math">$M$</span>-th power, which multiplies the phase by <span class="math">$M$</span> and strips the data — for QPSK every symbol becomes a constant — average over a window, divide the argument by <span class="math">$M$</span>. Two consequences are unavoidable: the <span class="math">$M$</span>-th power amplifies the noise with the signal, and the division leaves the phase known only modulo <span class="math">$2\pi/M$</span>, so the FEC receives a constellation rotated by an unknown multiple of 90°.</p>
+<p>For 16-QAM and 64-QAM the <span class="math">$M$</span>-th power no longer strips the modulation, so the options are QPSK partitioning — estimate only on symbols near the corners — or blind phase search: try <span class="math">$B$</span> candidate phases, rotate, slice, accumulate distance over a window, keep the best. BPS assumes nothing about the alphabet, which is why it works at 10 MHz on 64-QAM. It also costs <span class="math">$B$</span> rotate-and-slice operations per symbol — 640 per symbol for 32 candidates over a 20-symbol window, around <span class="math">$8 \times 10^{13}$</span> per second at 64 GBd across two polarisations.</p>
+<p>The window has an optimum. Tracking error grows with the window, because the phase wanders inside it; noise error falls, because more symbols are averaged. With the tracking term as <span class="math">$\sigma_\delta^2 N^2/12$</span> and the noise term as <span class="math">$\sigma_n^2/N$</span>, the minimum sits at</p>
+<div class="math-display">$$N_{\mathrm{opt}} \approx \left(\frac{6\,\sigma_n^2}{\sigma_\delta^2}\right)^{1/3}$$</div>
+<p>At 20 dB SNR, <span class="math">$\sigma_n^2 \approx 1/(2\,\mathrm{SNR}) = 0.005$</span> rad²; at 1 MHz over 64 GBd, <span class="math">$\sigma_\delta^2 = 9.8 \times 10^{-5}$</span> rad². Seven symbols, and a residual phase error near 1.9° RMS costing about 0.45 dB. Doubling the SNR or halving the linewidth buys only 26% more window, so this is not a knife-edge — but a receiver designed for a 100 kHz laser and deployed with a 2 MHz one will not fail loudly. It will lose half a dB and nobody will know why.</p>
+<h2 id="the-decision-and-what-the-fec-pays-for"><a class="heading-anchor" href="#the-decision-and-what-the-fec-pays-for" aria-hidden="true">#</a>The decision, and what the FEC pays for</h2>
+<p>Everything so far has been blind and uncomfortable about committing. The slicer is the first block that assumes it knows what was sent — three thresholds per axis for 16-QAM, at 0 and <span class="math">$\pm 0.632$</span>. In a modern product it is a demapper, handing the soft-decision FEC a log-likelihood ratio per bit.</p>
+<p>Soft FEC overheads run roughly 15–25%; the post-FEC target is around 1e-15; the pre-FEC operating point is about 2e-2, one bit in fifty wrong at the demapper. It is worth stating plainly that <strong>a working 400G link runs at a 2% raw error rate</strong>. The FEC turns that into fewer than one error in <span class="math">$10^{15}$</span>: thirteen orders of magnitude of Shannon gain, and what every equaliser here has been buying margin for.</p>
+<p>The rate arithmetic follows. 64 GBd, dual polarisation, 16-QAM is <span class="math">$64 \times 4 \times 2 = 512$</span> Gb/s gross; 25% overhead leaves about 410 Gb/s of payload. The same 64 GBd on 64-QAM gives 614 Gb/s net, for the 6.2 dB the constellation cost.</p>
+<p>So the pre-FEC number is the real specification. No block has to beat 2e-2 at end of life, at the worst OSNR and dispersion in the deployment; every dB above that is power you did not have to burn.</p>
+<h2 id="what-to-carry-forward"><a class="heading-anchor" href="#what-to-carry-forward" aria-hidden="true">#</a>What to carry forward</h2>
+<ul>
+<li>The chain is ordered by what each block may assume: the FDE removes what is known, the butterfly removes what is unknown, the carrier loop removes a rotation, and only then does anything decide.</li>
+<li>Dispersion is an all-pass with quadratic phase: no energy is lost, the eye closes anyway, and one complex multiply per bin reopens it.</li>
+<li>Overlap-save discards the first half of every IFFT — the cheapest way to buy a linear convolution from a circular one.</li>
+<li>CMA is blind, and that is the point. On QAM, use a modulus per ring.</li>
+<li>Phase noise is a rotation, so it needs a tracker, not an averager, and its window has a derivable optimum.</li>
+<li>The FEC turns 2e-2 into 1e-15, and so defines what good enough means for every block before it.</li>
+</ul>
+<aside class="callout callout-optical">
+  <p class="callout-title"><i class="fa-solid fa-tower-broadcast" aria-hidden="true"></i> Where the real constraints are</p>
+  <div class="callout-body">
+<p><strong>Fixed point.</strong> The ADC hands over 5.5 effective bits, and every block after it is fixed-point arithmetic in a chip with a power budget. Where you put the binary point, and where you allow a saturating add, is a decision made jointly with the algorithm, not after it. An unscaled <span class="math">$N$</span>-point FFT can grow by <span class="math">$\log_2 N$</span> bits — nine for a 512-point block — which the converter does not have to spare, so the answer is block floating point with a per-stage scaling schedule. Get it wrong and you either clip on a peak or give away 6 dB of low-order bits. A saturating add is a decision about which signal you are willing to lose.</p>
+<p><strong>Latency and pipelining.</strong> At 64 GBd a symbol lasts 15.6 ps, about sixteen clock cycles at 1 GHz: enough for a deeply pipelined block, not for a long combinational one. The FDE is the awkward case, because it cannot start until a block has arrived. A 512-point block at 2 samples per symbol is 256 symbols of signal, and overlap-save emits one block per 128 symbols, so the block structure alone costs 128 to 256 symbols of buffering — nanoseconds of signal, but hundreds of symbols in the units the DSP team counts in, and never free.</p>
+<p><strong>Power.</strong> DSP power scales with multiply-accumulates and the memory traffic feeding them, and the equalisers hold the MACs. The 2×2 butterfly with 20 taps is 320 real multiplies per symbol at 64 GBd — 20 Tera-MAC/s for polarisation demultiplexing alone, about 10 W at 0.5 pJ per MAC. The FDE, enormous on paper because it inverts 1700 ps/nm, is cheaper: a 512-point overlap-save equaliser costs about <span class="math">$(\log_2 N + 1)$</span> complex multiplies per sample, roughly 160 real MACs per symbol across both polarisations. Half the butterfly, for a filter hundreds of taps long. <strong>The long filter is cheap because it is static and known; the short filter is expensive because it has to adapt.</strong> That is why shipping adaptive equalisers have twenty taps and dispersion compensation runs on a 512-point FFT.</p>
+<p><strong>The same arithmetic in a PAM4 part.</strong> The blocks I work on in the IM-DD and active-electrical-cable world are this arithmetic with the constraints reversed. An FFE is one branch of the butterfly with the feedback removed, so it pipelines freely and can afford ten to fifteen taps. A DFE puts a decision inside the loop, and a decision cannot be pipelined: the first feedback tap must close inside one symbol, which is why shipping DFEs run one or two taps at 100+ GBd while the FFE in front of them runs ten. The FFT is the same FFT, and the PLL is the same loop filter whether it tracks a carrier or a sampling clock. PAM3 sits between NRZ and PAM4: its three levels are 1.5× further apart at the same peak swing, worth 3.5 dB of SNR, for 1.585 bits per symbol instead of 2.</p>
+  </div>
+</aside>
+<nav class="pager" aria-label="Chapter navigation"><a class="prev" href="fir-filter-design.html"><span class="dir">&larr; Previous</span><span class="ttl">FIR Filter Design</span></a><span></span></nav>
+</main>
+</div>
+<footer class="site-footer">
+  <div class="inner">
+    <span>&copy; Nguyen Quang Binh &middot; Embedded Software Engineer - Optical DSP</span>
+    <span class="spacer"></span>
+    <a href="https://github.com/sprchuoi" target="_blank" rel="noopener">GitHub</a> &middot; <a href="https://www.linkedin.com/in/sprchuoi" target="_blank" rel="noopener">LinkedIn</a> &middot; <a href="mailto:quangbinhhtc@gmail.com">quangbinhhtc@gmail.com</a> &middot; <a href="../index.html">CV</a>
+  </div>
+</footer>
+<script src="assets/blog.js" defer></script>
+</body>
+</html>

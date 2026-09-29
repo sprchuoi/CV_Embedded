@@ -8,8 +8,14 @@ Generates this CV in three formats from a **single source file**:
 | `NguyenQuangBinh_CV_Sidebar.pdf` | same `.dox` → `tool/build_sidebar_cv.py` → two-column LaTeX template |
 | `docs/index.html` | same `.dox` → `tool/update_html_from_dox.py` → Bootstrap web CV |
 
-Both PDFs are published to the [`latest` release](../../releases/tag/latest) and the webpage is
-deployed to GitHub Pages by [`.github/workflows/python-app.yml`](.github/workflows/python-app.yml).
+It also hosts **the DSP blog** — a diagram-first course in digital signal
+processing, from sampling to the coherent optical link — generated into
+`docs/blog/` by `tool/build_blog.py` from `blog/`. See
+[`blog/README.md`](blog/README.md); it has its own source, its own build and its
+own tests.
+
+Both PDFs are published to the [`latest` release](../../releases/tag/latest) and the webpage and
+blog are deployed to GitHub Pages by [`.github/workflows/python-app.yml`](.github/workflows/python-app.yml).
 
 ## Editing the CV
 

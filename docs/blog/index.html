@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DSP, from First Principles to the Optical Link</title>
+<meta name="description" content="A diagram-first course in digital signal processing. Every idea is drawn before it is derived, every chapter ends where it is actually used: inside a coherent optical modem.">
+<meta name="color-scheme" content="light dark">
+<meta property="og:type" content="article">
+<meta property="og:title" content="DSP, from First Principles to the Optical Link">
+<meta property="og:description" content="A diagram-first course in digital signal processing. Every idea is drawn before it is derived, every chapter ends where it is actually used: inside a coherent optical modem.">
+<link rel="icon" href="../favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link rel="stylesheet" href="assets/blog.css">
+<script>
+  window.MathJax = {
+  "tex": {
+    "inlineMath": [
+      [
+        "$",
+        "$"
+      ],
+      [
+        "\\(",
+        "\\)"
+      ]
+    ],
+    "displayMath": [
+      [
+        "$$",
+        "$$"
+      ],
+      [
+        "\\[",
+        "\\]"
+      ]
+    ],
+    "processEscapes": true,
+    "tags": "none",
+    "macros": {
+      "twopi": "2\\pi",
+      "dd": "\\mathrm{d}",
+      "E": "\\mathbb{E}",
+      "j": "\\mathrm{j}",
+      "argmin": "\\operatorname*{arg\\,min}"
+    }
+  },
+  "options": {
+    "skipHtmlTags": [
+      "script",
+      "noscript",
+      "style",
+      "textarea",
+      "pre",
+      "code"
+    ],
+    "ignoreHtmlClass": "no-mathjax"
+  },
+  "chtml": {
+    "scale": 1.02
+  }
+};
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="index.html">
+      <span class="mark" aria-hidden="true">DSP</span>
+      <span>Nguyen Quang Binh</span>
+      <span class="sub">signal processing notes</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="index.html" aria-current="page">Curriculum</a>
+      <a href="../index.html">CV</a>
+      <a href="https://github.com/sprchuoi">GitHub</a>
+      <button class="icon-btn" type="button" data-theme-toggle aria-pressed="false"
+              title="Switch theme" aria-label="Switch colour theme"><i class="fa-solid fa-moon" aria-hidden="true"></i></button>
+    </nav>
+  </div>
+  <div class="read-progress" role="presentation"></div>
+</header>
+<div class="layout layout-single">
+<main id="main">
+  <div class="hero">
+    <h1>DSP, from First Principles to the Optical Link</h1>
+    <p>A diagram-first course in digital signal processing. Every idea is drawn before it is derived, every chapter ends where it is actually used: inside a coherent optical modem.</p>
+    <div class="hero-stats">
+      <span><b>8</b>parts</span>
+      <span><b>36</b>chapters planned</span>
+      <span><b>3</b>published</span>
+      <span><b>23</b>diagrams</span>
+    </div>
+  </div>
+
+  <section class="start-here"><h2>Start here</h2><div class="feature-grid"><a class="feature" href="sampling-and-aliasing.html"><span class="level-badge" data-level="Beginner">Beginner</span><h3>Sampling and Aliasing</h3><p>The Nyquist-Shannon theorem derived from a picture, why an alias is indistinguishable from a real tone, and how anti-alias filtering saves the day.</p></a><a class="feature" href="fir-filter-design.html"><span class="level-badge" data-level="Intermediate">Intermediate</span><h3>FIR Filter Design</h3><p>Windowed-sinc, least squares and Parks-McClellan, with the linear-phase condition that makes FIRs the default in hardware.</p></a><a class="feature" href="coherent-optical-dsp-pipeline.html"><span class="level-badge" data-level="Specialist">Specialist</span><h3>The Coherent Optical Receiver: A DSP Pipeline Tour</h3><p>From the 90-degree hybrid to decoded bits, block by block, with the sample-rate and resolution budget for each stage.</p></a></div></section>
+
+  <section aria-label="Full curriculum">
+    <section class="part" id="part-foundations">
+  <div class="part-head">
+    <span class="part-num">Part 01</span>
+    <h2>Signals, Sampling and Number Systems</h2>
+    <span class="level-badge" data-level="Beginner">Beginner</span>
+  </div>
+  <p class="part-blurb">Before any transform, before any filter, there is a physical quantity and a decision about how often to look at it. Almost every bug in a real DSP chain is a decision from this part, made badly.</p>
+  <ol class="chapter-list">
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">01</span><span class="chapter-body"><span class="chapter-title">What a Signal Actually Is</span><span class="chapter-sum">Continuous time versus discrete time, the domain and range of a signal, and the mental model that makes every later chapter obvious.</span></span><span class="chapter-state">Planned</span></div></li>
+<li class="chapter"><a class="chapter-link" href="sampling-and-aliasing.html"><span class="chapter-idx">02</span><span class="chapter-body"><span class="chapter-title">Sampling and Aliasing</span><span class="chapter-sum">The Nyquist-Shannon theorem derived from a picture, why an alias is indistinguishable from a real tone, and how anti-alias filtering saves the day.</span></span><span class="chapter-state">9 min</span></a></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">03</span><span class="chapter-body"><span class="chapter-title">Quantization, SNR and ENOB</span><span class="chapter-sum">An ideal 12-bit ADC does not give you 12 bits. Where the 6.02N + 1.76 formula comes from, and what actually eats it.</span></span><span class="chapter-state">Planned</span></div></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">04</span><span class="chapter-body"><span class="chapter-title">Decibels and Dynamic Range</span><span class="chapter-sum">Why engineers think in logs, the 3 dB and 6 dB rules you will use weekly, and how to keep dBm, dBW and dBFS straight.</span></span><span class="chapter-state">Planned</span></div></li>
+  </ol>
+</section> <section class="part" id="part-frequency-domain">
+  <div class="part-head">
+    <span class="part-num">Part 02</span>
+    <h2>The Frequency Domain</h2>
+    <span class="level-badge" data-level="Beginner to Intermediate">Beginner to Intermediate</span>
+  </div>
+  <p class="part-blurb">The Fourier transform is not a trick. It is the statement that a signal can be built out of sinusoids, and the machinery for doing that bookkeeping fast enough to run in real time.</p>
+  <ol class="chapter-list">
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">05</span><span class="chapter-body"><span class="chapter-title">From Fourier Series to the Fourier Transform</span><span class="chapter-sum">Harmonics, the periodicity trap, and how letting the period go to infinity turns a sum into an integral.</span></span><span class="chapter-state">Planned</span></div></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">06</span><span class="chapter-body"><span class="chapter-title">The DFT, Without Magic</span><span class="chapter-sum">What the DFT actually computes, why it is periodic in both domains, and how to read a bin index as a frequency in hertz.</span></span><span class="chapter-state">Planned</span></div></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">07</span><span class="chapter-body"><span class="chapter-title">The FFT: How It Got Fast</span><span class="chapter-sum">Radix-2 decomposition, the butterfly, and the bit-reversal that everyone gets wrong once. Includes the cost table that explains why 5G and 800G both live on FFTs.</span></span><span class="chapter-state">Planned</span></div></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">08</span><span class="chapter-body"><span class="chapter-title">Windows, Leakage and Resolution</span><span class="chapter-sum">Why a pure sine leaves a smear, why rectangular is sometimes correct, and how to choose a window from its sidelobe roll-off instead of superstition.</span></span><span class="chapter-state">Planned</span></div></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">09</span><span class="chapter-body"><span class="chapter-title">The z-Transform and the Unit Circle</span><span class="chapter-sum">The DFT is the z-transform sampled on a circle. This one picture unifies filters, stability and the frequency response.</span></span><span class="chapter-state">Planned</span></div></li>
+  </ol>
+</section> <section class="part" id="part-filters">
+  <div class="part-head">
+    <span class="part-num">Part 03</span>
+    <h2>LTI Systems and Filter Design</h2>
+    <span class="level-badge" data-level="Intermediate">Intermediate</span>
+  </div>
+  <p class="part-blurb">Linear time-invariant systems are the only class of systems we can fully solve on paper, which is exactly why almost every real receiver is engineered to stay inside that class.</p>
+  <ol class="chapter-list">
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">10</span><span class="chapter-body"><span class="chapter-title">Convolution, and Why Every DSP Block Is One</span><span class="chapter-sum">Flip, shift, multiply, sum - then the same operation as a polynomial product, and as a matrix. Three views of one idea.</span></span><span class="chapter-state">Planned</span></div></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">11</span><span class="chapter-body"><span class="chapter-title">Poles, Zeros and Stability</span><span class="chapter-sum">Reading a filter off its pole-zero plot, the region of convergence, and the exact condition that separates a filter from an oscillator.</span></span><span class="chapter-state">Planned</span></div></li>
+<li class="chapter"><a class="chapter-link" href="fir-filter-design.html"><span class="chapter-idx">12</span><span class="chapter-body"><span class="chapter-title">FIR Filter Design</span><span class="chapter-sum">Windowed-sinc, least squares and Parks-McClellan, with the linear-phase condition that makes FIRs the default in hardware.</span></span><span class="chapter-state">14 min</span></a></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">13</span><span class="chapter-body"><span class="chapter-title">IIR Filter Design</span><span class="chapter-sum">The bilinear transform, frequency pre-warping, and the Butterworth/Chebyshev/Bessel trade-off between sharpness, ripple and phase.</span></span><span class="chapter-state">Planned</span></div></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">14</span><span class="chapter-body"><span class="chapter-title">Phase, Group Delay and Why They Cost You</span><span class="chapter-sum">Two filters can share a magnitude response and behave completely differently. Group delay, phase distortion and all-pass equalisation.</span></span><span class="chapter-state">Planned</span></div></li>
+  </ol>
+</section> <section class="part" id="part-multirate">
+  <div class="part-head">
+    <span class="part-num">Part 04</span>
+    <h2>Multirate DSP</h2>
+    <span class="level-badge" data-level="Intermediate to Advanced">Intermediate to Advanced</span>
+  </div>
+  <p class="part-blurb">The single biggest efficiency win available in any real system: stop processing samples you are about to throw away.</p>
+  <ol class="chapter-list">
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">15</span><span class="chapter-body"><span class="chapter-title">Decimation and Interpolation</span><span class="chapter-sum">Rate change done naively, why it aliases, and the anti-imaging and anti-aliasing filters that make it correct.</span></span><span class="chapter-state">Planned</span></div></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">16</span><span class="chapter-body"><span class="chapter-title">Polyphase Decomposition and Arbitrary Resampling</span><span class="chapter-sum">The noble identity, why a polyphase filter costs the same as a single phase of it, and how to resample by any rational ratio.</span></span><span class="chapter-state">Planned</span></div></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">17</span><span class="chapter-body"><span class="chapter-title">CIC and Half-Band Filters</span><span class="chapter-sum">Multiplier-free decimation for the front end and the symmetric trick that halves the cost of every factor of two.</span></span><span class="chapter-state">Planned</span></div></li>
+  </ol>
+</section> <section class="part" id="part-statistical">
+  <div class="part-head">
+    <span class="part-num">Part 05</span>
+    <h2>Statistical and Adaptive DSP</h2>
+    <span class="level-badge" data-level="Advanced">Advanced</span>
+  </div>
+  <p class="part-blurb">Real signals are random, the channel is unknown, and it drifts with temperature. This is where DSP stops being a filter and becomes an estimator.</p>
+  <ol class="chapter-list">
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">18</span><span class="chapter-body"><span class="chapter-title">Random Signals, Autocorrelation and PSD</span><span class="chapter-sum">Why a random signal has no Fourier transform yet a perfectly well-defined spectrum, and how to estimate one honestly.</span></span><span class="chapter-state">Planned</span></div></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">19</span><span class="chapter-body"><span class="chapter-title">Matched Filtering and the Wiener Filter</span><span class="chapter-sum">Maximising SNR against minimising MSE - two different optimality criteria, two different filters, and when each is the right one.</span></span><span class="chapter-state">Planned</span></div></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">20</span><span class="chapter-body"><span class="chapter-title">LMS, RLS and Adaptive Equalisation</span><span class="chapter-sum">The steepest-descent picture, convergence versus misadjustment, and why the sign-sign LMS variant is the one that ships in silicon.</span></span><span class="chapter-state">Planned</span></div></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">21</span><span class="chapter-body"><span class="chapter-title">Kalman Filtering for Tracking and Recovery</span><span class="chapter-sum">Recursive Bayesian estimation in five equations, and how the same structure reappears as a carrier tracking loop.</span></span><span class="chapter-state">Planned</span></div></li>
+  </ol>
+</section> <section class="part" id="part-comms">
+  <div class="part-head">
+    <span class="part-num">Part 06</span>
+    <h2>Communications DSP</h2>
+    <span class="level-badge" data-level="Advanced">Advanced</span>
+  </div>
+  <p class="part-blurb">Everything so far, aimed at one goal: given a noisy and distorted analogue waveform, decide which of a finite set of symbols was sent, and do it at hundreds of gigabaud.</p>
+  <ol class="chapter-list">
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">22</span><span class="chapter-body"><span class="chapter-title">Pulse Shaping and the Nyquist Criterion</span><span class="chapter-sum">Zero ISI at the sampling instants, the raised-cosine family, and why the root-raised-cosine is split across transmitter and receiver.</span></span><span class="chapter-state">Planned</span></div></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">23</span><span class="chapter-body"><span class="chapter-title">Eye Diagrams, ISI and the Channel</span><span class="chapter-sum">Reading a link&#x27;s health from a picture, and the relationship between eye closure, BER and the equaliser you need.</span></span><span class="chapter-state">Planned</span></div></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">24</span><span class="chapter-body"><span class="chapter-title">PAM and QAM Constellations</span><span class="chapter-sum">Mapping bits to amplitude, Gray coding, and the SNR gap between PAM4 and PAM3 on the same channel.</span></span><span class="chapter-state">Planned</span></div></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">25</span><span class="chapter-body"><span class="chapter-title">Timing Recovery</span><span class="chapter-sum">The Gardner and Mueller-Muller detectors, why a baud-rate loop is not enough, and how timing error becomes an FFE tap.</span></span><span class="chapter-state">Planned</span></div></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">26</span><span class="chapter-body"><span class="chapter-title">Carrier Recovery and PLL Design</span><span class="chapter-sum">Phase detectors, loop filters and the lock/acquisition trade-off, with the second-order loop equations you actually need.</span></span><span class="chapter-state">Planned</span></div></li>
+  </ol>
+</section> <section class="part" id="part-optical">
+  <div class="part-head">
+    <span class="part-num">Part 07</span>
+    <h2>Optical DSP</h2>
+    <span class="level-badge" data-level="Specialist">Specialist</span>
+  </div>
+  <p class="part-blurb">The application. Coherent and IM-DD optical links put every previous chapter in series, at 100+ GBd, in fixed point, in a chip that must not exceed a power budget. This is the part I work in.</p>
+  <ol class="chapter-list">
+<li class="chapter"><a class="chapter-link" href="coherent-optical-dsp-pipeline.html"><span class="chapter-idx">27</span><span class="chapter-body"><span class="chapter-title">The Coherent Optical Receiver: A DSP Pipeline Tour</span><span class="chapter-sum">From the 90-degree hybrid to decoded bits, block by block, with the sample-rate and resolution budget for each stage.</span></span><span class="chapter-state">16 min</span></a></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">28</span><span class="chapter-body"><span class="chapter-title">The 90-Degree Hybrid and I/Q Imbalance</span><span class="chapter-sum">How optics produces a complex baseband signal, and how a 1% quadrature error becomes an image that costs you 30 dB of margin.</span></span><span class="chapter-state">Planned</span></div></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">29</span><span class="chapter-body"><span class="chapter-title">Chromatic Dispersion and the Frequency-Domain Equaliser</span><span class="chapter-sum">Dispersion as an all-pass phase curve, why time-domain equalisation loses to overlap-save FFT, and the block-size maths that decides it.</span></span><span class="chapter-state">Planned</span></div></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">30</span><span class="chapter-body"><span class="chapter-title">Polarization Demultiplexing with CMA</span><span class="chapter-sum">Two signals arrive mixed by an unknown 2x2 unitary matrix. The constant-modulus algorithm untangles them blind.</span></span><span class="chapter-state">Planned</span></div></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">31</span><span class="chapter-body"><span class="chapter-title">Carrier Phase Estimation</span><span class="chapter-sum">Laser linewidth turns a constellation into a ring. Viterbi-Viterbi, blind phase search, and the block-length trade-off between noise and tracking.</span></span><span class="chapter-state">Planned</span></div></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">32</span><span class="chapter-body"><span class="chapter-title">Fibre Nonlinearity and Digital Backpropagation</span><span class="chapter-sum">The Kerr effect, the split-step method, and the brutal complexity wall that keeps most nonlinear compensation out of the product.</span></span><span class="chapter-state">Planned</span></div></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">33</span><span class="chapter-body"><span class="chapter-title">PAM4 DSP for IM-DD and Active Electrical Cables</span><span class="chapter-sum">The short-reach chain: FFE, DFE, MLSE and PLL for 100G-per-lane PAM4 over copper and directly detected optics.</span></span><span class="chapter-state">Planned</span></div></li>
+  </ol>
+</section> <section class="part" id="part-implementation">
+  <div class="part-head">
+    <span class="part-num">Part 08</span>
+    <h2>Making It Real</h2>
+    <span class="level-badge" data-level="Specialist">Specialist</span>
+  </div>
+  <p class="part-blurb">An algorithm that is not implementable at rate and within power is not an algorithm, it is a paper. Fixed point, silicon architecture and the machine-learning boundary.</p>
+  <ol class="chapter-list">
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">34</span><span class="chapter-body"><span class="chapter-title">Fixed-Point DSP, Q-Formats and CORDIC</span><span class="chapter-sum">Choosing a Q-format, predicting overflow before the lab finds it, and computing sin, cos and magnitude without a multiplier.</span></span><span class="chapter-state">Planned</span></div></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">35</span><span class="chapter-body"><span class="chapter-title">FFT Hardware Architectures</span><span class="chapter-sum">Memory-based, pipelined and parallel FFTs, the twiddle-factor storage problem, and how block floating point buys back dynamic range.</span></span><span class="chapter-state">Planned</span></div></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">36</span><span class="chapter-body"><span class="chapter-title">Neural Equalisation and the ML/DSP Boundary</span><span class="chapter-sum">Where a small network genuinely beats a DFE, how it is quantised onto the same datapath, and where it does not pay for itself.</span></span><span class="chapter-state">Planned</span></div></li>
+  </ol>
+</section>
+  </section>
+</main>
+</div>
+<footer class="site-footer">
+  <div class="inner">
+    <span>&copy; Nguyen Quang Binh &middot; Embedded Software Engineer - Optical DSP</span>
+    <span class="spacer"></span>
+    <a href="https://github.com/sprchuoi" target="_blank" rel="noopener">GitHub</a> &middot; <a href="https://www.linkedin.com/in/sprchuoi" target="_blank" rel="noopener">LinkedIn</a> &middot; <a href="mailto:quangbinhhtc@gmail.com">quangbinhhtc@gmail.com</a> &middot; <a href="../index.html">CV</a>
+  </div>
+</footer>
+<script src="assets/blog.js" defer></script>
+</body>
+</html>
