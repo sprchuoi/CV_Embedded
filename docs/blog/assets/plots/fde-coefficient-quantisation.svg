@@ -1510,7 +1510,7 @@ z
    </g>
    <g id="text_19">
     <!-- quantisation no longer limiting: a third of it -->
-    <g style="fill: #3b7fb5" transform="translate(95.741163 69.323811) scale(0.086 -0.086)">
+    <g style="fill: #3b7fb5" transform="translate(207.47093 68.635591) scale(0.086 -0.086)">
      <defs>
       <path id="DejaVuSans-4a" d="M 2906 1791 
 Q 2906 2416 2648 2759 
@@ -1601,15 +1601,15 @@ L 199.490233 12.058945
 " clip-path="url(#pe30234ec18)" style="fill: none; stroke: #d9822b; stroke-width: 1.6; stroke-linecap: round"/>
    </g>
    <g id="line2d_34">
-    <path d="M 93.08093 21.900629 
-L 146.285581 44.691663 
-L 199.490233 64.288386 
-L 252.694884 83.581036 
-L 305.899535 101.921119 
-L 359.104186 117.754295 
-L 412.308837 125.704218 
-L 465.513488 128.490889 
-L 518.71814 129.468359 
+    <path d="M 93.08093 21.837468 
+L 146.285581 44.409812 
+L 199.490233 63.902072 
+L 252.694884 83.016356 
+L 305.899535 102.258704 
+L 359.104186 118.726382 
+L 412.308837 128.357355 
+L 465.513488 131.731283 
+L 518.71814 132.814237 
 " clip-path="url(#pe30234ec18)" style="fill: none; stroke: #54b689; stroke-width: 2; stroke-linecap: round"/>
     <defs>
      <path id="m02eb657d3a" d="M 0 2.5 
@@ -1625,15 +1625,15 @@ z
 " style="stroke: #54b689"/>
     </defs>
     <g clip-path="url(#pe30234ec18)">
-     <use xlink:href="#m02eb657d3a" x="93.08093" y="21.900629" style="fill: #54b689; stroke: #54b689"/>
-     <use xlink:href="#m02eb657d3a" x="146.285581" y="44.691663" style="fill: #54b689; stroke: #54b689"/>
-     <use xlink:href="#m02eb657d3a" x="199.490233" y="64.288386" style="fill: #54b689; stroke: #54b689"/>
-     <use xlink:href="#m02eb657d3a" x="252.694884" y="83.581036" style="fill: #54b689; stroke: #54b689"/>
-     <use xlink:href="#m02eb657d3a" x="305.899535" y="101.921119" style="fill: #54b689; stroke: #54b689"/>
-     <use xlink:href="#m02eb657d3a" x="359.104186" y="117.754295" style="fill: #54b689; stroke: #54b689"/>
-     <use xlink:href="#m02eb657d3a" x="412.308837" y="125.704218" style="fill: #54b689; stroke: #54b689"/>
-     <use xlink:href="#m02eb657d3a" x="465.513488" y="128.490889" style="fill: #54b689; stroke: #54b689"/>
-     <use xlink:href="#m02eb657d3a" x="518.71814" y="129.468359" style="fill: #54b689; stroke: #54b689"/>
+     <use xlink:href="#m02eb657d3a" x="93.08093" y="21.837468" style="fill: #54b689; stroke: #54b689"/>
+     <use xlink:href="#m02eb657d3a" x="146.285581" y="44.409812" style="fill: #54b689; stroke: #54b689"/>
+     <use xlink:href="#m02eb657d3a" x="199.490233" y="63.902072" style="fill: #54b689; stroke: #54b689"/>
+     <use xlink:href="#m02eb657d3a" x="252.694884" y="83.016356" style="fill: #54b689; stroke: #54b689"/>
+     <use xlink:href="#m02eb657d3a" x="305.899535" y="102.258704" style="fill: #54b689; stroke: #54b689"/>
+     <use xlink:href="#m02eb657d3a" x="359.104186" y="118.726382" style="fill: #54b689; stroke: #54b689"/>
+     <use xlink:href="#m02eb657d3a" x="412.308837" y="128.357355" style="fill: #54b689; stroke: #54b689"/>
+     <use xlink:href="#m02eb657d3a" x="465.513488" y="131.731283" style="fill: #54b689; stroke: #54b689"/>
+     <use xlink:href="#m02eb657d3a" x="518.71814" y="132.814237" style="fill: #54b689; stroke: #54b689"/>
     </g>
    </g>
    <g id="legend_1">
@@ -1826,16 +1826,16 @@ z
     </g>
    </g>
    <g id="patch_5">
-    <path d="M 257.537315 121.040361 
-Q 229.585505 93.712193 202.59302 67.321946 
+    <path d="M 257.613691 121.035108 
+Q 229.621555 93.519958 202.58622 66.945304 
 " style="fill: none; stroke: #d9822b; stroke-width: 1.2; stroke-linecap: round"/>
-    <path d="M 203.908805 71.125722 
-L 202.59302 67.321946 
-L 206.425511 68.551583 
+    <path d="M 203.891776 70.752603 
+L 202.58622 66.945304 
+L 206.415393 68.185239 
 " style="fill: none; stroke: #d9822b; stroke-width: 1.2; stroke-linecap: round"/>
    </g>
    <g id="text_22">
-    <!-- 6 bits: -31.2 dB EVM, -->
+    <!-- 6 bits: -31.1 dB EVM, -->
     <g style="fill: #d9822b" transform="translate(218.11186 132.875681) scale(0.09 -0.09)">
      <defs>
       <path id="DejaVuSans-11" d="M 684 794 
@@ -1867,7 +1867,7 @@ z
      <use xlink:href="#DejaVuSans-16" transform="translate(379.515625 0)"/>
      <use xlink:href="#DejaVuSans-14" transform="translate(443.140625 0)"/>
      <use xlink:href="#DejaVuSans-11" transform="translate(506.765625 0)"/>
-     <use xlink:href="#DejaVuSans-15" transform="translate(538.546875 0)"/>
+     <use xlink:href="#DejaVuSans-14" transform="translate(538.546875 0)"/>
      <use xlink:href="#DejaVuSans-3" transform="translate(602.171875 0)"/>
      <use xlink:href="#DejaVuSans-47" transform="translate(633.953125 0)"/>
      <use xlink:href="#DejaVuSans-25" transform="translate(697.4375 0)"/>
@@ -1877,7 +1877,7 @@ z
      <use xlink:href="#DejaVuSans-30" transform="translate(929.421875 0)"/>
      <use xlink:href="#DejaVuSans-f" transform="translate(1015.703125 0)"/>
     </g>
-    <!-- +0.32 dB of link penalty -->
+    <!-- +0.33 dB of link penalty -->
     <g style="fill: #d9822b" transform="translate(218.11186 143.678142) scale(0.09 -0.09)">
      <defs>
       <path id="DejaVuSans-e" d="M 2944 4013 
@@ -1917,7 +1917,7 @@ z
      <use xlink:href="#DejaVuSans-13" transform="translate(83.796875 0)"/>
      <use xlink:href="#DejaVuSans-11" transform="translate(147.421875 0)"/>
      <use xlink:href="#DejaVuSans-16" transform="translate(179.203125 0)"/>
-     <use xlink:href="#DejaVuSans-15" transform="translate(242.828125 0)"/>
+     <use xlink:href="#DejaVuSans-16" transform="translate(242.828125 0)"/>
      <use xlink:href="#DejaVuSans-3" transform="translate(306.453125 0)"/>
      <use xlink:href="#DejaVuSans-47" transform="translate(338.234375 0)"/>
      <use xlink:href="#DejaVuSans-25" transform="translate(401.71875 0)"/>
@@ -3281,7 +3281,7 @@ z
     <use xlink:href="#DejaVuSans-Oblique-57" transform="translate(4959.505859 0.015625)"/>
     <use xlink:href="#DejaVuSans-Oblique-52" transform="translate(4998.714844 0.015625)"/>
    </g>
-   <!-- $2^w$ levels. At 6 bits the step is 5.62$^\circ$ per bin and the quantisation EVM measures -31.2 dB, under a -->
+   <!-- $2^w$ levels. At 6 bits the step is 5.62$^\circ$ per bin and the quantisation EVM measures -31.1 dB, under a -->
    <g style="fill: #5c5c5c" transform="translate(8.64 275.085527) scale(0.09 -0.09)">
     <defs>
      <path id="DejaVuSans-Oblique-11" d="M 525 794 
@@ -3507,7 +3507,7 @@ z
     <use xlink:href="#DejaVuSans-Oblique-16" transform="translate(4107.211914 0.41875)"/>
     <use xlink:href="#DejaVuSans-Oblique-14" transform="translate(4170.834961 0.41875)"/>
     <use xlink:href="#DejaVuSans-Oblique-11" transform="translate(4234.458008 0.41875)"/>
-    <use xlink:href="#DejaVuSans-Oblique-15" transform="translate(4266.245117 0.41875)"/>
+    <use xlink:href="#DejaVuSans-Oblique-14" transform="translate(4266.245117 0.41875)"/>
     <use xlink:href="#DejaVuSans-Oblique-3" transform="translate(4329.868164 0.41875)"/>
     <use xlink:href="#DejaVuSans-Oblique-47" transform="translate(4361.655273 0.41875)"/>
     <use xlink:href="#DejaVuSans-Oblique-25" transform="translate(4425.131836 0.41875)"/>
@@ -3521,7 +3521,7 @@ z
     <use xlink:href="#DejaVuSans-Oblique-3" transform="translate(4850.180664 0.41875)"/>
     <use xlink:href="#DejaVuSans-Oblique-44" transform="translate(4881.967773 0.41875)"/>
    </g>
-   <!-- third of the 20 dB link's own 10 %: it costs 0.32 dB and stops being the limit. 5 bits measures -25.5 dB (1.08 -->
+   <!-- third of the 20 dB link's own 10 %: it costs 0.33 dB and stops being the limit. 5 bits measures -25.4 dB (1.10 -->
    <g style="fill: #5c5c5c" transform="translate(8.64 285.887988) scale(0.09 -0.09)">
     <defs>
      <path id="DejaVuSans-Oblique-13" d="M 2444 4750 
@@ -3633,45 +3633,6 @@ Q 1353 3947 2222 4856
 L 2731 4856 
 z
 " transform="scale(0.015625)"/>
-     <path id="DejaVuSans-Oblique-1b" d="M 2847 1416 
-Q 2847 1769 2600 1992 
-Q 2353 2216 1953 2216 
-Q 1466 2216 1148 1923 
-Q 831 1631 831 1184 
-Q 831 828 1073 618 
-Q 1316 409 1728 409 
-Q 2219 409 2533 693 
-Q 2847 978 2847 1416 
-z
-M 3169 3591 
-Q 3169 3888 2950 4069 
-Q 2731 4250 2369 4250 
-Q 1941 4250 1664 4009 
-Q 1388 3769 1388 3406 
-Q 1388 3094 1605 2903 
-Q 1822 2713 2181 2713 
-Q 2613 2713 2891 2961 
-Q 3169 3209 3169 3591 
-z
-M 2741 2456 
-Q 3094 2322 3281 2050 
-Q 3469 1778 3469 1394 
-Q 3469 747 2969 328 
-Q 2469 -91 1678 -91 
-Q 1006 -91 609 239 
-Q 213 569 213 1119 
-Q 213 1619 553 2008 
-Q 894 2397 1441 2503 
-Q 1113 2616 941 2852 
-Q 769 3088 769 3425 
-Q 769 3991 1239 4370 
-Q 1709 4750 2431 4750 
-Q 3034 4750 3414 4442 
-Q 3794 4134 3794 3659 
-Q 3794 3247 3511 2923 
-Q 3228 2600 2741 2456 
-z
-" transform="scale(0.015625)"/>
     </defs>
     <use xlink:href="#DejaVuSans-Oblique-57"/>
     <use xlink:href="#DejaVuSans-Oblique-4b" transform="translate(39.203125 0)"/>
@@ -3721,7 +3682,7 @@ z
     <use xlink:href="#DejaVuSans-Oblique-13" transform="translate(2149.65625 0)"/>
     <use xlink:href="#DejaVuSans-Oblique-11" transform="translate(2213.28125 0)"/>
     <use xlink:href="#DejaVuSans-Oblique-16" transform="translate(2245.0625 0)"/>
-    <use xlink:href="#DejaVuSans-Oblique-15" transform="translate(2308.6875 0)"/>
+    <use xlink:href="#DejaVuSans-Oblique-16" transform="translate(2308.6875 0)"/>
     <use xlink:href="#DejaVuSans-Oblique-3" transform="translate(2372.3125 0)"/>
     <use xlink:href="#DejaVuSans-Oblique-47" transform="translate(2404.09375 0)"/>
     <use xlink:href="#DejaVuSans-Oblique-25" transform="translate(2467.578125 0)"/>
@@ -3773,7 +3734,7 @@ z
     <use xlink:href="#DejaVuSans-Oblique-15" transform="translate(4746.609375 0)"/>
     <use xlink:href="#DejaVuSans-Oblique-18" transform="translate(4810.234375 0)"/>
     <use xlink:href="#DejaVuSans-Oblique-11" transform="translate(4873.859375 0)"/>
-    <use xlink:href="#DejaVuSans-Oblique-18" transform="translate(4905.640625 0)"/>
+    <use xlink:href="#DejaVuSans-Oblique-17" transform="translate(4905.640625 0)"/>
     <use xlink:href="#DejaVuSans-Oblique-3" transform="translate(4969.265625 0)"/>
     <use xlink:href="#DejaVuSans-Oblique-47" transform="translate(5001.046875 0)"/>
     <use xlink:href="#DejaVuSans-Oblique-25" transform="translate(5064.53125 0)"/>
@@ -3781,8 +3742,8 @@ z
     <use xlink:href="#DejaVuSans-Oblique-b" transform="translate(5164.921875 0)"/>
     <use xlink:href="#DejaVuSans-Oblique-14" transform="translate(5203.9375 0)"/>
     <use xlink:href="#DejaVuSans-Oblique-11" transform="translate(5267.5625 0)"/>
-    <use xlink:href="#DejaVuSans-Oblique-13" transform="translate(5299.34375 0)"/>
-    <use xlink:href="#DejaVuSans-Oblique-1b" transform="translate(5362.96875 0)"/>
+    <use xlink:href="#DejaVuSans-Oblique-14" transform="translate(5299.34375 0)"/>
+    <use xlink:href="#DejaVuSans-Oblique-13" transform="translate(5362.96875 0)"/>
    </g>
    <!-- dB of penalty), and past 10 bits a wider word buys nothing: the curve is flat because the block's own aliasing -->
    <g style="fill: #5c5c5c" transform="translate(8.64 296.690449) scale(0.09 -0.09)">

@@ -1,6 +1,6 @@
 A hundred kilometres of standard single-mode fibre costs a 64 GBd 16-QAM channel 1700 ps/nm of chromatic dispersion and charges it nothing else. Not one photon is absorbed. The magnitude response is flat to the last bit of floating-point precision, the pulse leaves with exactly the energy it went in with, and the eye is shut. Every other impairment on this blog either adds noise or throws signal away; chromatic dispersion only rotates phase, and the rotation is a smooth, monotone, known function of frequency. It is the one large impairment in a coherent receiver that is, in principle, perfectly invertible.
 
-That is why the interesting question is not whether to undo it but what shape of arithmetic to undo it with — and the answer is lopsided. The exact inverse of a 1700 ps/nm channel needs a symbol-spaced FIR of 177 taps to hold its residual below −40 dB, and that filter costs 90.6 Tera real MAC/s at 64 GBd across two polarisations. A 512-point overlap-save FDE does the same job for 10.2 Tera/s. Same impairment, same answer, nine times less arithmetic — and the reason is not that the FFT is clever. It is that the filter is static.
+That is why the interesting question is not whether to undo it but what shape of arithmetic to undo it with — and the answer is lopsided. The exact inverse of a 1700 ps/nm channel needs a symbol-spaced FIR of 173 taps to hold its residual below −40 dB, and that filter costs 88.6 Tera real MAC/s at 64 GBd across two polarisations. A 512-point overlap-save FDE does the same job for 10.2 Tera/s. Same impairment, same answer, nine times less arithmetic — and the reason is not that the FFT is clever. It is that the filter is static.
 
 ## The all-pass that closes the eye
 
@@ -54,11 +54,11 @@ That skirt is what decides the tap count, and it decides it expensively. Figure 
 |---|---|---|---|---|---|
 | −20 dB | 65 (±32) | 1016 ps | −21.9 dB | 520 | 33.3 Tera/s |
 | −30 dB | 93 (±46) | 1453 ps | −30.5 dB | 744 | 47.6 Tera/s |
-| −40 dB | 177 (±88) | 2766 ps | −40.7 dB | 1416 | 90.6 Tera/s |
+| −40 dB | 173 (±86) | 2703 ps | −40.3 dB | 1384 | 88.6 Tera/s |
 
-The arithmetic is four real multiplies per complex MAC, two polarisations, at 64 GBd. The 177-tap filter that reaches −40 dB is 2766 ps of impulse response — nearly five times the symbol period, and the full width of the dispersion memory plus the skirt that the truncation is fighting.
+The arithmetic is four real multiplies per complex MAC, two polarisations, at 64 GBd. The 173-tap filter that reaches −40 dB is 2703 ps of impulse response — nearly five times the symbol period, and the full width of the dispersion memory plus the skirt that the truncation is fighting.
 
-That is the number the FDE has to beat, and it beats it easily. A 512-point overlap-save FDE costs $\log_2 B + 1 = 10$ complex multiplies per output sample per polarisation. A complex multiply is four real ones, so that is 80 real multiplies per sample across both polarisations, or 160 real MACs per symbol at 2 samples per symbol: 10.2 Tera/s. **The time-domain filter is 8.8 times more arithmetic for the same residual.**
+That is the number the FDE has to beat, and it beats it easily. A 512-point overlap-save FDE costs $\log_2 B + 1 = 10$ complex multiplies per output sample per polarisation. A complex multiply is four real ones, so that is 80 real multiplies per sample across both polarisations, or 160 real MACs per symbol at 2 samples per symbol: 10.2 Tera/s. **The time-domain filter is 8.7 times more arithmetic for the same residual.**
 
 The honest reading of Figure 3 is that the tap-versus-residual curve has no knee. There is no length at which the time-domain equaliser becomes reasonable: the body alone is 110 taps of full-weight multiplies, and you pay for them whether or not you need the skirt. A 20-tap adaptive butterfly is already 320 real multiplies per symbol, 20.5 Tera/s — twice the whole FDE.
 
@@ -96,7 +96,7 @@ Figure 5 runs the equaliser — not a model of it — for each block size and re
 | 1024 | 512 | 8.0 ns | −66.2 dB | 42 |
 | 4096 | 2048 | 32.0 ns | −94.3 dB | 50 |
 
-The dispersion memory is 223 samples, so the knee is the first block whose usable half exceeds it: **$B = 512$ samples, 256 symbols, 4.0 ns.** One doubling from 256 to 512 buys 26 dB. Below the knee the block cannot hold the chirp and folds it onto itself. Above it the curve is a straight line of diminishing returns, and the arithmetic grows as $2\log_2 B + 1$: from 30 real multiplies per output sample at $B = 128$ to 50 at $B = 4096$, a 1.7× increase for 86 dB of residual that no link can use.
+The dispersion memory is 223 samples, so the knee is the first block whose usable half exceeds it: **$B = 512$ samples, 256 symbols, 4.0 ns.** One doubling from 256 to 512 buys 26.7 dB. Below the knee the block cannot hold the chirp and folds it onto itself. Above it the curve is a straight line of diminishing returns, and the arithmetic grows as $4(\log_2 B + 1)$: from 64 real multiplies per output sample at $B = 128$ to 104 at $B = 4096$, a 1.6× increase for 86 dB of residual that no link can use.
 
 Latency grows with it, and unlike the multiplies it is not negotiable. The equaliser cannot transform a block it has not finished filling, so a $B$-sample block at 2 samples per symbol is $B/2$ symbols of buffering. At the knee that is 256 symbols, 4 ns of signal — a real pipeline delay, not a rounding error. A 4096-point block is 2048 symbols, 32 ns, and it has to be declared to whatever protocol is waiting at the other end of the link.
 
@@ -109,10 +109,10 @@ Here is the single best insight in the chapter, and it is a statement about cost
 | Equaliser | Taps | Adaptation | Real MAC/symbol | At 64 GBd |
 |---|---|---|---|---|
 | 2×2 butterfly | 20 per filter | every symbol, blind | 320 | 20.5 Tera/s |
-| T-spaced CD FIR | 177 | static | 1416 | 90.6 Tera/s |
+| T-spaced CD FIR | 173 | static | 1384 | 88.6 Tera/s |
 | Overlap-save FDE | 512-point block | static | 160 | 10.2 Tera/s |
 
-$H^{*}[k]$ is computed from the link budget: fibre type, span lengths, wavelength, and the temperature coefficient of the fibre's dispersion. It is known before the receiver is powered on and it changes on the timescale of a maintenance window. So the coefficients are computed once, at provisioning, and stored. The FDE is a static filter over a 512-point block doing the work of a 177-tap FIR for **half the arithmetic of a 20-tap adaptive equaliser**.
+$H^{*}[k]$ is computed from the link budget: fibre type, span lengths, wavelength, and the temperature coefficient of the fibre's dispersion. It is known before the receiver is powered on and it changes on the timescale of a maintenance window. So the coefficients are computed once, at provisioning, and stored. The FDE is a static filter over a 512-point block doing the work of a 173-tap FIR for **half the arithmetic of a 20-tap adaptive equaliser**.
 
 That inversion is the point. The butterfly is short because adaptation is expensive, and adaptation is expensive because every tap needs a coefficient register rewritten every symbol and a gradient path feeding it. A static filter needs none of that: the coefficient memory is read-only, the datapath has no feedback, and the pipeline depth is whatever the FFT latency allows. **A static filter hundreds of taps long is cheap. An adaptive filter twenty taps long is not.** Every architecture argument about where dispersion compensation belongs follows from that asymmetry.
 
@@ -132,15 +132,15 @@ The measured curve is steep at the bottom and flat at the top:
 
 | Phase bits | Step per bin | Coefficient EVM | Link penalty |
 |---|---|---|---|
-| 4 | 22.5° | −18.9 dB | 3.62 dB |
-| 5 | 11.25° | −25.5 dB | 1.08 dB |
-| 6 | 5.625° | −31.2 dB | 0.32 dB |
-| 7 | 2.812° | −36.8 dB | 0.09 dB |
-| 8 | 1.406° | −42.1 dB | 0.03 dB |
+| 4 | 22.5° | −18.8 dB | 3.63 dB |
+| 5 | 11.25° | −25.4 dB | 1.10 dB |
+| 6 | 5.625° | −31.1 dB | 0.33 dB |
+| 7 | 2.812° | −36.6 dB | 0.09 dB |
+| 8 | 1.406° | −42.2 dB | 0.03 dB |
 
-The criterion the figure applies is the one a link engineer would apply: quantisation stops being the limit when its EVM is a third of the link's own EVM. A 20 dB link is 10% EVM, a third of that is 3.33%, or −29.5 dB. The first width that clears it is **6 bits**, at 5.625° per bin, −31.2 dB of coefficient EVM and 0.32 dB of penalty. One bit less measures −25.5 dB and 1.08 dB of penalty; one bit more measures −36.8 dB and 0.09 dB.
+The criterion the figure applies is the one a link engineer would apply: quantisation stops being the limit when its EVM is a third of the link's own EVM. A 20 dB link is 10% EVM, a third of that is 3.33%, or −29.5 dB. The first width that clears it is **6 bits**, at 5.625° per bin, −31.1 dB of coefficient EVM and 0.33 dB of penalty. One bit less measures −25.4 dB and 1.10 dB of penalty; one bit more measures −36.6 dB and 0.09 dB.
 
-So 6 bits is the answer, and the seventh buys 5.6 dB of EVM and 0.23 dB of link margin. Compare that with what a bit of ADC resolution buys, when the whole receiver runs on 5.5 effective bits, and the asymmetry is obvious: the coefficient word is not the scarce resource. **Spend bits on the FFT's growing word length, not on the phase table.**
+So 6 bits is the answer, and the seventh buys 5.6 dB of EVM and 0.24 dB of link margin. Compare that with what a bit of ADC resolution buys, when the whole receiver runs on 5.5 effective bits, and the asymmetry is obvious: the coefficient word is not the scarce resource. **Spend bits on the FFT's growing word length, not on the phase table.**
 
 Two implementation notes the figure's model hides. First, the phase is not small: it spans 14π across the band, so the quantiser must wrap it into $[-\pi, \pi)$ before rounding — which is why the word is a *phase* word and not an offset. Second, the coefficient is consumed as a complex multiply, so the datapath carries $\cos$ and $\sin$ to whatever width the multiplier needs; 6 bits of phase is roughly 7 to 8 bits of each component, and that is what the area scales with.
 
@@ -156,18 +156,18 @@ and calls a link unusable when that penalty reaches 3 dB. Treating ISI as additi
 
 With that caveat stated: the ideal FDE — an exact $H^{*}(f)$ and nothing else — sits on 0 dB out to 2000 km and 34 000 ps/nm, because a flat all-pass times its own conjugate is flat and there is no residual to penalise. That is an idealisation, not a budget. The uncompensated link crosses 3 dB at 0.75 km, which is 13 ps/nm: 64 GBd 16-QAM has essentially no dispersion tolerance without a compensator, and the 36.4 dB the model reports at 100 km is its way of saying that the link is not merely degraded but gone.
 
-The practical curve is the same overlap-save simulation as Figure 5, re-run at every reach with a 512-sample block and the 6-bit coefficient word from Figure 6. It holds 0.32 dB at 100 km and 1.01 dB at 200 km, and crosses 3 dB at **267 km, or 4543 ps/nm — about 2.7 times the 1700 ps/nm reference.** Past that it fails almost as fast as no compensation at all, because 256 samples of usable block hold about 1950 ps/nm of chirp and the crossing is where the link presents 4543.
+The practical curve is the same overlap-save simulation as Figure 5, re-run at every reach with a 512-sample block and the 6-bit coefficient word from Figure 6. It holds 0.33 dB at 100 km and 0.90 dB at 200 km, and crosses 3 dB at **257 km, or 4374 ps/nm — about 2.6 times the 1700 ps/nm reference.** Past that it fails almost as fast as no compensation at all, because 256 samples of usable block hold about 1950 ps/nm of chirp and the crossing is where the link presents 4374.
 
-The engineering reading is that the practical FDE's reach limit is set by the block memory, not by the coefficient word and not by the FFT. The 6-bit floor costs 0.32 dB, which is nothing; the block costs 4 ns of latency, which is not. If a link needs 400 km, the answer is not a wider coefficient word — it is either a bigger block with the latency that implies, or inline compensation partway down the span to bring the accumulated dispersion back inside the block.
+The engineering reading is that the practical FDE's reach limit is set by the block memory, not by the coefficient word and not by the FFT. The 6-bit floor costs 0.33 dB, which is nothing; the block costs 4 ns of latency, which is not. If a link needs 400 km, the answer is not a wider coefficient word — it is either a bigger block with the latency that implies, or inline compensation partway down the span to bring the accumulated dispersion back inside the block.
 
 ## What to carry forward
 
 - Chromatic dispersion is an all-pass with quadratic phase. $|H(f)| = 1$ exactly, no energy is lost, and the eye closes anyway. That is what makes it perfectly invertible and why the fix is one complex multiply per bin.
 - A quadratic phase is a linear group delay. The sweep rate at 1700 ps/nm is 73.4 GHz/ns; across a 128 GSa/s front end that is 1.74 ns, or 223 samples, or 112 symbol periods of channel memory.
-- The equivalent symbol-spaced FIR needs 65, 93 and 177 taps for −20, −30 and −40 dB, costing 33.3, 47.6 and 90.6 Tera real MAC/s. The 512-point FDE costs 10.2 Tera/s for the same job. The FFT is not the reason — being static is.
+- The equivalent symbol-spaced FIR needs 65, 93 and 173 taps for −20, −30 and −40 dB, costing 33.3, 47.6 and 88.6 Tera real MAC/s. The 512-point FDE costs 10.2 Tera/s for the same job. The FFT is not the reason — being static is.
 - Overlap-save discards the first half of every IFFT rather than correcting it, and the block's usable half must exceed the dispersion memory. Below that the wrap is unfixable by any coefficient choice.
 - The block size has a measured knee at 512 samples, 256 symbols, 4 ns for this link, and every doubling past it trades latency and arithmetic for residual that the coefficient word cannot use.
-- Six bits of coefficient phase is where quantisation stops mattering at a 20 dB link: 5.625° per bin, −31.2 dB, 0.32 dB of penalty. The phase spans 14π, so it must be wrapped before it is rounded.
+- Six bits of coefficient phase is where quantisation stops mattering at a 20 dB link: 5.625° per bin, −31.1 dB, 0.33 dB of penalty. The phase spans 14π, so it must be wrapped before it is rounded.
 - Penalty versus reach is a model, not a measurement, and its verdict is that the reach limit is the block memory. Compensate inline, enlarge the block, or accept the distance.
 
 ::: optical The decisions this chapter forces
@@ -177,5 +177,5 @@ The engineering reading is that the practical FDE's reach limit is set by the bl
 
 **Static coefficients are a maintenance question.** Because $H^{*}[k]$ is computed from the link budget rather than estimated from the signal, the receiver's largest filter is only as good as the link database. A fibre length entered as 90 km when the span is 100 puts a fixed, silent error into the receiver: nothing fails, nothing alarms, the residual EVM simply sits tens of decibels higher than it should and consumes margin that was budgeted for ageing and repairs. An unplanned patch panel that adds 5 km does the same. This is exactly why adaptive residual-dispersion tracking exists in shipping parts — not because dispersion drifts quickly, but because the *record* of it is unreliable. My position: keep the bulk coefficients static and track a residual, and instrument the tracker's converged value, because it is a free measurement of how wrong the link database is.
 
-**Fixed point.** The ADC hands over 5.5 effective bits, and the coefficient phase spans 14π across a 32 GHz band with a quadratic profile. Storing it needs enough resolution that the residual phase error does not eat margin the converter has already barely delivered — and Figure 6 measures where that stops mattering: 6 bits, 5.625° per bin, 0.32 dB. Four bits is 3.62 dB of link penalty, which a team would notice; eight bits is 0.00 dB for two more bits of coefficient ROM and a wider complex multiplier. The same discipline applies one level down, in the FFT: an unscaled 512-point transform can grow by 9 bits, so block floating point with a per-stage scaling schedule is the only way to keep the converter's 5.5 bits meaningful through nine butterfly stages. Get it wrong and you either clip on a peak or give away the low-order bits the 6-bit coefficient word protects.
+**Fixed point.** The ADC hands over 5.5 effective bits, and the coefficient phase spans 14π across a 32 GHz band with a quadratic profile. Storing it needs enough resolution that the residual phase error does not eat margin the converter has already barely delivered — and Figure 6 measures where that stops mattering: 6 bits, 5.625° per bin, 0.33 dB. Four bits is 3.63 dB of link penalty, which a team would notice; eight bits is 0.00 dB for two more bits of coefficient ROM and a wider complex multiplier. The same discipline applies one level down, in the FFT: an unscaled 512-point transform can grow by 9 bits, so block floating point with a per-stage scaling schedule is the only way to keep the converter's 5.5 bits meaningful through nine butterfly stages. Get it wrong and you either clip on a peak or give away the low-order bits the 6-bit coefficient word protects.
 :::

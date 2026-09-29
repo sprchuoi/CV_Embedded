@@ -3021,6 +3021,20 @@ L 549.64 288.097653
 L 549.64 288.097653 
 " clip-path="url(#pb77e1e9cda)" style="fill: none; stroke: #54b689; stroke-width: 2; stroke-linecap: round"/>
    </g>
+   <g id="line2d_61">
+    <path d="M 311.22 193.769866 
+" clip-path="url(#pb77e1e9cda)" style="fill: none; stroke: #54b689; stroke-width: 2; stroke-linecap: round"/>
+    <defs>
+     <path id="m2a75d6407a" d="M -0 3.5 
+L 3.5 -3.5 
+L -3.5 -3.5 
+z
+" style="stroke: #ffffff; stroke-width: 0.8; stroke-linejoin: miter"/>
+    </defs>
+    <g clip-path="url(#pb77e1e9cda)">
+     <use xlink:href="#m2a75d6407a" x="311.22" y="193.769866" style="fill: #54b689; stroke: #ffffff; stroke-width: 0.8; stroke-linejoin: miter"/>
+    </g>
+   </g>
    <g id="text_28">
     <g id="patch_9">
      <path d="M 87.2794 190.59758 

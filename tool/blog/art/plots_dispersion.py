@@ -74,7 +74,7 @@ DISPERSION = 17.0              # ps/(nm*km), typical single-mode fibre
 CD_PS_PER_NM = 1700.0          # the 100 km reference case
 BETA = 0.1                     # raised-cosine roll-off
 BULK_DELAY = 256               # samples; the coherent chapter's convention
-N_SYMBOLS = 2048               # 16-QAM symbols measured per record
+N_SYMBOLS = 8192               # 16-QAM symbols measured per record
 PAD_SYMBOLS = 4096             # zero symbols either side (>= the memory)
 RNG_SEED = 0
 
@@ -115,8 +115,10 @@ def chirp_rate_ghz_per_ps(ps_per_nm: float = CD_PS_PER_NM) -> float:
 def dispersion_memory_samples(ps_per_nm: float, fs: float = FS) -> float:
     """Length of the band-limited inverse chirp, in samples at ``fs``.
 
-    ``|D*L|*lambda^2*f/c`` is the full peak-to-peak walk across the sampled
-    band, in seconds; at 2 samples/symbol this is the memory a block must hold.
+    The group delay maps the sampled band edge ``fs/2`` to
+    ``|D*L|*lambda^2*(fs/2)/c`` seconds, so the full peak-to-peak walk across
+    the sampled band is ``|D*L|*lambda^2*fs/c`` seconds -- and that many sample
+    periods, which is the memory a block has to hold.
     """
     return dl_si(ps_per_nm) * LAMBDA ** 2 * fs / C_LIGHT * fs
 
@@ -327,7 +329,7 @@ def taps_for_residual(ps_per_nm: float, level_db: float, *,
                       candidates=None) -> int:
     """Smallest odd tap count whose measured residual beats ``level_db``."""
     if candidates is None:
-        candidates = list(range(5, 161, 4)) + list(range(161, 2049, 16))
+        candidates = list(range(5, 401, 4)) + list(range(401, 3001, 16))
     for ntaps in candidates:
         if _db(truncation_residual_power(ps_per_nm, ntaps)) <= level_db:
             return ntaps
@@ -506,6 +508,10 @@ def dispersion_chirp() -> str:
               label=f"launched pulse  ·  RMS {w0:.2f} symbol")
     ax_e.axvline(0.0, color=P.ACCENT, linewidth=1.2, linestyle=(0, (2, 3)),
                  zorder=2)
+    # The launched pulse is a needle here, and both curves are normalised, so
+    # mark its peak or it hides inside the ripples of the dispersed envelope.
+    ax_e.plot([0.0], [1.0], marker="v", markersize=7.0, color=P.ACCENT,
+              markeredgecolor=P.PANEL, markeredgewidth=0.8, zorder=5)
     ax_e.text(0.015, 0.99,
               f"one symbol in, {w1 / w0:.1f} wider out: RMS {w0:.2f} "
               f"$\\rightarrow$ {w1:.1f} symbol periods",
@@ -556,14 +562,14 @@ def dispersion_time_domain_taps() -> str:
     for level in TAP_LEVELS_DB:
         taps[level] = taps_for_residual(CD_PS_PER_NM, level)
 
-    memory_symbols = dispersion_memory_samples(CD_PS_PER_NM) / SPS
     widest = max(taps.values())
     fde_cost = fde_mults_per_sample(FDE_BLOCK)
     td_cost = td_macs_per_symbol(widest)
     td_tera = td_cost * BAUD / 1e12
     fde_tera = fde_cost * SPS * BAUD / 1e12
     fde_floor = _db(block_residual_power(CD_PS_PER_NM, FDE_BLOCK))
-    body = 2 * int(memory_symbols / 2)
+    body = int(np.sum(magnitude > magnitude.max() / np.sqrt(2.0)))
+    saving = td_cost / (fde_cost * SPS)
 
     fig, ax = P.figure(height=3.6)
     view = np.abs(index) <= 320
@@ -591,15 +597,17 @@ def dispersion_time_domain_taps() -> str:
         ax.axvline(-count / 2.0, color=colour, linewidth=1.0,
                    linestyle=(0, (1.5, 2.5)), zorder=1)
 
-    ax.annotate(f"the chirp body: the {body} taps within $\\pm${body // 2} all "
+    ax.annotate(f"the chirp body: the {body} taps\nwithin $\\pm${body // 2} all "
                 f"weigh about the same",
                 xy=(-26, -1.0), xytext=(-315, -6.0), color=P.MUTED, fontsize=8.6,
                 ha="left", va="center", zorder=6,
                 arrowprops=dict(arrowstyle="->", color=P.MUTED, linewidth=1.0,
                                 shrinkA=3, shrinkB=3))
-    ax.text(0.05, 0.05, "the skirt falls only ~12 dB per doubling of the\n"
-                        "tap count: 65 taps buy -20 dB, 177 buy -40 dB,\n"
-                        "and it is still 1/n$^2$ all the way down",
+    ax.text(0.05, 0.05,
+            f"the skirt falls only ~12 dB per doubling of the\n"
+            f"tap count: {taps[-20.0]} taps buy -20 dB, "
+            f"{taps[-40.0]} buy -40 dB,\n"
+            f"and it is still 1/n$^2$ all the way down",
             transform=ax.transAxes, fontsize=8.6, color=P.INK, ha="left",
             va="bottom", zorder=6,
             bbox=dict(facecolor=P.PANEL, edgecolor="none", alpha=0.85, pad=2.0))
@@ -617,7 +625,7 @@ def dispersion_time_domain_taps() -> str:
               f"{taps[-40.0]} taps hold the residual below -40 dB, and that is "
               f"{td_tera:.0f} Tera real MAC/s at 64 GBd across two polarisations, "
               f"against {fde_tera:.1f} Tera/s for the {FDE_BLOCK}-point FDE of the "
-              f"block-size figure -- a factor {td_cost / fde_cost:.0f} more arithmetic "
+              f"block-size figure -- a factor {saving:.0f} more arithmetic "
               f"for the same job.")
     return P.render(fig)
 
@@ -687,7 +695,7 @@ def fde_residual_vs_blocksize() -> str:
     # --- bottom: what it costs ---------------------------------------------
     ax_c.semilogx(blocks, cost, base=2, marker="o", markersize=4.5,
                   color=P.OPTICAL, zorder=4)
-    ax_c.set_ylim(0, 58)
+    ax_c.set_ylim(0, 124)
     ax_lat = _right_axis(ax_c, "block latency  [symbol periods]")
     ax_lat.semilogx(blocks, latency, base=2, color=P.NOTE, linewidth=1.6,
                     linestyle=(0, (5, 3)), zorder=3)
@@ -703,9 +711,10 @@ def fde_residual_vs_blocksize() -> str:
               transform=ax_c.transAxes, fontsize=8.6, color=P.OPTICAL, ha="left",
               va="top", zorder=6,
               bbox=dict(facecolor=P.PANEL, edgecolor="none", alpha=0.85, pad=2.0))
-    ax_c.text(0.97, 0.55, "latency = one block = B/2 symbols\n(dashed, right axis)",
+    ax_c.text(0.97, 0.10, "dashed: latency = one block = B/2 symbols "
+                          "(right axis)",
               transform=ax_c.transAxes, fontsize=8.4, color=P.NOTE, ha="right",
-              va="center", zorder=6,
+              va="bottom", zorder=6,
               bbox=dict(facecolor=P.PANEL, edgecolor="none", alpha=0.85, pad=2.0))
     P.tidy(ax_c, xlabel="overlap-save block size B  [samples at 2 samples/symbol]",
            ylabel="real multiplies per output sample\n(two polarisations)")
@@ -770,38 +779,39 @@ def dispersion_penalty_vs_reach() -> str:
     ax.plot(distances, penalty_bare, color=P.WARN, zorder=4,
             label="no compensation")
     ax.plot(distances, np.zeros_like(distances), color=P.ACCENT, zorder=4,
-            label="ideal FDE (H*(f) exactly)")
+            label="ideal FDE (exact $H^{*}$)")
     ax.plot(distances, penalty_practical, color=P.OPTICAL, zorder=4,
-            label=f"practical FDE: {FDE_BLOCK}-point block, "
-                  f"{FDE_PHASE_BITS}-bit phase")
+            label=f"practical FDE: {FDE_BLOCK}-point, {FDE_PHASE_BITS}-bit")
     ax.axhline(UNUSABLE_DB, color=P.RULE, linewidth=1.2, linestyle=(0, (5, 3)),
                zorder=2)
-    ax.text(1980, UNUSABLE_DB + 0.16, f"{UNUSABLE_DB:.0f} dB: no margin left",
-            color=P.MUTED, fontsize=8.6, ha="right", va="bottom")
+    ax.text(1990, UNUSABLE_DB - 0.28, f"{UNUSABLE_DB:.0f} dB: no margin left",
+            color=P.MUTED, fontsize=8.6, ha="right", va="top")
 
-    for x, colour, label in ((reach_bare, P.WARN, "uncompensated"),
-                             (reach_practical, P.OPTICAL, "practical FDE")):
+    for x, colour in ((reach_bare, P.WARN), (reach_practical, P.OPTICAL)):
         ax.axvline(x, color=colour, linewidth=1.1, linestyle=(0, (2, 3)), zorder=2)
-    ax.annotate(f"uncompensated link is unusable\nat {reach_bare:.1f} km "
-                f"({DISPERSION * reach_bare:.0f} ps/nm)",
-                xy=(reach_bare, UNUSABLE_DB), xytext=(60, 6.6), color=P.WARN,
+    ax.annotate(f"uncompensated: unusable at {reach_bare:.1f} km,\n"
+                f"{DISPERSION * reach_bare:.0f} ps/nm of 64 GBd 16-QAM",
+                xy=(reach_bare, UNUSABLE_DB), xytext=(22, 2.1), color=P.WARN,
                 fontsize=8.8, ha="left", va="center", zorder=7,
                 arrowprops=dict(arrowstyle="->", color=P.WARN, linewidth=1.2,
                                 shrinkA=3, shrinkB=3))
     ax.annotate(f"practical FDE runs out at {reach_practical:.0f} km:\n"
-                f"the block holds {FDE_BLOCK // 2} samples of memory, "
-                f"{dispersions[np.argmin(np.abs(dispersions - 17 * reach_practical))] / CD_PS_PER_NM:.0f}$\\times$ 1700 ps/nm",
-                xy=(reach_practical, UNUSABLE_DB), xytext=(360, 5.4),
+                f"{FDE_BLOCK // 2} samples of block memory is\n"
+                f"{CD_PS_PER_NM:.0f} ps/nm of chirp, and this link\n"
+                f"asks for "
+                f"{dispersions[list(distances).index(500.0)] / CD_PS_PER_NM:.1f}"
+                f"$\\times$ that",
+                xy=(reach_practical, UNUSABLE_DB), xytext=(340, 5.7),
                 color=P.OPTICAL, fontsize=8.8, ha="left", va="center", zorder=7,
                 arrowprops=dict(arrowstyle="->", color=P.OPTICAL, linewidth=1.2,
                                 shrinkA=3, shrinkB=3))
-    ax.text(0.985, 0.30,
+    ax.text(0.985, 0.05,
             "model: gain-normalised distortion treated as additive\n"
             f"Gaussian noise on a {OSNR_REF_DB:.0f} dB link, "
             "PEN = 10$\\log_{10}$(1 + 100$\\cdot$D)\n"
             "labels are a model, not a measurement",
             transform=ax.transAxes, fontsize=8.4, color=P.SOFT, ha="right",
-            va="center", zorder=6,
+            va="bottom", zorder=6,
             bbox=dict(facecolor=P.PANEL, edgecolor=P.RULE_SOFT, linewidth=1.0,
                       pad=2.5))
     ax.set_xlim(0, 2000)
@@ -818,10 +828,9 @@ def dispersion_penalty_vs_reach() -> str:
 
     P.tidy(ax, xlabel="fibre length  [km]  at D = 17 ps/(nm$\\cdot$km)",
            ylabel="dispersion penalty  [dB]",
-           legend=["no compensation", "ideal FDE (H*(f) exactly)",
-                   f"practical FDE: {FDE_BLOCK}-point block, "
-                   f"{FDE_PHASE_BITS}-bit phase"],
-           legend_loc="upper left", ncol=1)
+           legend=["no compensation", "ideal FDE (exact $H^{*}$)",
+                   f"practical FDE: {FDE_BLOCK}-point, {FDE_PHASE_BITS}-bit"],
+           legend_loc="upper right", ncol=1)
 
     _footnote(fig,
               f"A perfect all-pass inverse costs nothing: |H*| = 1, so the ideal "
@@ -867,7 +876,7 @@ def fde_coefficient_quantisation() -> str:
             color=P.MUTED, fontsize=8.6, ha="left", va="bottom")
     ax.axhline(criterion_db, color=P.NOTE, linewidth=1.3,
                linestyle=(0, (2, 3)), zorder=2)
-    ax.text(4.05, criterion_db - 1.2,
+    ax.text(chosen + 0.15, criterion_db - 1.0,
             "quantisation no longer limiting: a third of it",
             color=P.NOTE, fontsize=8.6, ha="left", va="top")
     ax.axvline(chosen, color=P.WARN, linewidth=1.6, zorder=3)
