@@ -143,7 +143,7 @@ class TestBlocks(unittest.TestCase):
 class TestFigures(unittest.TestCase):
     def test_lone_image_becomes_numbered_figure(self):
         res = md.render("![Aliasing of a 7 Hz tone](plots/alias.svg)")
-        self.assertEqual(len(res.figures), 1)
+        self.assertEqual(len(res.figure_captions), 1)
         self.assertIn("<figure", res.html)
         self.assertIn("Figure 1", res.html)
         self.assertIn("Aliasing of a 7 Hz tone", res.html)
@@ -152,7 +152,7 @@ class TestFigures(unittest.TestCase):
         res = md.render(
             "![one](a.svg)\n\ntext\n\n![two](b.svg)\n\n![three](c.svg)"
         )
-        self.assertEqual(len(res.figures), 3)
+        self.assertEqual(len(res.figure_captions), 3)
         self.assertIn("Figure 1", res.html)
         self.assertIn("Figure 3", res.html)
 

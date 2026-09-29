@@ -362,10 +362,53 @@ def matrix(x, y, w, h, rows, cols, *, cell_labels=None, row_labels=(),
     return "".join(out)
 
 
+def wrap(text: object, max_chars: int) -> list[str]:
+    """Greedy word wrap, so a callout can never spill outside its own box.
+
+    The note boxes are a fixed width with no text engine behind them, so a long
+    sentence used to run off the edge of the panel and out of the figure.
+    """
+    words = str(text).split()
+    if not words:
+        return [""]
+    lines: list[str] = []
+    current = words[0]
+    for word in words[1:]:
+        trial = f"{current} {word}"
+        if len(trial) <= max_chars:
+            current = trial
+        else:
+            lines.append(current)
+            current = word
+    lines.append(current)
+    return lines
+
+
+def _wrapped_lines(w, body, body_size, pad) -> list[str]:
+    # 0.52 em per character is a deliberately conservative average: wrapping a
+    # little early is harmless, overflowing the panel is not.
+    per_line = max(20, int((w - 2 * pad) / (body_size * 0.52)))
+    source = body if isinstance(body, (list, tuple)) else [body]
+    lines: list[str] = []
+    for entry in source:
+        lines.extend(wrap(entry, per_line))
+    return lines
+
+
+def callout_height(w, body, *, body_size=11.5, pad=12) -> float:
+    """The height :func:`callout` will occupy, for sizing a canvas around it."""
+    count = len(_wrapped_lines(w, body, body_size, pad))
+    return pad * 2 + 16 + count * (body_size + 4)
+
+
 def callout(x, y, w, label, body, *, kind="note", body_size=11.5, pad=12) -> str:
-    """An inline explanatory note inside a figure."""
+    """An inline explanatory note inside a figure.
+
+    The body is wrapped to the box width and the box height is derived from the
+    wrapped result, so the text and the panel always agree.
+    """
     fill, stroke, ink = KINDS[kind]
-    lines = body if isinstance(body, (list, tuple)) else [body]
+    lines = _wrapped_lines(w, body, body_size, pad)
     h = pad * 2 + 16 + len(lines) * (body_size + 4)
     out = [rect(x, y, w, h, fill=fill, stroke=stroke, rx=6, width=1.2),
            text(x + pad, y + pad + 5, label, size=11, fill=ink, weight=700)]

@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Convolution, and Why Every DSP Block Is One - DSP, from First Principles to the Optical Link</title>
+<meta name="description" content="Flip, shift, multiply, sum - then the same operation as a polynomial product, and as a matrix. Three views of one idea.">
+<meta name="color-scheme" content="light dark">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Convolution, and Why Every DSP Block Is One - DSP, from First Principles to the Optical Link">
+<meta property="og:description" content="Flip, shift, multiply, sum - then the same operation as a polynomial product, and as a matrix. Three views of one idea.">
+<link rel="icon" href="../favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link rel="stylesheet" href="assets/blog.css">
+<script>
+  window.MathJax = {
+  "tex": {
+    "inlineMath": [
+      [
+        "$",
+        "$"
+      ],
+      [
+        "\\(",
+        "\\)"
+      ]
+    ],
+    "displayMath": [
+      [
+        "$$",
+        "$$"
+      ],
+      [
+        "\\[",
+        "\\]"
+      ]
+    ],
+    "processEscapes": true,
+    "tags": "none",
+    "macros": {
+      "twopi": "2\\pi",
+      "dd": "\\mathrm{d}",
+      "E": "\\mathbb{E}",
+      "j": "\\mathrm{j}",
+      "argmin": "\\operatorname*{arg\\,min}"
+    }
+  },
+  "options": {
+    "skipHtmlTags": [
+      "script",
+      "noscript",
+      "style",
+      "textarea",
+      "pre",
+      "code"
+    ],
+    "ignoreHtmlClass": "no-mathjax"
+  },
+  "chtml": {
+    "scale": 1.02
+  }
+};
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="index.html">
+      <span class="mark" aria-hidden="true">DSP</span>
+      <span>Nguyen Quang Binh</span>
+      <span class="sub">signal processing notes</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="index.html" aria-current="page">Curriculum</a>
+      <a href="../index.html">CV</a>
+      <a href="https://github.com/sprchuoi">GitHub</a>
+      <button class="icon-btn" type="button" data-theme-toggle aria-pressed="false"
+              title="Switch theme" aria-label="Switch colour theme"><i class="fa-solid fa-moon" aria-hidden="true"></i></button>
+    </nav>
+  </div>
+  <div class="read-progress" role="presentation"></div>
+</header>
+<div class="layout">
+<nav class="toc" aria-label="On this page">
+<p class="toc-title">On this page</p>
+<ol><li class="lvl-2"><a href="#flip-shift-multiply-sum">Flip, shift, multiply, sum</a></li><li class="lvl-2"><a href="#linearity-and-time-invariance-are-the-whole-trick">Linearity and time invariance are the whole trick</a></li><li class="lvl-2"><a href="#worked-once-by-hand">Worked once by hand</a></li><li class="lvl-2"><a href="#the-convolution-theorem">The convolution theorem</a></li><li class="lvl-2"><a href="#three-views-of-one-operation">Three views of one operation</a></li><li class="lvl-2"><a href="#what-the-algebra-buys-you">What the algebra buys you</a></li><li class="lvl-2"><a href="#convolution-is-not-correlation">Convolution is not correlation</a></li><li class="lvl-2"><a href="#the-simplest-kernel-honestly-assessed">The simplest kernel, honestly assessed</a></li><li class="lvl-2"><a href="#what-it-costs">What it costs</a></li><li class="lvl-2"><a href="#in-the-optical-link">In the optical link</a></li><li class="lvl-2"><a href="#what-to-carry-forward">What to carry forward</a></li></ol>
+</nav>
+<main id="main" class="prose">
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    <a href="index.html">Curriculum</a><span class="sep">/</span>LTI Systems and Filter Design
+  </nav>
+  <header class="article-head">
+    <h1>Convolution, and Why Every DSP Block Is One</h1>
+    <p class="article-standfirst">Flip, shift, multiply, sum - then the same operation as a polynomial product, and as a matrix. Three views of one idea.</p>
+    <div class="article-meta"><span class="level-badge" data-level="Intermediate">Intermediate</span><span>16 min read</span><div class="taglist"><span class="tag">convolution</span><span class="tag">lti</span></div></div>
+  </header>
+<p>Convolution is the operation every DSP block is already performing, whether or not its author would say so. The channel, the feed-forward equaliser, the pulse shaper and the dispersion compensator are all convolutions — and the last of them is so long that nobody computes it as one. The only reason it can be moved into the frequency domain at all is the theorem in the middle of this chapter.</p>
+<p>The definition is one line, and it is why a single vector of coefficients can describe two thousand kilometres of fibre and a dozen optical amplifiers. That is not a small claim: if a channel needed more than one function to describe it, there would be nothing for an adaptation loop to converge on.</p>
+<p>There are three ways to write that one line down — as a sum, as a polynomial product, and as a matrix — and an engineer who can move between them without thinking will debug filters that other people cannot.</p>
+<h2 id="flip-shift-multiply-sum"><a class="heading-anchor" href="#flip-shift-multiply-sum" aria-hidden="true">#</a>Flip, shift, multiply, sum</h2>
+<p>The definition, for two sequences:</p>
+<div class="math-display">y[n] = (x * h)[n] = \sum_{k=-\infty}^{\infty} x[k]\,h[n-k]
+</div>
+<p>Everything difficult about convolution is in the index <span class="math">$n-k$</span>. As <span class="math">$n$</span> increases by one, the sequence <span class="math">$h$</span> slides one sample to the right relative to <span class="math">$x$</span>, and only the positions where the two sequences overlap contribute.</p>
+<p>The subtraction is a flip: <span class="math">$h[n-k]$</span> is <span class="math">$h[k]$</span> read backwards and then shifted, and it is <span class="math">$h$</span> that gets flipped, not <span class="math">$x$</span>. That choice is pure convention — the operation is commutative, so flipping the other sequence gives the same answer. Pick one and never re-derive it on a whiteboard with three people watching.</p>
+<p>The summation over <span class="math">$k$</span> is what makes this a <em>sliding</em> inner product: at each shift the accumulator adds one product per overlapping tap and nothing else. Flip, shift, multiply, sum — four verbs, one operation, repeated once per output sample.</p>
+<figure class="figure"><img src="assets/diagrams/convolution-flip-slide.svg" alt="Three shifts of the flipped kernel. The shaded overlap is the only region that contributes, so each output sample costs one multiply per overlapping tap." loading="lazy"><figcaption><span class="fig-label">Figure 1</span><span class="fig-text">Three shifts of the flipped kernel. The shaded overlap is the only region that contributes, so each output sample costs one multiply per overlapping tap.</span></figcaption></figure>
+<p>The figure walks the first three shifts of a five-sample input against a three-tap kernel, and the arithmetic is small enough to check by eye: one overlapping tap gives <span class="math">$y[0] = 1$</span>, two give <span class="math">$y[1] = 2.5$</span>, and the third shift is the first with all three taps overlapping, giving <span class="math">$y[2] = 3.5$</span>.</p>
+<p>One implementation note belongs here. Hardware does not flip anything: a FIR is a tapped delay line with the coefficients in natural order and the data sliding past them, which is the same sum with the running index on <span class="math">$x$</span>. The reversal is concealed in the delay line's addressing, and it reappears the instant you write the operation as a correlation — which is what a matched filter is, and where the classic receiver bug lives.</p>
+<h2 id="linearity-and-time-invariance-are-the-whole-trick"><a class="heading-anchor" href="#linearity-and-time-invariance-are-the-whole-trick" aria-hidden="true">#</a>Linearity and time invariance are the whole trick</h2>
+<p>Nothing so far has required the system to be anything in particular. What makes convolution useful is what it says about a system that is both linear and time-invariant.</p>
+<p>Start from the input. Any sequence can be written as a pile of scaled, shifted impulses:</p>
+<div class="math-display">x[n] = \sum_{k=-\infty}^{\infty} x[k]\,\delta[n-k]
+</div>
+<p>There is no approximation in that line: the sum keeps only the term where <span class="math">$k = n$</span>.</p>
+<p>Now push the decomposition through the system. Linearity means the response to a sum is the sum of the responses, and the response to a scaled impulse is the scaled response. Time invariance means the response to <span class="math">$\delta[n-k]$</span> is the same <span class="math">$h$</span>, shifted, and not a different function because the impulse arrived later. Together they give</p>
+<div class="math-display">y[n] = \sum_{k=-\infty}^{\infty} x[k]\,h[n-k]
+</div>
+<p>which is the definition again, derived rather than asserted.</p>
+<figure class="figure"><img src="assets/diagrams/impulse-decomposition.svg" alt="Any input is a pile of scaled, shifted impulses. Linearity supplies the scaling and the adding, and time invariance supplies the shift." loading="lazy"><figcaption><span class="fig-label">Figure 2</span><span class="fig-text">Any input is a pile of scaled, shifted impulses. Linearity supplies the scaling and the adding, and time invariance supplies the shift.</span></figcaption></figure>
+<p>Notice how little was assumed to get there. One function — the response to a single impulse — characterises the system completely, for every input, forever. <strong>That is the only reason a channel estimate is a vector rather than a database</strong>, and the reason an adaptive equaliser has anything to converge on.</p>
+<p>Break either property and the edifice falls.</p>
+<ul>
+<li><strong>Non-linearity.</strong> A saturating driver does not scale its response with the input: feed it twice the amplitude and the output is not twice as large, so no single <span class="math">$h$</span> describes it. Direct detection is square-law in the optical field, which is why coherent receivers exist at all.</li>
+<li><strong>Time variation.</strong> A sampler is perfectly linear and completely time-varying: an impulse arriving between clock edges is rejected while one a microsecond earlier passes, so the response depends on arrival time. The same is true of a channel whose local oscillator drifts, which is why carrier recovery is a separate block with a shorter memory than the equaliser.</li>
+</ul>
+<aside class="callout callout-key">
+  <p class="callout-title"><i class="fa-solid fa-key" aria-hidden="true"></i> One vector, one system</p>
+  <div class="callout-body">
+<p>Linearity is what lets the contributions add. Time invariance is what lets the same <span class="math">$h$</span> apply at every sample. Break either one and the channel is no longer a vector of coefficients.</p>
+  </div>
+</aside>
+<p>Most of what goes wrong in a link is one of these two assumptions being violated slowly rather than loudly. When an equaliser refuses to converge, the useful question is not which algorithm to switch to, but which property the datapath has quietly broken: a clipping ADC, an overdriven modulator, or an adaptation loop chasing a drifting laser.</p>
+<h2 id="worked-once-by-hand"><a class="heading-anchor" href="#worked-once-by-hand" aria-hidden="true">#</a>Worked once by hand</h2>
+<p>Take a five-sample input and a deliberately awkward three-tap kernel:</p>
+<div class="math-display">x = \{1,\ 2,\ 3,\ 2,\ 1\}, \qquad h = \{1,\ 0.5,\ -0.5\}
+</div>
+<p>The output sample at <span class="math">$n = 2$</span> is the first one where every tap contributes:</p>
+<div class="math-display">y[2] = x[0]h[2] + x[1]h[1] + x[2]h[0] = 1(-0.5) + 2(0.5) + 3(1) = 3.5
+</div>
+<p>and the whole output is</p>
+<div class="math-display">y = \{1,\ 2.5,\ 3.5,\ 2.5,\ 0.5,\ -0.5,\ -0.5\}
+</div>
+<p>Seven samples, which is <span class="math">$5 + 3 - 1$</span>. The length rule is not a curiosity: the last input sample must pass every tap before the filter is finished with it. Truncating the output back to five samples throws away the tail — the very samples a block processor needs at the boundary, and the reason overlap-save exists.</p>
+<figure class="figure"><img src="assets/plots/convolution-worked-example.svg" alt="The worked pair, sample by sample. The kernel is deliberately asymmetric, so the output is too and no index error can hide behind a symmetry." loading="lazy"><figcaption><span class="fig-label">Figure 3</span><span class="fig-text">The worked pair, sample by sample. The kernel is deliberately asymmetric, so the output is too and no index error can hide behind a symmetry.</span></figcaption></figure>
+<p>The asymmetry is the point. The kernel has a cursor tap of 1 and a trailing tap of <span class="math">$-0.5$</span>, so the output starts at <span class="math">$1$</span> and ends at <span class="math">$-0.5$</span>, carrying the kernel's lopsidedness through to the answer. Make every hand-worked example asymmetric for that reason. A symmetric kernel convolved with a symmetric input gives a symmetric output, and behind that symmetry a reversed index convention and a half-sample timing error both look like nothing at all. The test vector that catches a bug is the one that breaks the symmetry.</p>
+<h2 id="the-convolution-theorem"><a class="heading-anchor" href="#the-convolution-theorem" aria-hidden="true">#</a>The convolution theorem</h2>
+<p>Convolution in the time domain becomes pointwise multiplication in the frequency domain:</p>
+<div class="math-display">\mathrm{DFT}\{x * h\} = \mathrm{DFT}\{x\} \cdot \mathrm{DFT}\{h\}
+</div>
+<p>One complex multiply per frequency bin replaces a sum of <span class="math">$N$</span> products per output sample, provided you are willing to pay for the transforms. That sentence is the whole basis of the frequency-domain equaliser, and the reason a dispersion compensator with hundreds of taps is affordable at all.</p>
+<p>The identity is exact, not an approximation, and the figure measures it. On the worked pair, transforms of length 7, a multiply and an inverse transform return those seven samples with a maximum difference of about <span class="math">$10^{-15}$</span> against the direct sum — floating-point noise. The spectral view agrees: <span class="math">$|X(f)| \cdot |H(f)|$</span> matches <span class="math">$|Y(f)|$</span> to better than <span class="math">$10^{-15}$</span> relative.</p>
+<figure class="figure"><img src="assets/plots/convolution-theorem.svg" alt="The theorem on the worked pair: one multiply per frequency bin above, the same seven samples below, with the round-trip error measured rather than claimed." loading="lazy"><figcaption><span class="fig-label">Figure 4</span><span class="fig-text">The theorem on the worked pair: one multiply per frequency bin above, the same seven samples below, with the round-trip error measured rather than claimed.</span></figcaption></figure>
+<p>The catch is the word <em>circular</em>. The DFT sums over a finite block, so the product it computes is a convolution that wraps: sample <span class="math">$n+N$</span> lands on top of sample <span class="math">$n$</span>. Pad both sequences to at least <span class="math">$\mathrm{len}(x) + \mathrm{len}(h) - 1$</span> and there is nothing left to wrap onto. The figure shows what happens when you do not: transform both sequences at length 5 — the length of <span class="math">$x$</span>, the number you would reach for if you had not thought about it — and <span class="math">$y[0]$</span> reads <span class="math">$0.50$</span> where the linear convolution says <span class="math">$1.00$</span>, because the tail of the answer has folded back onto its head.</p>
+<p>That failure mode deserves respect. A missing zero-pad adds no noise and raises no flag; it produces a plausible answer with the wrong first samples, and those samples sit at the boundary everything downstream trusts. Treat the padding length as an invariant of the block, computed once from the filter length. Overlap-save is the production form of the same rule: transform a block, multiply, inverse transform, discard the first <span class="math">$\mathrm{len}(h)-1$</span> samples that carry the wraparound, and slide forward by the number you kept.</p>
+<h2 id="three-views-of-one-operation"><a class="heading-anchor" href="#three-views-of-one-operation" aria-hidden="true">#</a>Three views of one operation</h2>
+<p>Figure 5 puts the same small convolution in three forms: a three-sample input against a two-tap kernel, giving <span class="math">$y = \{2, 5, 8, 3\}$</span> in every column.</p>
+<figure class="figure"><img src="assets/diagrams/convolution-three-views.svg" alt="The sum, the polynomial product and the Toeplitz matrix. Three columns of arithmetic, one answer, and the third column is the one the FFT reads." loading="lazy"><figcaption><span class="fig-label">Figure 5</span><span class="fig-text">The sum, the polynomial product and the Toeplitz matrix. Three columns of arithmetic, one answer, and the third column is the one the FFT reads.</span></figcaption></figure>
+<p><strong>The sum</strong> is the definition, written out one output sample at a time. It is what you simulate, and what belongs in the comment above the RTL.</p>
+<p><strong>The polynomial</strong> treats the sequences as coefficients of polynomials in <span class="math">$z^{-1}$</span>. Here <span class="math">$X(z) = 1 + 2z^{-1} + 3z^{-2}$</span> and <span class="math">$H(z) = 2 + z^{-1}$</span>; multiply them and collect like powers to get <span class="math">$2 + 5z^{-1} + 8z^{-2} + 3z^{-3}$</span>. The coefficients of the product are the convolution — schoolbook long multiplication is this operation — and the reason <span class="math">$z^{-1}$</span> is the right notation for a delay is that delaying a sequence multiplies its polynomial by <span class="math">$z^{-1}$</span>.</p>
+<p><strong>The matrix</strong> writes the same thing as <span class="math">$y = Hx$</span>, where <span class="math">$H$</span> is zero-padded and constant along every diagonal: a Toeplitz matrix. Each output sample is one row of that matrix times the input vector.</p>
+<p>The matrix view is not decoration. A Toeplitz matrix becomes circulant once it is wrapped, circulant matrices are diagonalised by the Fourier basis, and a diagonalised matrix multiplication is a pointwise multiply — the convolution theorem with the linear algebra left in. Toeplitz structure is what the FFT exploits.</p>
+<p>It is also the fastest way to debug. Convolution with <span class="math">$h$</span> gives a matrix that is constant along its <strong>diagonals</strong>; correlation with <span class="math">$h$</span> gives one that is constant along its <strong>anti-diagonals</strong>, a Hankel matrix. If the matrix in your notes is Hankel, you are correlating, and no amount of staring at the sum will tell you that as quickly as one glance at the indices.</p>
+<h2 id="what-the-algebra-buys-you"><a class="heading-anchor" href="#what-the-algebra-buys-you" aria-hidden="true">#</a>What the algebra buys you</h2>
+<p>Convolution obeys four laws, and each one is a licence to do something concrete in a design.</p>
+<div class="table-wrap"><table>
+<thead><tr><th style="text-align:left">Law</th><th style="text-align:left">Statement</th><th style="text-align:left">What it buys</th></tr></thead>
+<tbody>
+<tr><td style="text-align:left">Commutative</td><td style="text-align:left"><span class="math">$x * h = h * x$</span></td><td style="text-align:left">Either operand may be the filter. Applying a channel estimate to a training sequence gives the same answer as the other way round.</td></tr>
+<tr><td style="text-align:left">Associative</td><td style="text-align:left"><span class="math">$(x * h_1) * h_2 = x * (h_1 * h_2)$</span></td><td style="text-align:left">Cascaded linear blocks collapse into one response, and in frequency their responses multiply. Order in the chain is a cost decision, not a correctness one.</td></tr>
+<tr><td style="text-align:left">Distributive</td><td style="text-align:left"><span class="math">$x * (h_1 + h_2) = x * h_1 + x * h_2$</span></td><td style="text-align:left">A parallel bank summed at the output is interchangeable with one filter whose taps are the sum. Polyphase decomposition rests on this.</td></tr>
+<tr><td style="text-align:left">Identity</td><td style="text-align:left"><span class="math">$x * \delta = x$</span></td><td style="text-align:left"><span class="math">$\delta$</span> is the identity, and <span class="math">$\delta[n-d]$</span> is a pure delay of <span class="math">$d$</span> samples — the reference an adaptation loop drives towards.</td></tr>
+</tbody>
+</table></div>
+<p>The associativity row is the one that earns its keep in a receiver. Because linear blocks compose, the order of the FFE, the dispersion equaliser and the pulse shaper is a decision about where the multipliers and the latency are cheapest, not about whether the receiver works. That freedom is worth a fortune, and it lasts exactly as long as every block in the chain is linear and time-invariant.</p>
+<p>Two caveats, both learned the hard way. The laws are exact in exact arithmetic and only approximately true in fixed point: reordering a cascade changes where rounding and saturation happen, so a word length that is comfortable in one order can clip in the other. Associativity is a licence to reorder on paper, not to reorder without re-simulating. And every law here assumes LTI. Move a convolution across a decision device and associativity is gone, because a decision is not a convolution — the whole reason a DFE cannot be shuffled around its neighbours, and the reason error propagation has no algebraic cure.</p>
+<h2 id="convolution-is-not-correlation"><a class="heading-anchor" href="#convolution-is-not-correlation" aria-hidden="true">#</a>Convolution is not correlation</h2>
+<p>Correlation is the same sum with a plus where convolution has a minus:</p>
+<div class="math-display">\mathrm{corr}(x,h)[n] = \sum_{k} x[k]\,h[n+k]
+</div>
+<p>That one sign changes what the answer means. The peak of a correlation sits at the lag where the two sequences line up, and the operation is a convolution with a time-reversed kernel:</p>
+<div class="math-display">\mathrm{corr}(x, h)[n] = (x * h_{\mathrm{rev}})[n], \qquad h_{\mathrm{rev}}[k] = h[-k]
+</div>
+<p>The matched filter is a correlation. To maximise the signal-to-noise ratio at the sampling instant you correlate the received samples against the expected pulse, and because hardware is built to convolve, you load the coefficients in reverse order. Matched filter, correlation and convolution with a reversed kernel are three names for one block.</p>
+<p>Forgetting it is one of the classic receiver bugs, and nasty because it does not look like one. Correlate with <span class="math">$h$</span> where you should have used <span class="math">$h_{\mathrm{rev}}$</span> and the peak does not shrink — it appears at the wrong lag, displaced by a fixed number of samples set by the kernel's shape. A timing recovery loop exists to remove fixed offsets, so it finds the displaced peak, locks onto it, and reports success. The symptom is not a failure to lock; it is a lock at the wrong phase, a persistent SNR penalty, and a centre tap that refuses to sit in the middle of the equaliser.</p>
+<aside class="callout callout-note">
+  <p class="callout-title"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> Why the reversal hides in simulation</p>
+  <div class="callout-body">
+<p>A symmetric pulse satisfies <span class="math">$h_{\mathrm{rev}} = h$</span>, so reversing it changes nothing at all. Ideal raised-cosine test vectors are symmetric, which is why the bug survives simulation. It appears the first time the channel makes the effective pulse asymmetric — that is, on real hardware.</p>
+  </div>
+</aside>
+<h2 id="the-simplest-kernel-honestly-assessed"><a class="heading-anchor" href="#the-simplest-kernel-honestly-assessed" aria-hidden="true">#</a>The simplest kernel, honestly assessed</h2>
+<p>Five equal taps summing to one is the smallest filter worth arguing about. Normalising gives 0 dB at DC; leave the <span class="math">$1/N$</span> out and the kernel has a gain of <span class="math">$5$</span> — <span class="math">$+14$</span> dB, and over two bits of headroom gone from a fixed-point datapath. That mistake is worth a lint rule.</p>
+<figure class="figure"><img src="assets/plots/moving-average-filter.svg" alt="Five equal taps with unity DC gain. The price is sidelobes: the best one is only about 12 dB down, and the step response takes five samples to finish." loading="lazy"><figcaption><span class="fig-label">Figure 6</span><span class="fig-text">Five equal taps with unity DC gain. The price is sidelobes: the best one is only about 12 dB down, and the step response takes five samples to finish.</span></figcaption></figure>
+<p>The rest of the response is honest and unimpressive. The first null lands at one fifth of the sample rate — <span class="math">$0.4$</span> of Nyquist — and the highest lobe between the nulls is <span class="math">$-12.0$</span> dB; even the continuous sinc reaches only <span class="math">$-13.3$</span> dB. Twelve decibels of stopband is not a filter; it is a suggestion.</p>
+<p>Two things make it worth a section anyway. As a test vector it is excellent: equal taps mean an impulse in produces a flat rectangle out, and an indexing or scaling error is visible by inspection. And as a building block it is not a joke at all — the boxcar is the section a CIC decimator is made of, where the arithmetic is add-and-subtract instead of multiply and the shallow sidelobes are cleaned up by the stages that follow. The judgement is about where the boxcar sits in a chain, not about whether it is a good filter. On its own, it is not.</p>
+<p>The step response repays a careful look. Five equal taps turn a step into a five-sample ramp, and the midpoint of that ramp is the group delay, <span class="math">$(N-1)/2 = 2$</span> samples. A flat average in the tap domain is a two-sample delay and a smear in the time domain, and every linear-phase filter has the same shape with the corners sanded off.</p>
+<h2 id="what-it-costs"><a class="heading-anchor" href="#what-it-costs" aria-hidden="true">#</a>What it costs</h2>
+<p>Direct convolution is one multiply per tap per output sample, and it has no block latency. That is the whole cost model, and it is why a 20-tap FFE at 128 GSa/s is 2.56 Tera-MAC/s of arithmetic.</p>
+<p>The block form trades latency for a different curve. Transform a block of <span class="math">$B$</span> samples, multiply by the transform of the kernel, inverse transform, and amortise the three operations over <span class="math">$B$</span> outputs:</p>
+<div class="math-display">\text{multiplies per output} = 2\log_2(B) + 1, \qquad B = \text{next power of two} \ge 2N
+</div>
+<figure class="figure"><img src="assets/plots/convolution-cost.svg" alt="The two cost curves and their crossover. Above break-even the block form is cheaper by more than an order of magnitude; below it, the direct form wins on arithmetic and latency at once." loading="lazy"><figcaption><span class="fig-label">Figure 7</span><span class="fig-text">The two cost curves and their crossover. Above break-even the block form is cheaper by more than an order of magnitude; below it, the direct form wins on arithmetic and latency at once.</span></figcaption></figure>
+<p>Read the crossover off the figure rather than from a rule of thumb. At <span class="math">$N = 11$</span> both forms cost 11 multiplies per output; the direct form wins below that and the block form is strictly cheaper from <span class="math">$N = 12$</span>. Above the crossover the differences are large:</p>
+<div class="table-wrap"><table>
+<thead><tr><th style="text-align:left">Filter length <span class="math">$N$</span></th><th style="text-align:left">Block <span class="math">$B$</span></th><th style="text-align:left">Direct</th><th style="text-align:left">Overlap-save</th></tr></thead>
+<tbody>
+<tr><td style="text-align:left">11</td><td style="text-align:left">32</td><td style="text-align:left">11.0</td><td style="text-align:left">11.0</td></tr>
+<tr><td style="text-align:left">16</td><td style="text-align:left">32</td><td style="text-align:left">16.0</td><td style="text-align:left">11.0</td></tr>
+<tr><td style="text-align:left">64</td><td style="text-align:left">128</td><td style="text-align:left">64.0</td><td style="text-align:left">15.0</td></tr>
+<tr><td style="text-align:left">256</td><td style="text-align:left">512</td><td style="text-align:left">256.0</td><td style="text-align:left">19.0</td></tr>
+<tr><td style="text-align:left">1024</td><td style="text-align:left">2048</td><td style="text-align:left">1024.0</td><td style="text-align:left">23.0</td></tr>
+</tbody>
+</table></div>
+<p>The curve is a staircase, and the staircase matters more than the crossover. Within a block size the block form's cost is constant: 17 to 32 taps all cost 13 multiplies per output, because they round up to the same transform length. If an equaliser needs 20 taps, take 32 — the thirty-third doubles the transform. Sizing to the minimum tap count instead of to the transform boundary costs a redesign later.</p>
+<p>None of that makes the FFT the right answer for a short filter, and this is where an arithmetic-only view misleads. Thirteen multiplies against twenty is a 35% saving, bought with a transform engine, a block buffer, two blocks in flight and a block of latency. For a 20-tap FFE the direct form is right, and every shipping receiver knows it. At 64 taps it is 15 against 64 and the argument is over; at 512 taps it is 21 against 512. That is why dispersion lives in the frequency domain and the FFE does not.</p>
+<p>Latency is the other half of the trade. The block form adds a whole block, because the inverse transform cannot start until the last input sample has arrived. At 128 GSa/s a 1024-point block is 8 ns late — invisible next to a FEC frame, fatal inside a feedback loop.</p>
+<p>One caveat about the model. The figure counts real multiplies per output, assumes <span class="math">$B$</span> outputs per block, and ignores twiddle storage, memory traffic and the fact that a complex butterfly is not one real multiply. The shape and the crossover are trustworthy; the absolute numbers are a budget for a design conversation, not a synthesis report. Use the figure to ask not whether the FFT is cheaper, but whether the FFT engine you would have to build is cheaper than the multipliers you would otherwise instantiate.</p>
+<h2 id="in-the-optical-link"><a class="heading-anchor" href="#in-the-optical-link" aria-hidden="true">#</a>In the optical link</h2>
+<aside class="callout callout-optical">
+  <p class="callout-title"><i class="fa-solid fa-tower-broadcast" aria-hidden="true"></i> Where this shows up in an optical link</p>
+  <div class="callout-body">
+<p><strong>Every block in the receiver is a convolution.</strong> The channel, the FFE, the dispersion equaliser and the pulse shaper are all convolutions. Each is linear and time-invariant over the window that matters, which is why they cascade. The chain diagram in <a href="coherent-optical-dsp-pipeline.html">the coherent receiver chapter</a> is that cascade drawn out. It is also why the order of those blocks is a cost decision rather than a correctness one.</p>
+<p><strong>The FFE is a short convolution; dispersion is a very long one.</strong> A 20-tap FFE at 128 GSa/s is 2.56 Tera-MAC/s, already a floor-plan problem. The same operation for 1700 ps/nm of chromatic dispersion needs hundreds of symbol-spaced taps. The sibling chapter prices that aperture at 83 symbols. Add the tails and the fractional spacing and you are in the several-hundred-tap regime. There the direct form costs hundreds of multiplies per output and the block form about twenty — the crossover in Figure 7, drawn.</p>
+<p><strong>The DFE breaks the pure convolution.</strong> Its feedback path makes it recursive, because the output depends on past decisions. A decision is not a convolution, so a DFE is convolution plus a feedback loop. The associativity argument above stops applying. That is the price of its better noise enhancement, and the reason it has error propagation and an FFE does not.</p>
+<p><strong>Correlation is how the receiver finds things.</strong> Frame alignment, training-sequence detection and timing acquisition are all correlations. Correlate with <span class="math">$h$</span> instead of <span class="math">$h$</span> reversed and the peak still appears, at a fixed lag that the timing loop then absorbs. Nothing fails; the eye simply closes a little and the centre tap sits off centre for the life of the link.</p>
+  </div>
+</aside>
+<h2 id="what-to-carry-forward"><a class="heading-anchor" href="#what-to-carry-forward" aria-hidden="true">#</a>What to carry forward</h2>
+<ul>
+<li>Convolution is flip, shift, multiply, sum: <span class="math">$y[n] = \sum_k x[k]\,h[n-k]$</span>. Flipping <span class="math">$h$</span> rather than <span class="math">$x$</span> is convention only, because the operation is commutative.</li>
+<li>Linearity plus time invariance is the entire reason one <span class="math">$h$</span> characterises the system. Break either and a channel estimate stops being a vector.</li>
+<li>Three views of one operation: the sum, the polynomial product in <span class="math">$z^{-1}$</span>, and multiplication by a Toeplitz matrix. The Toeplitz structure is what the FFT exploits.</li>
+<li>Commutativity, associativity, distributivity and <span class="math">$\delta$</span> each buy a concrete move: reorder a chain, collapse a cascade, merge a parallel bank, or name a pure delay.</li>
+<li><span class="math">$\mathrm{DFT}(x * h) = \mathrm{DFT}(x) \cdot \mathrm{DFT}(h)$</span> is exact, and it is circular. Pad to <span class="math">$\mathrm{len}(x) + \mathrm{len}(h) - 1$</span> or the tail folds onto the head.</li>
+<li>Direct convolution costs <span class="math">$N$</span> multiplies per output; overlap-save costs <span class="math">$2\log_2(B) + 1$</span>. The figure puts the crossover at 11 taps, and the block form's cost is a staircase in the block length.</li>
+<li>Correlation is convolution with a reversed kernel. The matched filter is a correlation, and forgetting the reversal moves the peak without removing it.</li>
+</ul>
+<p>Convolution is the time-domain statement of what a linear system does. The next chapter writes the same relationship as a ratio of polynomials, and uses it to answer the question convolution handles badly: where the poles are, and whether the system is stable.</p>
+<nav class="pager" aria-label="Chapter navigation"><a class="prev" href="the-fft.html"><span class="dir">&larr; Previous</span><span class="ttl">The FFT: How It Got Fast</span></a><a class="next" href="fir-filter-design.html"><span class="dir">Next &rarr;</span><span class="ttl">FIR Filter Design</span></a></nav>
+</main>
+</div>
+<footer class="site-footer">
+  <div class="inner">
+    <span>&copy; Nguyen Quang Binh &middot; Embedded Software Engineer - Optical DSP</span>
+    <span class="spacer"></span>
+    <a href="https://github.com/sprchuoi" target="_blank" rel="noopener">GitHub</a> &middot; <a href="https://www.linkedin.com/in/sprchuoi" target="_blank" rel="noopener">LinkedIn</a> &middot; <a href="mailto:quangbinhhtc@gmail.com">quangbinhhtc@gmail.com</a> &middot; <a href="../index.html">CV</a>
+  </div>
+</footer>
+<script src="assets/blog.js" defer></script>
+</body>
+</html>

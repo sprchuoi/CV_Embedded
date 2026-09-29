@@ -90,7 +90,8 @@ class Curriculum:
 
     @property
     def figures(self) -> int:
-        return sum(len(a.rendered.figures) for a in self.articles if a.rendered)
+        return sum(len(a.rendered.figure_captions)
+                   for a in self.articles if a.rendered)
 
     def by_slug(self, slug: str) -> Article | None:
         return next((a for a in self.articles if a.slug == slug), None)

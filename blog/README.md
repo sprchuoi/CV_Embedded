@@ -161,3 +161,19 @@ The suite covers the Markdown renderer, the curriculum validator, the link
 checker, and a full build into a throwaway directory. One test is skipped
 unless numpy is importable; it cross-checks the figure registry against what the
 chapters actually reference.
+
+### Python version
+
+**3.11 is the floor, and CI enforces it.** The `test` job runs on 3.11 and 3.12,
+and byte-compiles `tool/` before the tests. That byte-compile step exists because
+it caught a real regression: the figure modules are only *imported* when numpy is
+present, so a 3.12-only construct inside one of them (a multi-line f-string,
+which is PEP 701) passed the unit tests on a 3.12 laptop and died as a
+`SyntaxError` in the figures job on the 3.11 runner.
+
+If you add code to `tool/`, keep it 3.11-compatible — in particular, no newline
+inside a single-quoted f-string. Check with:
+
+```sh
+python3 -m compileall -q tool
+```
