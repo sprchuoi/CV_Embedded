@@ -74,7 +74,7 @@ INLINE_RE = re.compile(r'<b>(.*?)</b>|<em>(.*?)</em>|\[([^\]]+)\]\(([^)]+)\)', r
 LINK_LABEL_RE = re.compile(r'^\[([^\]]+)\]\(([^)]+)\)$')
 
 # Phone numbers, with or without a country code / parentheses. The old parser
-# required a literal "(" before a digit, so a bare "0389393615" was misread as
+# required a literal "(" before a digit, so a bare "0369393615" was misread as
 # a second location.
 PHONE_RE = re.compile(r'^[\d\s()+.\-]{8,}$')
 
