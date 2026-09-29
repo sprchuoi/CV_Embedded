@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sampling and Aliasing - DSP, from First Principles to the Optical Link</title>
+<meta name="description" content="The Nyquist-Shannon theorem derived from a picture, why an alias is indistinguishable from a real tone, and how anti-alias filtering saves the day.">
+<meta name="color-scheme" content="light dark">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Sampling and Aliasing - DSP, from First Principles to the Optical Link">
+<meta property="og:description" content="The Nyquist-Shannon theorem derived from a picture, why an alias is indistinguishable from a real tone, and how anti-alias filtering saves the day.">
+<link rel="icon" href="../favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link rel="stylesheet" href="assets/blog.css">
+<script>
+  window.MathJax = {
+  "tex": {
+    "inlineMath": [
+      [
+        "$",
+        "$"
+      ],
+      [
+        "\\(",
+        "\\)"
+      ]
+    ],
+    "displayMath": [
+      [
+        "$$",
+        "$$"
+      ],
+      [
+        "\\[",
+        "\\]"
+      ]
+    ],
+    "processEscapes": true,
+    "tags": "none",
+    "macros": {
+      "twopi": "2\\pi",
+      "dd": "\\mathrm{d}",
+      "E": "\\mathbb{E}",
+      "j": "\\mathrm{j}",
+      "argmin": "\\operatorname*{arg\\,min}"
+    }
+  },
+  "options": {
+    "skipHtmlTags": [
+      "script",
+      "noscript",
+      "style",
+      "textarea",
+      "pre",
+      "code"
+    ],
+    "ignoreHtmlClass": "no-mathjax"
+  },
+  "chtml": {
+    "scale": 1.02
+  }
+};
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="index.html">
+      <span class="mark" aria-hidden="true">DSP</span>
+      <span>Nguyen Quang Binh</span>
+      <span class="sub">signal processing notes</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="index.html" aria-current="page">Curriculum</a>
+      <a href="../index.html">CV</a>
+      <a href="https://github.com/sprchuoi">GitHub</a>
+      <button class="icon-btn" type="button" data-theme-toggle aria-pressed="false"
+              title="Switch theme" aria-label="Switch colour theme"><i class="fa-solid fa-moon" aria-hidden="true"></i></button>
+    </nav>
+  </div>
+  <div class="read-progress" role="presentation"></div>
+</header>
+<div class="layout">
+<nav class="toc" aria-label="On this page">
+<p class="toc-title">On this page</p>
+<ol><li class="lvl-2"><a href="#the-front-end-in-one-picture">The front end, in one picture</a></li><li class="lvl-2"><a href="#what-sampling-actually-does">What sampling actually does</a></li><li class="lvl-2"><a href="#two-signals-one-set-of-samples">Two signals, one set of samples</a></li><li class="lvl-2"><a href="#the-folding-rule">The folding rule</a></li><li class="lvl-2"><a href="#what-it-looks-like-on-a-spectrum-analyser">What it looks like on a spectrum analyser</a></li><li class="lvl-2"><a href="#the-filter-that-has-to-come-first">The filter that has to come first</a></li><li class="lvl-2"><a href="#getting-the-signal-back">Getting the signal back</a></li><li class="lvl-2"><a href="#quantisation-in-one-page">Quantisation, in one page</a></li><li class="lvl-2"><a href="#in-the-optical-link">In the optical link</a></li><li class="lvl-2"><a href="#what-to-carry-forward">What to carry forward</a></li></ol>
+</nav>
+<main id="main" class="prose">
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    <a href="index.html">Curriculum</a><span class="sep">/</span>Signals, Sampling and Number Systems
+  </nav>
+  <header class="article-head">
+    <h1>Sampling and Aliasing</h1>
+    <p class="article-standfirst">The Nyquist-Shannon theorem derived from a picture, why an alias is indistinguishable from a real tone, and how anti-alias filtering saves the day.</p>
+    <div class="article-meta"><span class="level-badge" data-level="Beginner">Beginner</span><span>9 min read</span><div class="taglist"><span class="tag">sampling</span><span class="tag">nyquist</span><span class="tag">foundations</span></div></div>
+  </header>
+<p>Sampling looks like the easy part. You have a continuous voltage, you measure it every <span class="math">$T_s$</span> seconds, and you get a sequence of numbers. Everything after that is arithmetic, and arithmetic is exact.</p>
+<p>It is not the easy part. Sampling is the only operation in the entire chain that is <strong>irreversible</strong>, and it is the only one where a mistake cannot be undone by any amount of cleverness downstream. Every filter, every equaliser, every fancy adaptive algorithm operates on the numbers the sampler handed it. If two different physical signals produce the same numbers, no algorithm can tell them apart — because from its point of view there is nothing to tell apart.</p>
+<p>This chapter is about that moment, and about the one thing you must do before it.</p>
+<h2 id="the-front-end-in-one-picture"><a class="heading-anchor" href="#the-front-end-in-one-picture" aria-hidden="true">#</a>The front end, in one picture</h2>
+<figure class="figure"><img src="assets/diagrams/sampling-frontend-chain.svg" alt="The analogue front end, stage by stage. Each compromise on the left is one the DSP cannot undo." loading="lazy"><figcaption><span class="fig-label">Figure 1</span><span class="fig-text">The analogue front end, stage by stage. Each compromise on the left is one the DSP cannot undo.</span></figcaption></figure>
+<p>Read that figure from left to right and notice how quickly the compromises accumulate. The anti-alias filter band-limits the signal, which is a deliberate distortion. The track-and-hold freezes a moving target, which is an approximation. The ADC rounds to a finite grid, which is an error. Only the last block — the DSP — is exact.</p>
+<p>The rest of this chapter takes the three blocks before the DSP one at a time. This is the one where the decision is permanent.</p>
+<h2 id="what-sampling-actually-does"><a class="heading-anchor" href="#what-sampling-actually-does" aria-hidden="true">#</a>What sampling actually does</h2>
+<p>Take a continuous signal <span class="math">$x(t)$</span> and multiply it by an impulse train:</p>
+<div class="math-display">$$x_s(t) = x(t) \sum_{n=-\infty}^{\infty} \delta(t - nT_s)$$</div>
+<p>That multiplication is the whole of sampling. There is no averaging, no integration, no smoothing — an ideal sampler keeps the value at the instant and throws away everything in between.</p>
+<p>The interesting part is what that does in the frequency domain. Multiplication in time is convolution in frequency, and the Fourier transform of an impulse train spaced <span class="math">$T_s$</span> apart is another impulse train spaced <span class="math">$f_s = 1/T_s$</span> apart. So the spectrum of the sampled signal is:</p>
+<div class="math-display">$$X_s(f) = f_s \sum_{k=-\infty}^{\infty} X(f - k f_s)$$</div>
+<aside class="callout callout-key">
+  <p class="callout-title"><i class="fa-solid fa-key" aria-hidden="true"></i> The central fact</p>
+  <div class="callout-body">
+<p>Sampling does not change the spectrum. It <strong>copies</strong> it, endlessly, at every multiple of the sample rate.</p>
+<p>The original spectrum <span class="math">$X(f)$</span> is still there at <span class="math">$k = 0$</span>. So are exact replicas at <span class="math">$\pm f_s$</span>, <span class="math">$\pm 2f_s$</span>, and so on forever.</p>
+  </div>
+</aside>
+<p>Everything that follows is a consequence of that one line.</p>
+<h2 id="two-signals-one-set-of-samples"><a class="heading-anchor" href="#two-signals-one-set-of-samples" aria-hidden="true">#</a>Two signals, one set of samples</h2>
+<p>Here is the uncomfortable demonstration. Sample a 1 Hz sine and an 11 Hz sine at 10 Hz, and look at the numbers you get.</p>
+<figure class="figure"><img src="assets/diagrams/aliasing-two-tones.svg" alt="A 1 Hz and an 11 Hz tone sampled at 10 Hz. The eleven numbers are identical, so the sampled data cannot distinguish them." loading="lazy"><figcaption><span class="fig-label">Figure 2</span><span class="fig-text">A 1 Hz and an 11 Hz tone sampled at 10 Hz. The eleven numbers are identical, so the sampled data cannot distinguish them.</span></figcaption></figure>
+<p>At <span class="math">$n/10$</span> seconds, the 1 Hz tone has value <span class="math">$\sin(2\pi n/10)$</span> and the 11 Hz tone has value <span class="math">$\sin(2\pi \cdot 11 n/10)$</span>. But</p>
+<div class="math-display">$$\sin\!\left(2\pi \frac{11n}{10}\right) = \sin\!\left(2\pi n + 2\pi \frac{n}{10}\right) = \sin\!\left(2\pi \frac{n}{10}\right)$$</div>
+<p>The extra cycle per sample period is a whole number of turns, so it vanishes. The 11 Hz tone is not <em>approximately</em> the same as the 1 Hz tone after sampling. It is exactly the same sequence of numbers.</p>
+<p>11 Hz is not a special case. It is what 1 Hz looks like when viewed through a sampler running at 10 Hz.</p>
+<h2 id="the-folding-rule"><a class="heading-anchor" href="#the-folding-rule" aria-hidden="true">#</a>The folding rule</h2>
+<p>The general statement is a fold, and once you have seen it you will never need to look it up again.</p>
+<figure class="figure"><img src="assets/diagrams/nyquist-zones.svg" alt="Each Nyquist zone folds back onto the first. A tone at 0.7 fs is indistinguishable from one at 0.3 fs; 1.4 fs behaves like 0.4 fs." loading="lazy"><figcaption><span class="fig-label">Figure 3</span><span class="fig-text">Each Nyquist zone folds back onto the first. A tone at 0.7 fs is indistinguishable from one at 0.3 fs; 1.4 fs behaves like 0.4 fs.</span></figcaption></figure>
+<p>The frequency axis is divided into <strong>Nyquist zones</strong>, each <span class="math">$f_s/2$</span> wide. Zone 1 is <span class="math">$[0, f_s/2]$</span> and is the only zone the sampler can actually represent. Every other tone is folded into it, and the folding rule is:</p>
+<div class="math-display">$$f_{\text{apparent}} = \left| \left( (f + f_s/2) \bmod f_s \right) - f_s/2 \right|$$</div>
+<p>Plot that function and the geometry becomes obvious — it is a triangle wave in frequency, which is why aliasing is sometimes called <em>frequency folding</em>.</p>
+<figure class="figure"><img src="assets/plots/alias-frequency-map.svg" alt="The apparent frequency of a tone as a function of its true frequency. The 1 Hz and 11 Hz tones of the earlier figure both land on the same point." loading="lazy"><figcaption><span class="fig-label">Figure 4</span><span class="fig-text">The apparent frequency of a tone as a function of its true frequency. The 1 Hz and 11 Hz tones of the earlier figure both land on the same point.</span></figcaption></figure>
+<p>Two things are worth extracting from this curve.</p>
+<p><strong>Everything above <span class="math">$f_s/2$</span> is a lie.</strong> Not noise, not attenuation — a lie. A tone at <span class="math">$0.9 f_s$</span> arrives in Zone 1 pretending to be at <span class="math">$0.1 f_s$</span>, at full amplitude, perfectly coherent. You cannot filter it out afterwards, because afterwards it <em>is</em> a legitimate low-frequency signal.</p>
+<p><strong>Only the first zone is unambiguous.</strong> Given the sample rate and the numbers, the only thing you can honestly say is "the true frequency was somewhere in the set <span class="math">$\{f_{\text{apparent}} + k f_s\}$</span>". Choosing among those is a modelling decision, not a signal-processing one.</p>
+<aside class="callout callout-warn">
+  <p class="callout-title"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> The 2× trap</p>
+  <div class="callout-body">
+<p>"Nyquist says <span class="math">$f_s > 2B$</span>, so let me run at <span class="math">$2.01B$</span> and save power."</p>
+<p>At exactly <span class="math">$2B$</span> there is no margin. Real filters have finite roll-off, real clocks drift, and real signals are not perfectly band-limited. The rule in practice is to sample as fast as your converter, power budget and timing recovery allow — not as slowly as the theorem permits.</p>
+  </div>
+</aside>
+<h2 id="what-it-looks-like-on-a-spectrum-analyser"><a class="heading-anchor" href="#what-it-looks-like-on-a-spectrum-analyser" aria-hidden="true">#</a>What it looks like on a spectrum analyser</h2>
+<p>The replicate-and-overlap picture is worth seeing directly, because it explains why aliasing is a <em>sum</em> rather than a substitution.</p>
+<figure class="figure"><img src="assets/plots/sampling-spectrum-replication.svg" alt="Sampling replicates the spectrum at every multiple of the sample rate. When the signal is wider than fs/2 the replicas overlap and add, corrupting the band you care about." loading="lazy"><figcaption><span class="fig-label">Figure 5</span><span class="fig-text">Sampling replicates the spectrum at every multiple of the sample rate. When the signal is wider than fs/2 the replicas overlap and add, corrupting the band you care about.</span></figcaption></figure>
+<p>In the top panel the signal is band-limited to less than <span class="math">$f_s/2$</span>. The replicas are separate, a filter can isolate the original, and reconstruction is possible.</p>
+<p>In the bottom panel the signal is wider than <span class="math">$f_s/2$</span>. The replicas overlap, and inside the overlap region the analyser shows the <strong>sum</strong> of two different parts of the original spectrum. That is the damage: not a missing band, but a band with someone else's energy mixed into it.</p>
+<h2 id="the-filter-that-has-to-come-first"><a class="heading-anchor" href="#the-filter-that-has-to-come-first" aria-hidden="true">#</a>The filter that has to come first</h2>
+<p>Since everything above <span class="math">$f_s/2$</span> is going to fold into the band you care about, the obvious fix is to remove it before it gets the chance.</p>
+<figure class="figure"><img src="assets/diagrams/antialias-before-and-after.svg" alt="Without an anti-alias filter the interferer folds into the signal band. With one, it is attenuated before the sampler ever sees it." loading="lazy"><figcaption><span class="fig-label">Figure 6</span><span class="fig-text">Without an anti-alias filter the interferer folds into the signal band. With one, it is attenuated before the sampler ever sees it.</span></figcaption></figure>
+<p>The placement is the whole point. An anti-alias filter must act on the <strong>continuous</strong> signal, before the sampler. After sampling, the interferer and the wanted signal are the same kind of object — numbers in a buffer — and no digital filter can separate them.</p>
+<p>This gives the two constraints that actually determine the filter:</p>
+<div class="table-wrap"><table>
+<thead><tr><th style="text-align:left">Constraint</th><th style="text-align:left">What sets it</th></tr></thead>
+<tbody>
+<tr><td style="text-align:left">Passband edge <span class="math">$f_p$</span></td><td style="text-align:left">Must pass the entire signal of interest, with acceptable ripple</td></tr>
+<tr><td style="text-align:left">Stopband edge <span class="math">$f_{st}$</span></td><td style="text-align:left">Must start attenuating before <span class="math">$f_s - f_p$</span>, because that is what folds onto <span class="math">$f_p$</span></td></tr>
+<tr><td style="text-align:left">Transition width</td><td style="text-align:left"><span class="math">$\Delta f = f_{st} - f_p$</span> — the expensive number</td></tr>
+<tr><td style="text-align:left">Stopband attenuation</td><td style="text-align:left">Set by how much alias energy your system can tolerate</td></tr>
+</tbody>
+</table></div>
+<p>Note the asymmetry in that table. The stopband has to begin before <span class="math">$f_s - f_p$</span>, not before <span class="math">$f_s/2$</span>. A signal component at <span class="math">$f_s - f_p + \epsilon$</span> folds to <span class="math">$f_p - \epsilon$</span>, right on top of your highest wanted frequency. This is why the anti-alias filter is always harder than it first appears, and why oversampling is so attractive: doubling <span class="math">$f_s$</span> doubles the room the filter has to roll off.</p>
+<aside class="callout callout-try">
+  <p class="callout-title"><i class="fa-solid fa-flask" aria-hidden="true"></i> Order of operations</p>
+  <div class="callout-body">
+<p>If you take one thing from this chapter, make it this. In a real receiver the order is fixed:</p>
+<p><strong>band-limit → sample → quantise → process</strong></p>
+<p>Any architecture that samples first and filters later has already lost. The only question is how much.</p>
+  </div>
+</aside>
+<h2 id="getting-the-signal-back"><a class="heading-anchor" href="#getting-the-signal-back" aria-hidden="true">#</a>Getting the signal back</h2>
+<p>Reconstruction is the inverse operation, and the ideal interpolator is a sinc:</p>
+<div class="math-display">$$x(t) = \sum_{n=-\infty}^{\infty} x[n] \, \mathrm{sinc}\!\left(\frac{t - nT_s}{T_s}\right)$$</div>
+<figure class="figure"><img src="assets/plots/sinc-reconstruction.svg" alt="Ideal sinc reconstruction reproduces the original signal exactly; a zero-order hold leaves a visible staircase and a measurable error." loading="lazy"><figcaption><span class="fig-label">Figure 7</span><span class="fig-text">Ideal sinc reconstruction reproduces the original signal exactly; a zero-order hold leaves a visible staircase and a measurable error.</span></figcaption></figure>
+<p>The sinc is not a practical filter — it is infinite, non-causal, and its impulse response decays as <span class="math">$1/t$</span>. Every real DAC uses a zero-order hold and then cleans up the resulting droop and images with an analogue filter. But the picture is the right mental model: reconstruction is <em>interpolation</em>, and the samples are not the signal. They are the coefficients you rebuild it from.</p>
+<h2 id="quantisation-in-one-page"><a class="heading-anchor" href="#quantisation-in-one-page" aria-hidden="true">#</a>Quantisation, in one page</h2>
+<p>Sampling discretises time. Quantisation discretises amplitude, and it is a genuinely different kind of error: unlike aliasing, it is bounded, it is roughly uncorrelated with the signal, and it can be averaged down.</p>
+<figure class="figure"><img src="assets/plots/quantization-noise.svg" alt="A 3-bit quantiser and its error, alongside the SNR that an ideal N-bit converter achieves." loading="lazy"><figcaption><span class="fig-label">Figure 8</span><span class="fig-text">A 3-bit quantiser and its error, alongside the SNR that an ideal N-bit converter achieves.</span></figcaption></figure>
+<p>For an ideal <span class="math">$N$</span>-bit converter with a full-scale sinusoid input, and treating the error as uniform white noise over one least-significant bit, the signal-to-noise ratio works out to:</p>
+<div class="math-display">$$\mathrm{SNR} = 6.02\,N + 1.76 \ \text{dB}$$</div>
+<p>The 6 dB per bit is worth internalising. It means one extra bit buys you a factor of two in amplitude, which is exactly the same as halving your noise — and it costs you twice the comparators, twice the power, and often half the speed.</p>
+<aside class="callout callout-note">
+  <p class="callout-title"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> Effective number of bits</p>
+  <div class="callout-body">
+<p>The formula describes an <em>ideal</em> converter. Real ones have comparator offsets, clock jitter, thermal noise and non-linearity, so the datasheet number is optimistic.</p>
+<p><span class="math">$\mathrm{ENOB} = \dfrac{\mathrm{SINAD} - 1.76}{6.02}$</span></p>
+<p>A converter sold as "8-bit" at 100+ GSa/s typically delivers 5 to 5.5 effective bits. Design to the ENOB, not the label.</p>
+  </div>
+</aside>
+<h2 id="in-the-optical-link"><a class="heading-anchor" href="#in-the-optical-link" aria-hidden="true">#</a>In the optical link</h2>
+<aside class="callout callout-optical">
+  <p class="callout-title"><i class="fa-solid fa-tower-broadcast" aria-hidden="true"></i> Where this shows up in a coherent receiver</p>
+  <div class="callout-body">
+<p>A 64 GBd coherent link runs its ADCs at <strong>2 samples per symbol</strong> — 128 GSa/s — and that choice is almost entirely about this chapter.</p>
+<p><strong>The anti-alias filter is not a component you specify.</strong> It is the combined response of the transimpedance amplifier, the ADC's input network, and the ADC's own sample-and-hold bandwidth. Nothing else. If that combined bandwidth extends meaningfully past 64 GHz, out-of-band noise and neighbouring channels fold straight into the signal band, and there is no digital fix. A large part of the analogue front-end design effort goes into making that roll-off well-behaved rather than fast.</p>
+<p><strong>Why 2 Sa/symbol and not 1.</strong> At exactly one sample per symbol, the sampler must land precisely on the peak of every pulse. It never does — timing recovery always has residual jitter, and the sampling instant that maximises one symbol is wrong for its neighbours. Two samples per symbol gives the fractionally-spaced equaliser a half-symbol grid, so it can synthesise <em>any</em> sampling phase as a weighted combination of the two. The equaliser stops being a filter and starts being an interpolator, and timing recovery stops being a hardware problem.</p>
+<p><strong>What 2 Sa/symbol does not buy.</strong> Doubling the rate does not halve the quantisation noise in band. At 128 GSa/s the converter's Nyquist bandwidth is 64 GHz, which is precisely the signal bandwidth — so there is essentially no oversampling gain, and the full quantisation noise floor lands in band. With 5.5 ENOB that floor sits around 35 dB SNR, which is comfortably below the 15-25 dB OSNR that a real link delivers. Quantisation is not the limit. Aliasing, and the analogue bandwidth that causes it, is.</p>
+<p><strong>And the PAM4 case.</strong> In a directly detected PAM4 link — an active electrical cable, or a short-reach IM-DD module — there is no coherent front end to band-limit anything. The ADC sees whatever the channel and the photodiode deliver. Four-level signalling also means the effective SNR is roughly 9.5 dB worse than NRZ for the same average power, because the levels are three times closer together. That is a system operating much nearer its quantisation floor, and anti-alias filtering stops being a detail and starts being the design.</p>
+  </div>
+</aside>
+<h2 id="what-to-carry-forward"><a class="heading-anchor" href="#what-to-carry-forward" aria-hidden="true">#</a>What to carry forward</h2>
+<ul>
+<li>Sampling <strong>replicates</strong> the spectrum at every multiple of <span class="math">$f_s$</span>. Aliasing is replicas overlapping and adding.</li>
+<li>Frequency content above <span class="math">$f_s/2$</span> is folded into the first Nyquist zone and is indistinguishable from legitimate in-band signal. It cannot be removed digitally.</li>
+<li>The anti-alias filter acts on the continuous signal, before the sampler. Its stopband must begin before <span class="math">$f_s - f_p$</span>, not <span class="math">$f_s/2$</span>.</li>
+<li>An ideal <span class="math">$N$</span>-bit converter gives <span class="math">$6.02N + 1.76$</span> dB, and real ones give less. Design to ENOB.</li>
+<li>Reconstruction is sinc interpolation. The samples are coefficients, not the signal.</li>
+</ul>
+<p>The next chapter takes the same signal and looks at it from the other side: instead of asking what frequencies are present, it builds the machinery that answers the question exactly — the Fourier transform, the DFT, and the FFT that makes it affordable.</p>
+<nav class="pager" aria-label="Chapter navigation"><span></span><a class="next" href="fir-filter-design.html"><span class="dir">Next &rarr;</span><span class="ttl">FIR Filter Design</span></a></nav>
+</main>
+</div>
+<footer class="site-footer">
+  <div class="inner">
+    <span>&copy; Nguyen Quang Binh &middot; Embedded Software Engineer - Optical DSP</span>
+    <span class="spacer"></span>
+    <a href="https://github.com/sprchuoi" target="_blank" rel="noopener">GitHub</a> &middot; <a href="https://www.linkedin.com/in/sprchuoi" target="_blank" rel="noopener">LinkedIn</a> &middot; <a href="mailto:quangbinhhtc@gmail.com">quangbinhhtc@gmail.com</a> &middot; <a href="../index.html">CV</a>
+  </div>
+</footer>
+<script src="assets/blog.js" defer></script>
+</body>
+</html>

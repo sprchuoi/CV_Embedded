@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FIR Filter Design - DSP, from First Principles to the Optical Link</title>
+<meta name="description" content="Windowed-sinc, least squares and Parks-McClellan, with the linear-phase condition that makes FIRs the default in hardware.">
+<meta name="color-scheme" content="light dark">
+<meta property="og:type" content="article">
+<meta property="og:title" content="FIR Filter Design - DSP, from First Principles to the Optical Link">
+<meta property="og:description" content="Windowed-sinc, least squares and Parks-McClellan, with the linear-phase condition that makes FIRs the default in hardware.">
+<link rel="icon" href="../favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link rel="stylesheet" href="assets/blog.css">
+<script>
+  window.MathJax = {
+  "tex": {
+    "inlineMath": [
+      [
+        "$",
+        "$"
+      ],
+      [
+        "\\(",
+        "\\)"
+      ]
+    ],
+    "displayMath": [
+      [
+        "$$",
+        "$$"
+      ],
+      [
+        "\\[",
+        "\\]"
+      ]
+    ],
+    "processEscapes": true,
+    "tags": "none",
+    "macros": {
+      "twopi": "2\\pi",
+      "dd": "\\mathrm{d}",
+      "E": "\\mathbb{E}",
+      "j": "\\mathrm{j}",
+      "argmin": "\\operatorname*{arg\\,min}"
+    }
+  },
+  "options": {
+    "skipHtmlTags": [
+      "script",
+      "noscript",
+      "style",
+      "textarea",
+      "pre",
+      "code"
+    ],
+    "ignoreHtmlClass": "no-mathjax"
+  },
+  "chtml": {
+    "scale": 1.02
+  }
+};
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="index.html">
+      <span class="mark" aria-hidden="true">DSP</span>
+      <span>Nguyen Quang Binh</span>
+      <span class="sub">signal processing notes</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="index.html" aria-current="page">Curriculum</a>
+      <a href="../index.html">CV</a>
+      <a href="https://github.com/sprchuoi">GitHub</a>
+      <button class="icon-btn" type="button" data-theme-toggle aria-pressed="false"
+              title="Switch theme" aria-label="Switch colour theme"><i class="fa-solid fa-moon" aria-hidden="true"></i></button>
+    </nav>
+  </div>
+  <div class="read-progress" role="presentation"></div>
+</header>
+<div class="layout">
+<nav class="toc" aria-label="On this page">
+<p class="toc-title">On this page</p>
+<ol><li class="lvl-2"><a href="#the-structure-and-what-it-costs">The structure, and what it costs</a></li><li class="lvl-2"><a href="#why-the-fir-is-the-default">Why the FIR is the default</a></li><li class="lvl-2"><a href="#the-four-linear-phase-types">The four linear-phase types</a></li><li class="lvl-3"><a href="#why-type-ii-cannot-be-a-highpass">Why Type II cannot be a highpass</a></li><li class="lvl-2"><a href="#cutting-the-ideal-sinc-short">Cutting the ideal sinc short</a></li><li class="lvl-2"><a href="#windows-buying-stopband-with-transition-width">Windows: buying stopband with transition width</a></li><li class="lvl-3"><a href="#the-design-equation">The design equation</a></li><li class="lvl-2"><a href="#spending-the-taps-better-least-squares-and-parksmcclellan">Spending the taps better: least squares and Parks–McClellan</a></li><li class="lvl-2"><a href="#group-delay-which-is-latency">Group delay, which is latency</a></li><li class="lvl-2"><a href="#what-to-carry-forward">What to carry forward</a></li></ol>
+</nav>
+<main id="main" class="prose">
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    <a href="index.html">Curriculum</a><span class="sep">/</span>LTI Systems and Filter Design
+  </nav>
+  <header class="article-head">
+    <h1>FIR Filter Design</h1>
+    <p class="article-standfirst">Windowed-sinc, least squares and Parks-McClellan, with the linear-phase condition that makes FIRs the default in hardware.</p>
+    <div class="article-meta"><span class="level-badge" data-level="Intermediate">Intermediate</span><span>14 min read</span><div class="taglist"><span class="tag">fir</span><span class="tag">filter-design</span></div></div>
+  </header>
+<p>Almost every filter you will ever ship is a finite impulse response filter, and the reason has very little to do with the magnitude response. It is because a FIR has no memory of its own output. You can stop it, restart it, pipeline it to your heart's content, and it will never ring forever, never drift into a limit cycle, and never surprise you at a corner it was not simulated at.</p>
+<p>That freedom is not free. The price of a FIR is tapped delay line length, and the length is decided by the transition band you are willing to pay for.</p>
+<h2 id="the-structure-and-what-it-costs"><a class="heading-anchor" href="#the-structure-and-what-it-costs" aria-hidden="true">#</a>The structure, and what it costs</h2>
+<p>A FIR is an inner product between the last <span class="math">$N$</span> input samples and a vector of coefficients:</p>
+<div class="math-display">$$y[n] = \sum_{k=0}^{N-1} h[k]\, x[n-k]$$</div>
+<figure class="figure"><img src="assets/diagrams/fir-tapped-delay-line.svg" alt="The FIR drawn as it is actually built: a tapped delay line feeding one multiplier and one accumulator per tap." loading="lazy"><figcaption><span class="fig-label">Figure 1</span><span class="fig-text">The FIR drawn as it is actually built: a tapped delay line feeding one multiplier and one accumulator per tap.</span></figcaption></figure>
+<p>There is nothing hidden in that picture. Every tap is a register, a multiplier, and an adder, and every output sample touches all of them.</p>
+<div class="math-display">$$60 \text{ taps} \times 64\,\mathrm{GSa/s} = 3.84 \text{ Tera-MAC/s}$$</div>
+<p>That is the number to carry around. A 60-tap equaliser running at the full line rate of a 64 GBd optical link needs nearly four trillion multiply-accumulates every second, before any parallelism. Real silicon runs those multipliers at a few hundred megahertz to a couple of gigahertz, so three point eight Tera-MAC/s is somewhere between a thousand and ten thousand physical multipliers: a floor plan, a power budget, and a package thermal problem in one line of algebra.</p>
+<p>This is why the tap count is a silicon decision rather than a signal-processing one. You choose the tap count first — from area, clock rate and power — and then you choose the <em>design method</em> that extracts the most stopband rejection from the taps you were given. The rest of this chapter is about that second choice.</p>
+<p>If the words "specification" and "transition band" are not yet concrete, the next figure fixes that. A filter specification is four numbers, and one of them is expensive.</p>
+<figure class="figure"><img src="assets/diagrams/fir-specification.svg" alt="A filter specification is four numbers, not a curve. The transition band is the expensive one." loading="lazy"><figcaption><span class="fig-label">Figure 2</span><span class="fig-text">A filter specification is four numbers, not a curve. The transition band is the expensive one.</span></figcaption></figure>
+<h2 id="why-the-fir-is-the-default"><a class="heading-anchor" href="#why-the-fir-is-the-default" aria-hidden="true">#</a>Why the FIR is the default</h2>
+<p>A FIR is the only filter you can design without asking whether it is stable.</p>
+<p><strong>There is no feedback.</strong> The output depends on inputs only. Every pole sits at the origin — the transfer function is a polynomial in <span class="math">$z^{-1}$</span> divided by nothing — so there is no pole placement to check, no gain margin, and no coefficient truncation that can quietly move a pole outside the unit circle.</p>
+<p><strong>There are no limit cycles.</strong> An IIR filter rounding to finite precision can sustain a small self-generated oscillation forever, because its own output feeds its own input. A FIR cannot: once you stop feeding it, its output is zero after <span class="math">$N-1$</span> samples. That is worth a great deal when a stuck oscillation looks exactly like a signal to the block downstream.</p>
+<p><strong>It pipelines trivially.</strong> There is no loop to close, so you can insert registers anywhere. Retiming is legal. A symmetric FIR even lets you add the mirrored tap pairs <em>before</em> multiplying, which turns <span class="math">$N$</span> multiplications into <span class="math">$N/2$</span> multiplications plus <span class="math">$N/2$</span> additions. When a multiplier costs four times an adder, that trade is not a rounding error.</p>
+<p><strong>And with symmetric coefficients it has exactly linear phase.</strong> That is not an approximation or a "good enough" property. It is exact, it is free, and the next section is about what it buys.</p>
+<aside class="callout callout-key">
+  <p class="callout-title"><i class="fa-solid fa-key" aria-hidden="true"></i> The asymmetry to remember</p>
+  <div class="callout-body">
+<p>Every advantage a FIR has over an IIR comes from the absence of feedback. Every cost — the length, the latency, the multiplier count — comes from the same place. It is one engineering decision, not a list of four.</p>
+  </div>
+</aside>
+<h2 id="the-four-linear-phase-types"><a class="heading-anchor" href="#the-four-linear-phase-types" aria-hidden="true">#</a>The four linear-phase types</h2>
+<p>Symmetry in the impulse response is what buys linear phase, and the symmetry comes in four flavours. The distinction matters because the symmetry constrains which responses are reachable at all.</p>
+<div class="math-display">$$h[n] = h[N-1-n] \quad\text{(symmetric)} \qquad h[n] = -h[N-1-n] \quad\text{(antisymmetric)}$$</div>
+<figure class="figure"><img src="assets/diagrams/fir-linear-phase-symmetry.svg" alt="The four linear-phase FIR types. Each is a different species: same linear phase, different reachable responses." loading="lazy"><figcaption><span class="fig-label">Figure 3</span><span class="fig-text">The four linear-phase FIR types. Each is a different species: same linear phase, different reachable responses.</span></figcaption></figure>
+<div class="table-wrap"><table>
+<thead><tr><th style="text-align:left">Type</th><th style="text-align:left"><span class="math">$N$</span></th><th style="text-align:left">Symmetry</th><th style="text-align:left">Group delay</th><th style="text-align:left">What it is for</th></tr></thead>
+<tbody>
+<tr><td style="text-align:left">I</td><td style="text-align:left">odd</td><td style="text-align:left">symmetric</td><td style="text-align:left">integer samples</td><td style="text-align:left">any response, including highpass</td></tr>
+<tr><td style="text-align:left">II</td><td style="text-align:left">even</td><td style="text-align:left">symmetric</td><td style="text-align:left">half-integer samples</td><td style="text-align:left">lowpass, bandpass — never highpass</td></tr>
+<tr><td style="text-align:left">III</td><td style="text-align:left">odd</td><td style="text-align:left">antisymmetric</td><td style="text-align:left">integer samples</td><td style="text-align:left">differentiators, Hilbert transformers</td></tr>
+<tr><td style="text-align:left">IV</td><td style="text-align:left">even</td><td style="text-align:left">antisymmetric</td><td style="text-align:left">half-integer samples</td><td style="text-align:left">differentiators, Hilbert transformers</td></tr>
+</tbody>
+</table></div>
+<h3 id="why-type-ii-cannot-be-a-highpass"><a class="heading-anchor" href="#why-type-ii-cannot-be-a-highpass" aria-hidden="true">#</a>Why Type II cannot be a highpass</h3>
+<p>Evaluate any even-length symmetric FIR at the folding frequency, <span class="math">$\omega = \pi$</span>, which is Nyquist:</p>
+<div class="math-display">$$H(\pi) = \sum_{n=0}^{N-1} h[n]\,(-1)^n = 0$$</div>
+<p>That last equality is not a design constraint you impose. It is an identity that falls out of the symmetry. Write the sum as pairs, <span class="math">$h[0] - h[1] + h[2] - \dots$</span>: for even <span class="math">$N$</span>, symmetry pairs tap <span class="math">$n$</span> with tap <span class="math">$N-1-n$</span>, and because <span class="math">$N-1$</span> is odd the two members of every pair carry <strong>opposite signs</strong> of <span class="math">$(-1)^n$</span>. Since the taps are equal, each pair cancels exactly. There is nothing left.</p>
+<p>So a Type II filter has a zero response at Nyquist for <em>every</em> coefficient vector you could ever load into it, and no amount of clever coefficient design removes it. Ask Parks–McClellan for an even-length highpass and it will hand you something that is 0 dB in the passband with a hole punched out at exactly the frequency a highpass exists to pass.</p>
+<p>One related fact is worth filing next to it: Type III is forced to zero at <em>both</em> <span class="math">$\omega = 0$</span> and <span class="math">$\omega = \pi$</span>, because the antisymmetry makes the DC sum vanish too. That double zero is what makes Type III a good differentiator, and why it is useless as a general-purpose lowpass.</p>
+<h2 id="cutting-the-ideal-sinc-short"><a class="heading-anchor" href="#cutting-the-ideal-sinc-short" aria-hidden="true">#</a>Cutting the ideal sinc short</h2>
+<p>The ideal lowpass filter has a rectangular frequency response, and its impulse response is a sinc:</p>
+<div class="math-display">$$h_{\mathrm{ideal}}[n] = \mathrm{sinc}\big(f_c\,(n - D)\big), \qquad -\infty &lt; n &lt; \infty$$</div>
+<p>It is infinite in both directions and therefore non-causal. Every real design is that response multiplied by a finite-length window — in the simplest case a rectangular one:</p>
+<div class="math-display">$$h[n] = h_{\mathrm{ideal}}[n]\, w[n], \qquad w[n] = 1 \text{ for } 0 \le n \le N-1$$</div>
+<p>Multiplication in the time domain is convolution in the frequency domain. You asked for a brick wall; what you get is a brick wall convolved with the transform of the rectangle, which is a sinc with sidelobes that decay painfully slowly. This is the Gibbs phenomenon, the central fact of the chapter.</p>
+<figure class="figure"><img src="assets/plots/fir-truncation-gibbs.svg" alt="Truncating the ideal sinc at four lengths. The transition band narrows with N; the ripple floor does not move." loading="lazy"><figcaption><span class="fig-label">Figure 4</span><span class="fig-text">Truncating the ideal sinc at four lengths. The transition band narrows with N; the ripple floor does not move.</span></figcaption></figure>
+<p>Look at what happens as the tap count grows. At 11 taps the first −40 dB point sits at <span class="math">$0.363\pi$</span>; at 81 taps it has moved to <span class="math">$0.265\pi$</span>, so the transition band has narrowed by a factor of about four. That is the part everyone expects. Now look at the ripple: the peak stopband lobe measures −19.4 dB at 11 taps, −22.0 dB at 41 taps and −21.2 dB at 81 taps. It does not decay, and it does not even monotonically improve.</p>
+<aside class="callout callout-warn">
+  <p class="callout-title"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> More taps does not mean less ripple</p>
+  <div class="callout-body">
+<p>Adding taps to a rectangular-windowed design narrows the transition band and does <strong>nothing</strong> for the stopband floor. The overshoot of a truncated sinc converges to about 9% of the jump height — the same 9% regardless of <span class="math">$N$</span>, exactly as a truncated Fourier series does.</p>
+<p>If a design review says "the stopband is 20 dB short, add taps", the correct answer is that taps are the wrong currency.</p>
+  </div>
+</aside>
+<p>The reason generalises. The ripple is not caused by the truncation being <em>too short</em>; it is caused by the truncation being <em>abrupt</em>. A hard edge in the time domain is a slow, oscillating tail in the frequency domain. To bring the sidelobes down you must smooth the edge — which is exactly what a window is.</p>
+<h2 id="windows-buying-stopband-with-transition-width"><a class="heading-anchor" href="#windows-buying-stopband-with-transition-width" aria-hidden="true">#</a>Windows: buying stopband with transition width</h2>
+<p>A window tapers the truncated sinc to zero at both ends. You trade main-lobe width for sidelobe height, and the four classic windows walk that trade in a well-understood order.</p>
+<figure class="figure"><img src="assets/plots/fir-window-responses.svg" alt="Four windows and the responses they buy at 65 taps. Widening the main lobe is the purchase price of a deeper stopband." loading="lazy"><figcaption><span class="fig-label">Figure 5</span><span class="fig-text">Four windows and the responses they buy at 65 taps. Widening the main lobe is the purchase price of a deeper stopband.</span></figcaption></figure>
+<div class="table-wrap"><table>
+<thead><tr><th style="text-align:left">Window</th><th style="text-align:left">First sidelobe</th><th style="text-align:left">Main lobe (relative)</th><th style="text-align:left">Character</th></tr></thead>
+<tbody>
+<tr><td style="text-align:left">Rectangular</td><td style="text-align:left">−13 dB</td><td style="text-align:left">1.0</td><td style="text-align:left">narrowest transition, useless stopband</td></tr>
+<tr><td style="text-align:left">Hann</td><td style="text-align:left">−31 dB</td><td style="text-align:left">2.0</td><td style="text-align:left">good general purpose, rolls off fast</td></tr>
+<tr><td style="text-align:left">Hamming</td><td style="text-align:left">−43 dB</td><td style="text-align:left">2.0</td><td style="text-align:left">the default for a reason</td></tr>
+<tr><td style="text-align:left">Blackman</td><td style="text-align:left">−58 dB</td><td style="text-align:left">3.0</td><td style="text-align:left">deepest stopband, widest transition</td></tr>
+</tbody>
+</table></div>
+<p>Those sidelobe numbers are the textbook ones, and they are the right ones to carry in your head. The figure shows them in situ: at 65 taps with a cutoff at <span class="math">$0.25\pi$</span>, the worst stopband lobe above the cutoff measures roughly −21 dB for a rectangular window, −44 dB for Hann, −53 dB for Hamming and −75 dB for Blackman. Blackman reaches −40 dB at <span class="math">$0.313\pi$</span>, where the rectangular window was already past −40 dB by <span class="math">$0.269\pi$</span>. That difference, about 10% of Nyquist, is what you bought the stopband with.</p>
+<p>My opinion on the choice: <strong>Hamming is the right default, and people reach for Blackman far too often.</strong> Hamming gives you the 43 dB that most links actually need, at the same main-lobe width as Hann. Blackman buys another 15 dB of stopband at the cost of a transition band 40% wider — which, as the design equation shows, is 40% more multipliers.</p>
+<h3 id="the-design-equation"><a class="heading-anchor" href="#the-design-equation" aria-hidden="true">#</a>The design equation</h3>
+<p>For a windowed-sinc design there is a closed-form estimate for the length, accurate enough to size a filter at a whiteboard:</p>
+<div class="math-display">$$N \approx \frac{A - 8}{2.285\,\Delta\omega}, \qquad A = 20\log_{10}\!\left(\frac{1}{\delta_s}\right), \qquad \Delta\omega = 2\pi\,(f_{st} - f_p)$$</div>
+<p>Work an example. Suppose you need 50 dB of stopband attenuation with a transition band from <span class="math">$0.20\pi$</span> to <span class="math">$0.40\pi$</span>, so <span class="math">$\Delta\omega = 0.2\pi$</span>:</p>
+<div class="math-display">$$N \approx \frac{50 - 8}{2.285 \times 0.2\pi} \approx 29 \text{ taps}$$</div>
+<p>Now ask for 60 dB over the same band. That is 36 taps — the attenuation change is cheap. The band edge is not. Hold 60 dB and halve <span class="math">$\Delta\omega$</span> to <span class="math">$0.10\pi$</span> and the estimate jumps to 72 taps; quarter it and you are at 145 taps.</p>
+<p><strong>The transition width, not the cutoff, drives the length.</strong> This is the single most useful thing in the chapter for talking to system engineers. Moving a cutoff frequency costs you nothing. Narrowing a transition band costs you taps <em>linearly in the reciprocal</em> — halve <span class="math">$\Delta\omega$</span>, double <span class="math">$N$</span>. If a link budget says the equaliser needs to start rolling off 2 GHz earlier, the right question is not "can the filter do it" but "how many multipliers did you just ask for, and where do they go".</p>
+<h2 id="spending-the-taps-better-least-squares-and-parksmcclellan"><a class="heading-anchor" href="#spending-the-taps-better-least-squares-and-parksmcclellan" aria-hidden="true">#</a>Spending the taps better: least squares and Parks–McClellan</h2>
+<p>The windowed-sinc method is a good design <em>technique</em> wrapped around a bad design <em>objective</em>. It starts from the ideal brick wall and then apologises for the truncation. The optimal methods do the opposite: they pick the coefficients that minimise an explicit error criterion over the bands you care about.</p>
+<figure class="figure"><img src="assets/plots/fir-design-comparison.svg" alt="Three ways to spend 41 taps. Same length, same specification, seventeen decibels of difference." loading="lazy"><figcaption><span class="fig-label">Figure 6</span><span class="fig-text">Three ways to spend 41 taps. Same length, same specification, seventeen decibels of difference.</span></figcaption></figure>
+<p>Here is that difference measured, for a 41-tap design with <span class="math">$f_p = 0.20\pi$</span> and <span class="math">$f_{st} = 0.30\pi$</span>:</p>
+<div class="table-wrap"><table>
+<thead><tr><th style="text-align:left">Design</th><th style="text-align:left">Passband ripple</th><th style="text-align:left">Worst stopband</th></tr></thead>
+<tbody>
+<tr><td style="text-align:left">Windowed-sinc, Hamming</td><td style="text-align:left">0.72 dB</td><td style="text-align:left">−22.2 dB</td></tr>
+<tr><td style="text-align:left">Least squares (<code>firls</code>)</td><td style="text-align:left">0.37 dB</td><td style="text-align:left">−32.2 dB</td></tr>
+<tr><td style="text-align:left">Parks–McClellan (<code>remez</code>)</td><td style="text-align:left">0.19 dB</td><td style="text-align:left">−39.3 dB</td></tr>
+</tbody>
+</table></div>
+<p>Seventeen decibels, at identical length and identical silicon. That is not a refinement; it is the difference between a working equaliser and one that is 17 dB short.</p>
+<p><strong>Why equiripple wins.</strong> A windowed design concentrates its error in the first sidelobe near the band edge and lets it decay from there. Parks–McClellan distributes the error <em>equally</em> across the whole stopband, so every ripple lobe touches the same tolerance. That is optimal in the minimax sense: for a given <span class="math">$N$</span> and transition width, no other linear-phase FIR has a smaller maximum error. Least squares minimises total squared error instead of the peak, which spreads the error more smoothly but lets the worst lobe climb a few decibels higher. If your specification is a max-stopband number — and it almost always is — remez is the right answer.</p>
+<p><strong>The cost, honestly stated.</strong> Parks–McClellan is an iterative exchange algorithm, and its convergence is not a patient friend. You must name the band edges and weights up front, and inconsistent weights produce a filter with a wild spike. Its coefficients are also less structured: windowed and least-squares designs often land on coefficients with symmetry or sparsity you can exploit in the datapath, while remez coefficients are famously irregular. And it does not degrade gracefully — hand it a Type II highpass and it returns something that satisfies the band list while violating what you actually wanted.</p>
+<p>My judgement: run remez once, during architecture definition, purely to learn the true N-versus-attenuation curve for your specification. Then decide whether the datapath can afford irregular coefficients, or whether you will build the filter with a window instead and accept the decibels you lose.</p>
+<h2 id="group-delay-which-is-latency"><a class="heading-anchor" href="#group-delay-which-is-latency" aria-hidden="true">#</a>Group delay, which is latency</h2>
+<p>A symmetric FIR of length <span class="math">$N$</span> has phase that is exactly linear in frequency:</p>
+<div class="math-display">$$\tau_g = -\frac{d\phi(\omega)}{d\omega} = \frac{N-1}{2} \text{ samples}$$</div>
+<p>Every frequency component is delayed by exactly the same amount. Nothing smears.</p>
+<figure class="figure"><img src="assets/plots/fir-linear-phase-response.svg" alt="A 41-tap Hamming design: symmetric taps, a flat passband, and a group delay that sits exactly on (N−1)/2." loading="lazy"><figcaption><span class="fig-label">Figure 7</span><span class="fig-text">A 41-tap Hamming design: symmetric taps, a flat passband, and a group delay that sits exactly on (N−1)/2.</span></figcaption></figure>
+<p>For a 41-tap filter the group delay is 20 samples. At the 128 GSa/s front end of a 64 GBd link a symbol is 15.6 ps, so that delay is 156 ps — ten whole symbols — and still nowhere near the forward path's real budget, which is set by FEC frames and link turn-around, not by one filter. So why care? Because latency is only free when it is not inside a loop, and there are three places it is not free:</p>
+<ul>
+<li><strong>Latency in a feedback path is a stability constraint.</strong> A decision-feedback equaliser's feedback filter must produce its correction within a symbol period, and any delay in that loop eats the timing margin you have left. Twenty samples at 128 GSa/s costs two thirds of a symbol period.</li>
+<li><strong>Latency in an adaptation loop sets how fast you can adapt.</strong> Coefficient update loops measure an error, compute a gradient and apply it. Every sample of delay in that path reduces the loop's phase margin.</li>
+<li><strong>Latency accumulates.</strong> Twenty samples here, thirty there, a FIFO for clock domain crossing: at some point you have a round-trip budget for the link's own control protocol, and the filters are a visible line item in it.</li>
+</ul>
+<p>The counter-intuitive part is that a symmetric FIR's delay is fixed by its <em>length</em>, not by its frequency response or its stopband depth. You cannot get a 41-tap filter with five samples of group delay. If your loop budget is five samples, you need an 11-tap filter, and you accept the transition band that comes with it.</p>
+<aside class="callout callout-optical">
+  <p class="callout-title"><i class="fa-solid fa-tower-broadcast" aria-hidden="true"></i> Where this shows up in an optical link</p>
+  <div class="callout-body">
+<p>The FFE in a coherent receiver or in an AEC retimer is a <strong>fractionally-spaced</strong> FIR — half-symbol or quarter-symbol tap spacing, not one tap per symbol. That is not a refinement for elegance; it is the point. Running at 2 Sa/symbol means the equaliser has two independent samples per symbol to work with, so it can synthesise <em>any</em> sampling phase as a weighted combination of them. The FFE is therefore partly an interpolator: it corrects the residual timing offset as well as the channel. This is why <strong>tap spacing matters more than tap count</strong> in some designs — a 12-tap FFE at half-symbol spacing can reach sampling phases and pre-cursor corrections that a 20-tap symbol-spaced FFE structurally cannot, because the symbol-spaced version has already thrown away the phase information it would need.</p>
+<p><strong>Linear phase is not optional here.</strong> An adaptive equaliser's taps are not symmetric, and they should not be — a real channel has an asymmetric pre/post-cursor split, and a symmetric equaliser would be forced to a zero-phase response and could not correct it. But there is a whole class of fixed filtering around the adaptive core where symmetry is exactly what you want, and the reason is what non-linear phase does to the rest of the receiver. A non-linear-phase response smears the pulse as a function of frequency, which means the zero crossings move in a way that depends on the data pattern. Timing recovery — a phase-locked loop or a Mueller–Müller detector watching those crossings — reads that smear as <strong>jitter</strong>, and jitter is the one impairment the rest of the link cannot average away. Worse, the smear makes the pre-cursor and post-cursor ISI split asymmetric: it moves energy to the wrong side of the cursor, and a DFE by construction only looks backwards.</p>
+<p><strong>The DFE that follows the FFE is IIR-like.</strong> It has feedback, which means it brings back every problem the FIR did not have: limited stability margin, error propagation (one wrong decision feeds a worse correction into the next), and a critical path that has to close within one symbol period with no retiming freedom. The FFE can be pipelined to the moon; the DFE cannot be pipelined at all without unrolling, and unrolling is expensive. That asymmetry is the reason an optical receiver spends its FIR taps on the FFE and keeps the DFE short. It is also the reason the next chapter is about IIR design: everything the FIR bought by removing feedback, the DFE gives back.</p>
+<p><strong>Why FFE tap counts in shipping silicon are small.</strong> A 64 GBd link with a 2 Sa/symbol front end presents the FFE with 128 GSa/s. Twenty taps at that rate is</p>
+<div class="math-display">$$20 \times 128\,\mathrm{GSa/s} = 2.56 \text{ Tera-MAC/s}$$</div>
+<p>before any parallelism, and that multiplier budget is spent whether the filter is doing something useful or not. So production FFE blocks are single digits to low tens of taps, and the designers who tried 40-tap time-domain equalisers found out why. The dispersion — hundreds of picoseconds of chromatic and polarisation-mode spread — goes to the <strong>frequency-domain equaliser</strong> instead, where a 512-point or 1024-point overlap-save block gets hundreds of taps for roughly <span class="math">$N\log N$</span> work rather than <span class="math">$N$</span> multiplies per sample, with the FFT doing the expensive part at a fraction of the line rate. Time-domain taps are precious; frequency-domain taps are nearly free. Spend accordingly.</p>
+  </div>
+</aside>
+<h2 id="what-to-carry-forward"><a class="heading-anchor" href="#what-to-carry-forward" aria-hidden="true">#</a>What to carry forward</h2>
+<ul>
+<li>A FIR is one multiply-accumulate per tap per sample. Sixty taps at 64 GBd is 3.84 Tera-MAC/s, and that number is an area and power decision before it is a signal-processing one.</li>
+<li>No feedback means no stability question, no limit cycles, trivial pipelining, and — with symmetric taps — exactly linear phase.</li>
+<li>The four types differ in reachable responses, not in linearity. Type II cannot be a highpass, because its symmetry forces <span class="math">$H(\pi) = 0$</span> identically.</li>
+<li>Truncating the ideal sinc narrows the transition band as <span class="math">$N$</span> grows and leaves the ~9% Gibbs overshoot exactly where it was. Ripple is bought with a window, not with taps.</li>
+<li>The transition width drives the length: <span class="math">$N \approx (A - 8)/(2.285\,\Delta\omega)$</span>, and halving <span class="math">$\Delta\omega$</span> doubles <span class="math">$N$</span>. Changing a cutoff is free; narrowing a transition band is not.</li>
+<li>Equiripple design is worth 10 to 17 dB over a windowed-sinc at the same tap count. That is usually the whole specification.</li>
+<li>Symmetric taps give exactly <span class="math">$(N-1)/2$</span> samples of group delay, which is free in the data path and expensive inside a feedback loop.</li>
+</ul>
+<p>The next chapter takes the other branch of the fork. Feedback is what a FIR refuses to have and what makes it safe — and it is also the only way to get a sharp transition band out of a handful of coefficients. IIR design is the art of taking that deal without the filter oscillating.</p>
+<nav class="pager" aria-label="Chapter navigation"><a class="prev" href="sampling-and-aliasing.html"><span class="dir">&larr; Previous</span><span class="ttl">Sampling and Aliasing</span></a><a class="next" href="coherent-optical-dsp-pipeline.html"><span class="dir">Next &rarr;</span><span class="ttl">The Coherent Optical Receiver: A DSP Pipeline Tour</span></a></nav>
+</main>
+</div>
+<footer class="site-footer">
+  <div class="inner">
+    <span>&copy; Nguyen Quang Binh &middot; Embedded Software Engineer - Optical DSP</span>
+    <span class="spacer"></span>
+    <a href="https://github.com/sprchuoi" target="_blank" rel="noopener">GitHub</a> &middot; <a href="https://www.linkedin.com/in/sprchuoi" target="_blank" rel="noopener">LinkedIn</a> &middot; <a href="mailto:quangbinhhtc@gmail.com">quangbinhhtc@gmail.com</a> &middot; <a href="../index.html">CV</a>
+  </div>
+</footer>
+<script src="assets/blog.js" defer></script>
+</body>
+</html>
