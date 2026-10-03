@@ -240,10 +240,27 @@ def brace(x, y, height, *, side="left", width=10, stroke=RULE, label=None,
 # --------------------------------------------------------------------------- #
 
 
+def _kind(kind: str):
+    """Resolve a box style, naming the alternatives when it does not exist.
+
+    The Markdown renderer has its own, larger set of callout kinds
+    (``key``, ``math``, ``try`` ...), so reaching for one of those here is an
+    easy mistake and a bare KeyError is an unhelpful way to learn it.
+    """
+    try:
+        return KINDS[kind]
+    except KeyError:
+        raise KeyError(
+            f"unknown figure style {kind!r}; svg.KINDS has "
+            f"{', '.join(sorted(KINDS))} (the Markdown callout kinds are a "
+            "different, larger set)"
+        ) from None
+
+
 def block(x, y, w, h, title, subtitle=None, *, kind="plain", rx=8, dash=None,
           title_size=13, subtitle_size=10.5) -> str:
     """A labelled stage box. Title is centred; subtitle sits under it."""
-    fill, stroke, ink = KINDS[kind]
+    fill, stroke, ink = _kind(kind)
     out = [rect(x, y, w, h, fill=fill, stroke=stroke, rx=rx, dash=dash)]
     cx = x + w / 2
     if subtitle:
@@ -259,7 +276,7 @@ def block(x, y, w, h, title, subtitle=None, *, kind="plain", rx=8, dash=None,
 
 def tag(x, y, label, *, kind="accent", size=10, pad_x=8, pad_y=4) -> str:
     """A small pill, for signal names along a bus."""
-    fill, stroke, ink = KINDS[kind]
+    fill, stroke, ink = _kind(kind)
     w = len(str(label)) * size * 0.62 + pad_x * 2
     h = size + pad_y * 2
     return (rect(x - w / 2, y - h / 2, w, h, fill=fill, stroke=stroke, rx=h / 2,
@@ -407,7 +424,7 @@ def callout(x, y, w, label, body, *, kind="note", body_size=11.5, pad=12) -> str
     The body is wrapped to the box width and the box height is derived from the
     wrapped result, so the text and the panel always agree.
     """
-    fill, stroke, ink = KINDS[kind]
+    fill, stroke, ink = _kind(kind)
     lines = _wrapped_lines(w, body, body_size, pad)
     h = pad * 2 + 16 + len(lines) * (body_size + 4)
     out = [rect(x, y, w, h, fill=fill, stroke=stroke, rx=6, width=1.2),

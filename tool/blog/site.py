@@ -77,12 +77,44 @@ class Part:
 
 
 @dataclass
+class Page:
+    """A standalone piece of prose that is not a chapter of the course.
+
+    ``placement`` decides where it goes:
+
+    ``page``
+        its own document at ``docs/blog/<slug>.html``, optionally in the header
+        nav via ``nav``.
+    ``index``
+        rendered inline on the blog index, above the roadmap -- used for the
+        framing that should be read before the curriculum.
+    """
+
+    slug: str
+    title: str
+    summary: str
+    placement: str
+    nav: str | None = None
+    body: str | None = None
+    rendered: md.RenderResult | None = None
+
+    @property
+    def href(self) -> str:
+        return f"{self.slug}.html"
+
+    @property
+    def written(self) -> bool:
+        return self.body is not None
+
+
+@dataclass
 class Curriculum:
     title: str
     tagline: str
     author: dict
     parts: list[Part] = field(default_factory=list)
     articles: list[Article] = field(default_factory=list)
+    pages: list[Page] = field(default_factory=list)
 
     @property
     def published(self) -> list[Article]:
@@ -90,15 +122,39 @@ class Curriculum:
 
     @property
     def figures(self) -> int:
-        return sum(len(a.rendered.figure_captions)
-                   for a in self.articles if a.rendered)
+        total = sum(len(a.rendered.figure_captions)
+                    for a in self.articles if a.rendered)
+        return total + sum(len(p.rendered.figure_captions)
+                           for p in self.pages if p.rendered)
+
+    @property
+    def nav_pages(self) -> list[Page]:
+        """Pages that asked to appear in the header nav."""
+        return [p for p in self.pages if p.nav and p.written]
 
     def by_slug(self, slug: str) -> Article | None:
         return next((a for a in self.articles if a.slug == slug), None)
 
+    def page_by_slug(self, slug: str) -> Page | None:
+        return next((p for p in self.pages if p.slug == slug), None)
 
-def load_curriculum(path: Path, posts_dir: Path) -> Curriculum:
-    """Read curriculum.json, attach any available prose, and validate."""
+    def page_at(self, placement: str) -> Page | None:
+        return next((p for p in self.pages
+                     if p.placement == placement and p.written), None)
+
+
+PLACEMENTS = ("page", "index")
+
+
+def load_curriculum(path: Path, posts_dir: Path,
+                    pages_dir: Path | None = None) -> Curriculum:
+    """Read curriculum.json, attach any available prose, and validate.
+
+    ``pages_dir`` holds the non-chapter prose (``blog/pages/*.md``); it defaults
+    to a sibling of ``posts_dir`` so existing callers keep working.
+    """
+    if pages_dir is None:
+        pages_dir = posts_dir.parent / "pages"
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError as exc:
@@ -181,6 +237,46 @@ def load_curriculum(path: Path, posts_dir: Path) -> Curriculum:
                     f"{source.name} has no entry in {path.name}; add it to a part "
                     "or delete the file"
                 )
+
+    # ------------------------------------------------------------- pages --
+    page_slugs: set[str] = set()
+    for index, page_raw in enumerate(raw.get("pages", []), start=1):
+        for key in ("slug", "title", "summary", "placement"):
+            if key not in page_raw:
+                raise CurriculumError(f"page #{index} is missing '{key}'")
+        slug = page_raw["slug"]
+        if slug in seen:
+            raise CurriculumError(
+                f"page slug '{slug}' collides with a chapter slug")
+        if slug in page_slugs:
+            raise CurriculumError(f"duplicate page slug '{slug}'")
+        page_slugs.add(slug)
+        if page_raw["placement"] not in PLACEMENTS:
+            raise CurriculumError(
+                f"page '{slug}': placement must be one of {PLACEMENTS}")
+        if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", slug):
+            raise CurriculumError(f"page slug '{slug}' must be kebab-case")
+
+        page = Page(slug=slug, title=page_raw["title"],
+                    summary=page_raw["summary"],
+                    placement=page_raw["placement"], nav=page_raw.get("nav"))
+        source = pages_dir / f"{slug}.md"
+        if source.exists():
+            page.body = source.read_text(encoding="utf-8").strip() + "\n"
+            try:
+                page.rendered = md.render(page.body)
+            except md.MarkdownError as exc:
+                raise CurriculumError(f"{source.name}: {exc}") from exc
+        curriculum.pages.append(page)
+
+    if pages_dir.exists():
+        declared = page_slugs
+        for source in sorted(pages_dir.glob("*.md")):
+            if source.stem not in declared:
+                raise CurriculumError(
+                    f"{source.name} has no entry under 'pages' in {path.name}; "
+                    "add it or delete the file"
+                )
     return curriculum
 
 
@@ -210,10 +306,11 @@ def _check_links(pages: dict[Path, str]) -> list[str]:
 def _check_orphan_assets(curriculum: Curriculum, docs_blog: Path) -> list[str]:
     """Figures nothing references are dead weight in the published site."""
     used: set[str] = set()
-    for article in curriculum.articles:
-        if article.body:
-            for src in re.findall(r"!\[[^\]]*\]\((\S+?)(?:\s+\"[^\"]*\")?\)", article.body):
-                used.add(Path(src).name)
+    bodies = [a.body for a in curriculum.articles if a.body]
+    bodies += [p.body for p in curriculum.pages if p.body]
+    for body in bodies:
+        for src in re.findall(r"!\[[^\]]*\]\((\S+?)(?:\s+\"[^\"]*\")?\)", body):
+            used.add(Path(src).name)
 
     warnings: list[str] = []
     for sub in ("diagrams", "plots", "images"):
@@ -302,6 +399,39 @@ def render_article(site: theme.Site, curriculum: Curriculum, article: Article,
     )
 
 
+def render_page(site: theme.Site, page: Page) -> str:
+    """A standalone document (placement == "page")."""
+    assert page.rendered is not None
+    toc = ""
+    headings = [h for h in page.rendered.toc if h.level <= 3]
+    if len(headings) >= 2:
+        items = "".join(
+            f'<li class="lvl-{h.level}"><a href="#{h.anchor}">{theme.esc(h.text)}</a></li>'
+            for h in headings
+        )
+        toc = ('<nav class="toc" aria-label="On this page">\n'
+               '<p class="toc-title">On this page</p>\n'
+               f"<ol>{items}</ol>\n</nav>")
+
+    body = f"""<div class="layout">
+{toc}
+<main id="main" class="prose">
+  <header class="article-head">
+    <h1>{theme.esc(page.title)}</h1>
+    <p class="article-standfirst">{theme.esc(page.summary)}</p>
+  </header>
+{page.rendered.html}
+</main>
+</div>"""
+
+    return theme.document(
+        site=site, depth=0, active=page.href,
+        title=f"{page.title} - {site.title}",
+        description=page.summary,
+        body=body,
+    )
+
+
 def render_index(site: theme.Site, curriculum: Curriculum) -> str:
     published = curriculum.published
     total = len(curriculum.articles)
@@ -348,6 +478,15 @@ def render_index(site: theme.Site, curriculum: Curriculum) -> str:
   </ol>
 </section>""")
 
+    # The framing prose (placement == "index") reads before the roadmap, so the
+    # reader knows what the subject is before being handed 36 chapter titles.
+    framing_page = curriculum.page_at("index")
+    framing = ""
+    if framing_page is not None:
+        framing = ('<section class="framing" aria-label="'
+                   + theme.esc(framing_page.title) + '">\n'
+                   + framing_page.rendered.html + "\n</section>")
+
     body = f"""<div class="layout layout-single">
 <main id="main">
   <div class="hero">
@@ -360,6 +499,8 @@ def render_index(site: theme.Site, curriculum: Curriculum) -> str:
       <span><b>{curriculum.figures}</b>diagrams</span>
     </div>
   </div>
+
+  {framing}
 
   {'<section class="start-here"><h2>Start here</h2><div class="feature-grid">' + features + "</div></section>" if features else ""}
 
@@ -401,7 +542,8 @@ def build(repo_root: Path, *, strict: bool = False) -> BuildReport:
 
     report = BuildReport()
 
-    curriculum = load_curriculum(blog_src / "curriculum.json", blog_src / "posts")
+    curriculum = load_curriculum(blog_src / "curriculum.json", blog_src / "posts",
+                                 blog_src / "pages")
 
     # Publish the stylesheet/JS alongside the generated pages. Note that the
     # figure directories are *not* cleared here: the SVGs are checked in and
@@ -414,7 +556,10 @@ def build(repo_root: Path, *, strict: bool = False) -> BuildReport:
             shutil.copy2(asset, assets_dst / asset.name)
 
     site = theme.Site(
-        title=curriculum.title, tagline=curriculum.tagline, author=curriculum.author
+        title=curriculum.title,
+        tagline=curriculum.tagline,
+        author=curriculum.author,
+        nav_pages=tuple((p.nav, p.href) for p in curriculum.nav_pages),
     )
 
     pages: dict[Path, str] = {}
@@ -427,6 +572,12 @@ def build(repo_root: Path, *, strict: bool = False) -> BuildReport:
             site, curriculum, article, prev, next_
         )
 
+    for page in curriculum.pages:
+        if page.placement == "page" and page.written:
+            # Chapters own the top level of docs/blog, so a page that wants its
+            # own document must not collide with one -- checked in the loader.
+            pages[docs_blog / page.href] = render_page(site, page)
+
     pages[docs_blog / "index.html"] = render_index(site, curriculum)
 
     report.errors.extend(_check_links(pages))
@@ -434,7 +585,13 @@ def build(repo_root: Path, *, strict: bool = False) -> BuildReport:
         f"{a.slug}: {problem}"
         for a in curriculum.articles
         if a.rendered
-        for problem in _figure_problems(a, docs_blog)
+        for problem in _figure_problems(a.body or "", docs_blog)
+    )
+    report.errors.extend(
+        f"page {p.slug}: {problem}"
+        for p in curriculum.pages
+        if p.rendered
+        for problem in _figure_problems(p.body or "", docs_blog)
     )
     report.warnings.extend(_check_orphan_assets(curriculum, docs_blog))
 
@@ -450,10 +607,11 @@ def build(repo_root: Path, *, strict: bool = False) -> BuildReport:
     return report
 
 
-def _figure_problems(article: Article, docs_blog: Path) -> list[str]:
-    """A figure whose file is absent is a hard error, reported per article."""
+def _figure_problems(body: str, docs_blog: Path) -> list[str]:
+    """A figure whose file is absent is a hard error, whether it sits in a
+    chapter or in a standalone page."""
     problems = []
-    for src in re.findall(r"!\[[^\]]*\]\((\S+?)(?:\s+\"[^\"]*\")?\)", article.body or ""):
+    for src in re.findall(r"!\[[^\]]*\]\((\S+?)(?:\s+\"[^\"]*\")?\)", body):
         if _ABSOLUTE_RE.match(src):
             continue
         if not (docs_blog / src).exists():

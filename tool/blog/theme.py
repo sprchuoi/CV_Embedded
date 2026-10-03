@@ -33,6 +33,8 @@ class Site:
     title: str
     tagline: str
     author: dict
+    # (label, href) pairs for standalone pages that asked to be in the nav.
+    nav_pages: tuple[tuple[str, str], ...] = ()
 
     @property
     def root_prefix(self) -> str:
@@ -105,6 +107,10 @@ def header(*, site: Site, depth: int, active: str) -> str:
         current = ' aria-current="page"' if key == active else ""
         return f'<a href="{href}"{current}>{esc(label)}</a>'
 
+    # Standalone pages first -- they are the "about this site" material, which
+    # reads better ahead of the curriculum link than buried after it.
+    pages = "".join(nav(label, f"{up}{href}", href) for label, href in site.nav_pages)
+
     return f"""<header class="site-header">
   <div class="inner">
     <a class="brand" href="{up}index.html">
@@ -113,6 +119,7 @@ def header(*, site: Site, depth: int, active: str) -> str:
       <span class="sub">signal processing notes</span>
     </a>
     <nav class="site-nav" aria-label="Primary">
+      {pages}
       {nav('Curriculum', f'{up}index.html', 'home')}
       {nav('CV', cv, 'cv')}
       {nav('GitHub', site.author.get('github', '#'), 'github')}

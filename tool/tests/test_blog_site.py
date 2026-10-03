@@ -26,6 +26,7 @@ from tool.blog import site, theme  # noqa: E402
 
 CURRICULUM = REPO / "blog" / "curriculum.json"
 POSTS = REPO / "blog" / "posts"
+PAGES = REPO / "blog" / "pages"
 ASSETS = REPO / "docs" / "blog" / "assets"
 HAVE_NUMPY = importlib.util.find_spec("numpy") is not None
 
@@ -33,6 +34,7 @@ MINIMAL = {
     "title": "T",
     "tagline": "t",
     "author": {"name": "A"},
+    "pages": [],
     "parts": [
         {
             "id": "p1",
@@ -55,6 +57,8 @@ class TestCurriculumLoader(unittest.TestCase):
         self.path = self.tmp / "curriculum.json"
         self.posts = self.tmp / "posts"
         self.posts.mkdir()
+        self.pages = self.tmp / "pages"
+        self.pages.mkdir()
 
     def write(self, data):
         self.path.write_text(json.dumps(data), encoding="utf-8")
@@ -62,7 +66,7 @@ class TestCurriculumLoader(unittest.TestCase):
     def test_loads_and_numbers_articles(self):
         self.write(MINIMAL)
         (self.posts / "one.md").write_text("## A\n\nbody\n", encoding="utf-8")
-        curriculum = site.load_curriculum(self.path, self.posts)
+        curriculum = site.load_curriculum(self.path, self.posts, self.pages)
         self.assertEqual(len(curriculum.parts), 1)
         self.assertEqual([a.slug for a in curriculum.articles], ["one", "two"])
         self.assertEqual([a.number for a in curriculum.articles], [1, 2])
@@ -74,7 +78,7 @@ class TestCurriculumLoader(unittest.TestCase):
         data["parts"][0]["articles"][1]["slug"] = "one"
         self.write(data)
         with self.assertRaises(site.CurriculumError) as ctx:
-            site.load_curriculum(self.path, self.posts)
+            site.load_curriculum(self.path, self.posts, self.pages)
         self.assertIn("duplicate slug", str(ctx.exception))
 
     def test_non_kebab_slug_is_rejected(self):
@@ -82,13 +86,13 @@ class TestCurriculumLoader(unittest.TestCase):
         data["parts"][0]["articles"][0]["slug"] = "Not_Kebab"
         self.write(data)
         with self.assertRaises(site.CurriculumError):
-            site.load_curriculum(self.path, self.posts)
+            site.load_curriculum(self.path, self.posts, self.pages)
 
     def test_orphan_article_file_is_rejected(self):
         self.write(MINIMAL)
         (self.posts / "orphan.md").write_text("## A\n\nbody\n", encoding="utf-8")
         with self.assertRaises(site.CurriculumError) as ctx:
-            site.load_curriculum(self.path, self.posts)
+            site.load_curriculum(self.path, self.posts, self.pages)
         self.assertIn("orphan.md", str(ctx.exception))
 
     def test_missing_key_is_rejected(self):
@@ -96,13 +100,13 @@ class TestCurriculumLoader(unittest.TestCase):
         del data["parts"][0]["articles"][0]["summary"]
         self.write(data)
         with self.assertRaises(site.CurriculumError):
-            site.load_curriculum(self.path, self.posts)
+            site.load_curriculum(self.path, self.posts, self.pages)
 
     def test_malformed_article_reports_the_file(self):
         self.write(MINIMAL)
         (self.posts / "one.md").write_text("# top level heading\n", encoding="utf-8")
         with self.assertRaises(site.CurriculumError) as ctx:
-            site.load_curriculum(self.path, self.posts)
+            site.load_curriculum(self.path, self.posts, self.pages)
         self.assertIn("one.md", str(ctx.exception))
 
 
@@ -188,6 +192,74 @@ class TestFigureIntegrity(unittest.TestCase):
         self.assertEqual(unused, [], f"figures built but never referenced: {unused}")
 
 
+class TestPages(unittest.TestCase):
+    """Standalone pages: the framing prose and the vision document."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
+        self.path = self.tmp / "curriculum.json"
+        self.posts = self.tmp / "posts"
+        self.posts.mkdir()
+        self.pages = self.tmp / "pages"
+        self.pages.mkdir()
+
+    def write(self, pages):
+        data = json.loads(json.dumps(MINIMAL))
+        data["pages"] = pages
+        self.path.write_text(json.dumps(data), encoding="utf-8")
+
+    def test_loads_a_page_and_its_prose(self):
+        self.write([{"slug": "vision", "title": "V", "summary": "s",
+                     "placement": "page", "nav": "Vision"}])
+        (self.pages / "vision.md").write_text("## A\n\nbody\n", encoding="utf-8")
+        c = site.load_curriculum(self.path, self.posts, self.pages)
+        self.assertEqual(len(c.pages), 1)
+        self.assertTrue(c.pages[0].written)
+        self.assertEqual([p.nav for p in c.nav_pages], ["Vision"])
+
+    def test_unwritten_page_is_not_in_the_nav(self):
+        self.write([{"slug": "vision", "title": "V", "summary": "s",
+                     "placement": "page", "nav": "Vision"}])
+        c = site.load_curriculum(self.path, self.posts, self.pages)
+        self.assertFalse(c.pages[0].written)
+        self.assertEqual(c.nav_pages, [])
+
+    def test_bad_placement_is_rejected(self):
+        self.write([{"slug": "v", "title": "V", "summary": "s",
+                     "placement": "sidebar"}])
+        with self.assertRaises(site.CurriculumError) as ctx:
+            site.load_curriculum(self.path, self.posts, self.pages)
+        self.assertIn("placement", str(ctx.exception))
+
+    def test_page_slug_colliding_with_a_chapter_is_rejected(self):
+        self.write([{"slug": "one", "title": "V", "summary": "s",
+                     "placement": "page"}])
+        with self.assertRaises(site.CurriculumError) as ctx:
+            site.load_curriculum(self.path, self.posts, self.pages)
+        self.assertIn("collides", str(ctx.exception))
+
+    def test_orphan_page_file_is_rejected(self):
+        self.write([])
+        (self.pages / "stray.md").write_text("## A\n\nbody\n", encoding="utf-8")
+        with self.assertRaises(site.CurriculumError) as ctx:
+            site.load_curriculum(self.path, self.posts, self.pages)
+        self.assertIn("stray.md", str(ctx.exception))
+
+    def test_index_placement_is_rendered_into_the_index_only(self):
+        self.write([{"slug": "domain", "title": "D", "summary": "s",
+                     "placement": "index"}])
+        (self.pages / "domain.md").write_text("## Framing\n\nwhy\n",
+                                              encoding="utf-8")
+        c = site.load_curriculum(self.path, self.posts, self.pages)
+        self.assertEqual([p.slug for p in c.pages if p.placement == "index"],
+                         ["domain"])
+        site_obj = theme.Site(title=c.title, tagline=c.tagline, author=c.author)
+        html = site.render_index(site_obj, c)
+        self.assertIn('class="framing"', html)
+        self.assertIn("why", html)
+
+
 class TestBuild(unittest.TestCase):
     """Builds a throwaway copy of the repo so nothing in docs/ is touched."""
 
@@ -209,13 +281,21 @@ class TestBuild(unittest.TestCase):
     def test_build_writes_index_and_one_page_per_published_article(self):
         report = site.build(self.tmp)
         self.assertEqual(report.errors, [], f"build errors: {report.errors}")
-        published = site.load_curriculum(
-            self.tmp / "blog" / "curriculum.json", self.tmp / "blog" / "posts").published
+        curriculum = site.load_curriculum(
+            self.tmp / "blog" / "curriculum.json", self.tmp / "blog" / "posts",
+            self.tmp / "blog" / "pages")
+        published = curriculum.published
         self.assertTrue(published, "expected at least one published article")
         self.assertTrue((self.tmp / "docs" / "blog" / "index.html").exists())
         for article in published:
             self.assertTrue((self.tmp / "docs" / "blog" / f"{article.slug}.html").exists())
-        self.assertEqual(len(report.pages), len(published) + 1)
+        # one document per published chapter, plus the index, plus any page that
+        # asked for its own document (placement == "page").
+        standalone = [p for p in curriculum.pages
+                      if p.placement == "page" and p.written]
+        for page in standalone:
+            self.assertTrue((self.tmp / "docs" / "blog" / page.href).exists())
+        self.assertEqual(len(report.pages), len(published) + 1 + len(standalone))
 
     def test_build_copies_the_stylesheet(self):
         site.build(self.tmp)
@@ -268,6 +348,69 @@ class TestBuild(unittest.TestCase):
             with self.subTest(page=page.name):
                 self.assertEqual(problems, [])
                 self.assertEqual(stack, [])
+
+
+class TestDiagramLayout(unittest.TestCase):
+    """Hand-built diagrams must not draw outside their own canvas.
+
+    A figure whose content runs past the canvas edge is silently clipped, which
+    is invisible in the module and obvious only to a reader. This is checked
+    because it has already happened twice: once in the FFT decimation tree,
+    where a callout was taller than the canvas, and once in a decibel figure
+    written with the same mistake.
+    """
+
+    @staticmethod
+    def _lowest_content(svg: str) -> float:
+        lowest = 0.0
+        for element in re.findall(r"<rect[^>]*>", svg):
+            y = re.search(r'\by="([-\d.]+)"', element)
+            h = re.search(r'\bheight="([-\d.]+)"', element)
+            if y and h:
+                lowest = max(lowest, float(y.group(1)) + float(h.group(1)))
+        for element in re.findall(r"<text[^>]*>", svg):
+            y = re.search(r'\by="([-\d.]+)"', element)
+            if y:
+                lowest = max(lowest, float(y.group(1)))
+        for _, y in re.findall(r'\bd="M ([-\d.]+) ([-\d.]+)', svg):
+            lowest = max(lowest, float(y))
+        return lowest
+
+    def test_no_hand_built_diagram_overflows_its_canvas(self):
+        from tool.blog.art import MODULES, FigureError, collect
+
+        try:
+            figures = collect(kinds=("diagrams",))
+        except FigureError as exc:      # pragma: no cover - environment problem
+            self.skipTest(f"figure registry unavailable: {exc}")
+        self.assertTrue(figures, "expected diagram modules to be registered")
+
+        problems = []
+        for figure in figures:
+            svg = figure.builder()
+            if not svg.lstrip().startswith("<svg"):
+                continue
+            match = re.search(r'\bheight="(\d+)"', svg)
+            if not match:
+                continue
+            canvas = float(match.group(1))
+            lowest = self._lowest_content(svg)
+            if lowest > canvas:
+                problems.append(
+                    f"{figure.name}: canvas {canvas:.0f}, content reaches {lowest:.1f}")
+        self.assertEqual(problems, [], "diagrams overflow their canvas")
+
+    def test_every_diagram_declares_a_title(self):
+        """An SVG with no <title> has no accessible name."""
+        from tool.blog.art import FigureError, collect
+
+        try:
+            figures = collect(kinds=("diagrams",))
+        except FigureError as exc:      # pragma: no cover
+            self.skipTest(f"figure registry unavailable: {exc}")
+        missing = [f.name for f in figures
+                   if "<title>" not in f.builder()]
+        self.assertEqual(missing, [], "diagrams with no accessible title")
 
 
 class TestRenderedArticleMarkup(unittest.TestCase):

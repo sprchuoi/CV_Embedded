@@ -323,6 +323,28 @@ mjx-container[display="true"] { margin: .35rem 0 !important; }
 .hero-stats { display: flex; flex-wrap: wrap; justify-content: center; gap: 2rem; font-size: .85rem; color: var(--muted); }
 .hero-stats b { display: block; font-size: 1.5rem; color: var(--head); font-weight: 700; line-height: 1.2; }
 
+/* --------------------------------------------------------- index framing -- */
+
+/* The framing prose sits between the hero and the roadmap, so it carries its
+   own typography: the index's <main> deliberately has no .prose class. */
+.framing {
+  max-width: var(--measure);
+  margin: 0 auto 3rem;
+  padding-bottom: 2.4rem;
+  border-bottom: 1px solid var(--rule);
+}
+.framing h2 {
+  font-size: 1.12rem; color: var(--head); margin: 2.2rem 0 .7rem;
+  letter-spacing: -.005em;
+}
+.framing h2:first-child { margin-top: 0; }
+.framing h3 { font-size: 1rem; color: var(--head); margin: 1.6rem 0 .5rem; }
+.framing p { margin: 0 0 1rem; color: var(--ink-soft); font-size: 1.02rem; }
+.framing ul, .framing ol { margin: 0 0 1.1rem; padding-left: 1.25rem; color: var(--ink-soft); }
+.framing li { margin: .35rem 0; }
+.framing strong { color: var(--head); }
+.framing > :last-child { margin-bottom: 0; }
+
 .start-here { margin-bottom: 3rem; }
 .start-here h2 { font-size: .74rem; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin: 0 0 1rem; }
 .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1rem; }
