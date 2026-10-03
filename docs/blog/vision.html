@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vision and Research - DSP, from First Principles to the Optical Link</title>
+<meta name="description" content="What I am trying to build, what I am reading and measuring, and the questions I do not have answers to yet.">
+<meta name="color-scheme" content="light dark">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Vision and Research - DSP, from First Principles to the Optical Link">
+<meta property="og:description" content="What I am trying to build, what I am reading and measuring, and the questions I do not have answers to yet.">
+<link rel="icon" href="../favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link rel="stylesheet" href="assets/blog.css">
+<script>
+  window.MathJax = {
+  "tex": {
+    "inlineMath": [
+      [
+        "$",
+        "$"
+      ],
+      [
+        "\\(",
+        "\\)"
+      ]
+    ],
+    "displayMath": [
+      [
+        "$$",
+        "$$"
+      ],
+      [
+        "\\[",
+        "\\]"
+      ]
+    ],
+    "processEscapes": true,
+    "tags": "none",
+    "macros": {
+      "twopi": "2\\pi",
+      "dd": "\\mathrm{d}",
+      "E": "\\mathbb{E}",
+      "j": "\\mathrm{j}",
+      "argmin": "\\operatorname*{arg\\,min}"
+    }
+  },
+  "options": {
+    "skipHtmlTags": [
+      "script",
+      "noscript",
+      "style",
+      "textarea",
+      "pre",
+      "code"
+    ],
+    "ignoreHtmlClass": "no-mathjax"
+  },
+  "chtml": {
+    "scale": 1.02
+  }
+};
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="index.html">
+      <span class="mark" aria-hidden="true">DSP</span>
+      <span>Nguyen Quang Binh</span>
+      <span class="sub">signal processing notes</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="vision.html" aria-current="page">Vision</a>
+      <a href="index.html">Curriculum</a>
+      <a href="../index.html">CV</a>
+      <a href="https://github.com/sprchuoi">GitHub</a>
+      <button class="icon-btn" type="button" data-theme-toggle aria-pressed="false"
+              title="Switch theme" aria-label="Switch colour theme"><i class="fa-solid fa-moon" aria-hidden="true"></i></button>
+    </nav>
+  </div>
+  <div class="read-progress" role="presentation"></div>
+</header>
+<div class="layout">
+<nav class="toc" aria-label="On this page">
+<p class="toc-title">On this page</p>
+<ol><li class="lvl-2"><a href="#the-thesis">The thesis</a></li><li class="lvl-2"><a href="#what-i-am-working-on">What I am working on</a></li><li class="lvl-2"><a href="#what-i-am-reading-and-testing">What I am reading and testing</a></li><li class="lvl-2"><a href="#open-questions">Open questions</a></li><li class="lvl-2"><a href="#how-i-work">How I work</a></li><li class="lvl-2"><a href="#why-publish-at-all">Why publish at all</a></li></ol>
+</nav>
+<main id="main" class="prose">
+  <header class="article-head">
+    <h1>Vision and Research</h1>
+    <p class="article-standfirst">What I am trying to build, what I am reading and measuring, and the questions I do not have answers to yet.</p>
+  </header>
+<blockquote>
+<p>This page is a working document, not a finished statement. I revise it as the work changes. Anything here that reads as a settled position is a position I currently hold, not one I have finished defending.</p>
+</blockquote>
+<h2 id="the-thesis"><a class="heading-anchor" href="#the-thesis" aria-hidden="true">#</a>The thesis</h2>
+<p>Most engineers meet signal processing exactly once, in a course that derives the Fourier transform, proves the sampling theorem, and stops. Then they spend a career treating the DSP block in their system as a vendor-supplied black box with a datasheet, and the interesting engineering happens somewhere else.</p>
+<p>I think that is a bad trade. The DSP is usually where the hard constraints live — power, latency, word length, tap count — and those constraints are only negotiable if you understand what the algorithm is doing well enough to change it. My aim is to be the kind of engineer who can move the boundary: who can read a link budget, say which equaliser structure it implies, and then go and implement it at rate in fixed point without losing the margin in the implementation.</p>
+<p>This blog is the forcing function for that. Writing a chapter is the only reliable test I have found for whether I actually understand something, and drawing a figure is the only reliable test for whether I understand it well enough to explain it.</p>
+<h2 id="what-i-am-working-on"><a class="heading-anchor" href="#what-i-am-working-on" aria-hidden="true">#</a>What I am working on</h2>
+<p>Three threads, in rough order of how much of my time they take:</p>
+<p><strong>Signal-processing implementation for optical links.</strong> Equaliser structures and where each one belongs — feed-forward, decision-feedback, frequency-domain. Fixed-point representation and where the binary point goes. FFT architectures and block floating point, because an unscaled transform grows by <span class="math">$\log_2 N$</span> bits and the converter does not have them to spare. Carrier and timing recovery as control problems rather than as blocks.</p>
+<p><strong>Simulation-driven validation.</strong> Building the model before the hardware exists, so the failure modes are known before bring-up rather than discovered during it. A link model that reproduces dispersion, phase noise and quantisation will tell you the tap count, the word widths and the block size; a testbench will tell you that your model was optimistic. I care a lot about the gap between those two, and about closing it in the direction of the model being <em>pessimistic</em>.</p>
+<p><strong>Teaching the material in public.</strong> The chapters here exist because the notes I made for myself were too terse to be useful even to me six months later. If a chapter is not clear enough that someone else can follow it, it is not finished.</p>
+<h2 id="what-i-am-reading-and-testing"><a class="heading-anchor" href="#what-i-am-reading-and-testing" aria-hidden="true">#</a>What I am reading and testing</h2>
+<ul>
+<li><strong>Fixed-point and word-length optimisation.</strong> Where the analytic bounds are too loose to be useful, and whether a simulated annealing over word lengths beats the discipline of a scaling schedule.</li>
+<li><strong>Adaptive equalisation beyond CMA.</strong> Multi-modulus and decision-directed adaptation for higher-order QAM; what genuinely degrades and what only degrades in simulation.</li>
+<li><strong>Neural equalisers.</strong> Whether a small network earns its area over a well-tuned DFE at the same throughput, and — more usefully — the conditions under which it does not. I am sceptical of the reporting norms here and would like to test them at fixed complexity rather than fixed accuracy.</li>
+<li><strong>Nonlinearity.</strong> Digital backpropagation costs far more than it returns in most links. I want a clear account of the cases where that stops being true.</li>
+</ul>
+<h2 id="open-questions"><a class="heading-anchor" href="#open-questions" aria-hidden="true">#</a>Open questions</h2>
+<p>These are the ones I do not have answers to, and would like to:</p>
+<ol>
+<li><strong>How much of a receiver can be made self-calibrating?</strong> Most of the analogue impairments — I/Q imbalance, ADC skew, bandwidth — are slowly drifting and individually measurable. How much of that can be estimated in the background, in the same datapath that already exists, without the estimator eating the margin it recovers?</li>
+</ol>
+<ol>
+<li><strong>Where is the real boundary between equalisation and coding?</strong> Soft-decision FEC and a soft-output equaliser can exchange information, but in shipping silicon they usually do not. What is actually lost by that separation, and is it worth the interface complexity to recover it?</li>
+</ol>
+<ol>
+<li><strong>Is the FFT the right primitive?</strong> It is the standard answer for a long static filter. But the transform is a large fraction of the power and almost all of the latency, and the filter it implements is known in advance. Is there a sparse or structured transform that exploits that — and if not, why not?</li>
+</ol>
+<ol>
+<li><strong>How do you validate a fixed-point DSP design honestly?</strong> Simulation gives a bit-exact answer for inputs it was given. What is the equivalent of a coverage metric for a datapath, and what does it take to believe a word-length budget rather than merely pass a test vector?</li>
+</ol>
+<h2 id="how-i-work"><a class="heading-anchor" href="#how-i-work" aria-hidden="true">#</a>How I work</h2>
+<p>Three habits, all of which this site is designed to make visible:</p>
+<p><strong>Measure, do not assert.</strong> Every number in these chapters comes from a figure that computes it. Where a figure models rather than measures, it says so on its own face. Where I could not verify a claim, the chapter says that too, and it is the reason a few of them carry caveats I would rather not need.</p>
+<p><strong>Draw first.</strong> If I cannot draw a concept, I do not understand it well enough to use it. Several chapters only made sense while I was trying to work out what the figure should actually show.</p>
+<p><strong>Keep the arithmetic honest.</strong> An algorithm that is not implementable at rate and within power is not an algorithm, it is a paper. Complexity claims get multiplied out into multiplies per symbol and watts, and they get checked against the sibling chapters, because the easiest way to fool yourself is to change conventions halfway through.</p>
+<h2 id="why-publish-at-all"><a class="heading-anchor" href="#why-publish-at-all" aria-hidden="true">#</a>Why publish at all</h2>
+<p>Part practical, part selfish. Practical: the notes are more useful to other people than they are sitting in a folder, and engineering that is written down gets reviewed. Selfish: a public claim is a much stronger forcing function than a private one, and being wrong in public is the fastest way I know to stop being wrong.</p>
+<p>If something here is incorrect, I would rather hear it than keep it.</p>
+</main>
+</div>
+<footer class="site-footer">
+  <div class="inner">
+    <span>&copy; Nguyen Quang Binh &middot; Embedded Software Engineer - Optical DSP</span>
+    <span class="spacer"></span>
+    <a href="https://github.com/sprchuoi" target="_blank" rel="noopener">GitHub</a> &middot; <a href="https://www.linkedin.com/in/sprchuoi" target="_blank" rel="noopener">LinkedIn</a> &middot; <a href="mailto:quangbinhlxcity@gmail.com">quangbinhlxcity@gmail.com</a> &middot; <a href="../index.html">CV</a>
+  </div>
+</footer>
+<script src="assets/blog.js" defer></script>
+</body>
+</html>

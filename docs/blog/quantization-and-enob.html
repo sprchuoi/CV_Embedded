@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quantization, SNR and ENOB - DSP, from First Principles to the Optical Link</title>
+<meta name="description" content="An ideal 12-bit ADC does not give you 12 bits. Where the 6.02N + 1.76 formula comes from, and what actually eats it.">
+<meta name="color-scheme" content="light dark">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Quantization, SNR and ENOB - DSP, from First Principles to the Optical Link">
+<meta property="og:description" content="An ideal 12-bit ADC does not give you 12 bits. Where the 6.02N + 1.76 formula comes from, and what actually eats it.">
+<link rel="icon" href="../favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link rel="stylesheet" href="assets/blog.css">
+<script>
+  window.MathJax = {
+  "tex": {
+    "inlineMath": [
+      [
+        "$",
+        "$"
+      ],
+      [
+        "\\(",
+        "\\)"
+      ]
+    ],
+    "displayMath": [
+      [
+        "$$",
+        "$$"
+      ],
+      [
+        "\\[",
+        "\\]"
+      ]
+    ],
+    "processEscapes": true,
+    "tags": "none",
+    "macros": {
+      "twopi": "2\\pi",
+      "dd": "\\mathrm{d}",
+      "E": "\\mathbb{E}",
+      "j": "\\mathrm{j}",
+      "argmin": "\\operatorname*{arg\\,min}"
+    }
+  },
+  "options": {
+    "skipHtmlTags": [
+      "script",
+      "noscript",
+      "style",
+      "textarea",
+      "pre",
+      "code"
+    ],
+    "ignoreHtmlClass": "no-mathjax"
+  },
+  "chtml": {
+    "scale": 1.02
+  }
+};
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="index.html">
+      <span class="mark" aria-hidden="true">DSP</span>
+      <span>Nguyen Quang Binh</span>
+      <span class="sub">signal processing notes</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="vision.html">Vision</a>
+      <a href="index.html" aria-current="page">Curriculum</a>
+      <a href="../index.html">CV</a>
+      <a href="https://github.com/sprchuoi">GitHub</a>
+      <button class="icon-btn" type="button" data-theme-toggle aria-pressed="false"
+              title="Switch theme" aria-label="Switch colour theme"><i class="fa-solid fa-moon" aria-hidden="true"></i></button>
+    </nav>
+  </div>
+  <div class="read-progress" role="presentation"></div>
+</header>
+<div class="layout">
+<nav class="toc" aria-label="On this page">
+<p class="toc-title">On this page</p>
+<ol><li class="lvl-2"><a href="#the-staircase">The staircase</a></li><li class="lvl-2"><a href="#mid-tread-and-mid-rise">Mid-tread and mid-rise</a></li><li class="lvl-2"><a href="#the-error-is-not-noise">The error is not noise</a></li><li class="lvl-2"><a href="#where-602n-176-comes-from">Where 6.02N + 1.76 comes from</a></li><li class="lvl-2"><a href="#dither-making-the-assumptions-true">Dither: making the assumptions true</a></li><li class="lvl-2"><a href="#oversampling">Oversampling</a></li><li class="lvl-2"><a href="#noise-shaping">Noise shaping</a></li><li class="lvl-2"><a href="#enob-the-number-that-is-actually-delivered">ENOB: the number that is actually delivered</a></li><li class="lvl-2"><a href="#the-figure-of-merit">The figure of merit</a></li><li class="lvl-2"><a href="#what-to-carry-forward">What to carry forward</a></li></ol>
+</nav>
+<main id="main" class="prose">
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    <a href="index.html">Curriculum</a><span class="sep">/</span>Signals, Sampling and Number Systems
+  </nav>
+  <header class="article-head">
+    <h1>Quantization, SNR and ENOB</h1>
+    <p class="article-standfirst">An ideal 12-bit ADC does not give you 12 bits. Where the 6.02N + 1.76 formula comes from, and what actually eats it.</p>
+    <div class="article-meta"><span class="level-badge" data-level="Beginner">Beginner</span><span>17 min read</span><div class="taglist"><span class="tag">adc</span><span class="tag">quantization</span><span class="tag">noise</span></div></div>
+  </header>
+<p>The last chapter stopped at the moment a continuous voltage becomes a list of numbers. It said quantisation is bounded, roughly uncorrelated, and can be averaged down — three claims it had no room to justify.</p>
+<p>Those claims underwrite every link budget in the optical world, so they are worth the room. The assumption to demolish is one sentence long: <strong>an <span class="math">$N$</span>-bit converter gives you <span class="math">$N$</span> bits.</strong></p>
+<p>It does not. An 8-bit ADC running at 128 GSa/s into 64 GHz of analogue bandwidth delivers 5.5 effective bits. Where the other 2.5 went is this chapter.</p>
+<h2 id="the-staircase"><a class="heading-anchor" href="#the-staircase" aria-hidden="true">#</a>The staircase</h2>
+<figure class="figure"><img src="assets/diagrams/quantizer-transfer-curve.svg" alt="The quantiser transfer curve and its error. Left: an ideal 3-bit staircase in LSB units. Right: the difference between input and output, which is a deterministic sawtooth bounded by half a step." loading="lazy"><figcaption><span class="fig-label">Figure 1</span><span class="fig-text">The quantiser transfer curve and its error. Left: an ideal 3-bit staircase in LSB units. Right: the difference between input and output, which is a deterministic sawtooth bounded by half a step.</span></figcaption></figure>
+<p>An ideal quantiser is a staircase. The input runs continuously; the output takes one of a fixed set of levels, the nearest one. Everything below follows from that geometry.</p>
+<p>Three quantities define it. The <strong>step size</strong> <span class="math">$q$</span> — one least-significant bit — is the spacing between adjacent levels. The level count comes from the word length: <span class="math">$N$</span> bits gives <span class="math">$2^N$</span> codes. <strong>Full scale</strong> <span class="math">$\mathrm{FS}$</span> is the input span the converter handles. So</p>
+<div class="math-display">$$q = \frac{\mathrm{FS}}{2^{N}}$$</div>
+<p>At 8 bits over 1 V, <span class="math">$q$</span> is 3.9 mV, or 0.39% of full scale. At the 5.5 effective bits a real 128 GSa/s part delivers, <span class="math">$2^{5.5} \approx 45$</span> levels and the step is 2.2% of full scale.</p>
+<p>Figure 1 draws the staircase in LSB units, so the step is exactly one — adopt that convention permanently. Resolution is not an abstract property of a converter; it is how many steps fit across the signal.</p>
+<aside class="callout callout-note">
+  <p class="callout-title"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> Two kinds of bookkeeping</p>
+  <div class="callout-body">
+<p>Whether a bipolar converter has <span class="math">$2^N$</span> levels or <span class="math">$2^N - 1$</span> changes <span class="math">$q$</span> by 0.03 dB at 8 bits and 0.2 dB at 5.5.</p>
+<p>A convention, not a design decision, which is why every derivation here writes <span class="math">$q = \mathrm{FS}/2^N$</span>.</p>
+  </div>
+</aside>
+<h2 id="mid-tread-and-mid-rise"><a class="heading-anchor" href="#mid-tread-and-mid-rise" aria-hidden="true">#</a>Mid-tread and mid-rise</h2>
+<p>Two conventions lay that staircase over the input range, and they differ only in where the levels sit relative to zero.</p>
+<figure class="figure"><img src="assets/diagrams/quantizer-types.svg" alt="Mid-tread against mid-rise at 3 bits. Mid-tread puts a real level at zero; mid-rise puts a decision threshold there instead, gaining one level and losing an exact zero." loading="lazy"><figcaption><span class="fig-label">Figure 2</span><span class="fig-text">Mid-tread against mid-rise at 3 bits. Mid-tread puts a real level at zero; mid-rise puts a decision threshold there instead, gaining one level and losing an exact zero.</span></figcaption></figure>
+<p>A <strong>mid-tread</strong> quantiser has a level at zero: levels <span class="math">$0, \pm q, \pm 2q, \ldots$</span>, an odd count. A <strong>mid-rise</strong> quantiser has none: levels <span class="math">$\pm q/2, \pm 3q/2, \ldots$</span>, an even count. Both have the same step and the same ±q/2 error bound. Only the position changes.</p>
+<p>Mid-tread is what almost every converter uses. Two's complement makes zero a code, so the transfer curve is symmetric and needs no offset correction; the arithmetic downstream can assume zero in gives zero out; and an idle channel reads as a clean zero rather than a square wave.</p>
+<p>The consequence for small signals is not boring. A mid-tread quantiser is dead inside <span class="math">$\pm q/2$</span>: every input in that window maps to the same output, so anything smaller than half a step is not represented. For an optical front end, where an idle tributary must read as zero for the AGC and the slicer, that is usually what you want. But it is a real nonlinearity: at 5.5 bits the dead zone is <span class="math">$\pm 1.1\%$</span> of full scale, which is not a rounding error, it is the size of a small signal.</p>
+<p>A mid-rise quantiser has no dead zone, keeps one more level for the same word length, and pays with a half-LSB offset: zero in produces <span class="math">$\pm q/2$</span> out, so it never returns exactly zero and an idle input toggles at the LSB rate. Its virtue is measuring a signal that genuinely lives near zero, where an offset is easier to subtract than a dead zone is to fill.</p>
+<p><strong>The judgement is mid-tread, always, for a bipolar receiver.</strong> The dead zone sits at the one input value a decision-directed DSP treats as sacred, and a converter that cannot tell <span class="math">$+0.1$</span> LSB from <span class="math">$-0.1$</span> LSB has quietly thrown away information the slicer needs.</p>
+<h2 id="the-error-is-not-noise"><a class="heading-anchor" href="#the-error-is-not-noise" aria-hidden="true">#</a>The error is not noise</h2>
+<p>Call the error <span class="math">$e = x - x_q$</span>: what the input had and the output did not. Figure 1's right-hand panel draws it. The error is not random. It is a deterministic function of the input, a sawtooth sweeping from <span class="math">$+q/2$</span> to <span class="math">$-q/2$</span> and jumping back, once for every step the input crosses.</p>
+<figure class="figure"><img src="assets/plots/quantization-error-sawtooth.svg" alt="One period of a full-scale sine through a 4-bit quantiser, the error it produces, and the spectrum of that error. The error is a sawtooth locked to the input; its spectrum is spurs, not a floor." loading="lazy"><figcaption><span class="fig-label">Figure 3</span><span class="fig-text">One period of a full-scale sine through a 4-bit quantiser, the error it produces, and the spectrum of that error. The error is a sawtooth locked to the input; its spectrum is spurs, not a floor.</span></figcaption></figure>
+<p>Because the transfer curve rounds to the nearest level, the error is bounded:</p>
+<div class="math-display">$$-\frac{q}{2} \le e \le +\frac{q}{2} \qquad \text{(mid-tread)}$$</div>
+<p>That bound needs no assumptions. Everything that follows costs one.</p>
+<p>The familiar <span class="math">$q^2/12$</span> error power comes from three, and they fail separately:</p>
+<ul>
+<li>The error is <strong>uniformly distributed</strong> over <span class="math">$[-\frac{q}{2}, +\frac{q}{2}]$</span>. A uniform distribution of width <span class="math">$q$</span> has variance <span class="math">$q^2/12$</span>.</li>
+<li>The error is <strong>uncorrelated with the signal</strong>, so signal and error power add rather than interfere.</li>
+<li>The error is <strong>white</strong>, with a flat power spectral density and no memory between samples.</li>
+</ul>
+<p>For a sine at low resolution all three are false, for the same reason: the error <em>is</em> a function of the signal. Its distribution is not uniform, because the sine lingers near its turning points and the error lingers with it — figure 3's 4-bit simulation gives an error rms just over 0.30 LSB, against the <span class="math">$1/\sqrt{12} = 0.289$</span> that uniformity predicts. It is maximally correlated with the signal, because it is computed from it. And a periodic error has a line spectrum, not a flat one.</p>
+<p>Figure 3's bottom panel is the practical consequence. A plain 4-bit quantiser fed a coherent sine puts its error energy into discrete spurs; the same quantiser fed the sine plus a small dither has a floor with no spur above it. Those spurs are the spectrum of a deterministic distortion, and a wideband signal sees them as intermodulation.</p>
+<aside class="callout callout-key">
+  <p class="callout-title"><i class="fa-solid fa-key" aria-hidden="true"></i> The error is a distortion, not a noise generator</p>
+  <div class="callout-body">
+<p>It is bounded, repeatable, and coherent with the signal. Two records of the same input give the same error, which is what makes it a distortion and not noise.</p>
+  </div>
+</aside>
+<p><strong>At five effective bits the specification that matters is spurious-free dynamic range, not SNR.</strong> The <span class="math">$6.02N + 1.76$</span> figure below describes a converter whose error has been assumed into whiteness; a real 5-bit converter at full scale can have its worst spur 30 dB below the carrier while its integrated noise sits lower still. Spurs do not average down with longer records, and no equaliser adapts them away. Design the link to the spur.</p>
+<h2 id="where-602n-176-comes-from"><a class="heading-anchor" href="#where-602n-176-comes-from" aria-hidden="true">#</a>Where 6.02N + 1.76 comes from</h2>
+<p>Now the arithmetic, with the input assumption stated rather than hidden.</p>
+<aside class="callout callout-math">
+  <p class="callout-title"><i class="fa-solid fa-square-root-variable" aria-hidden="true"></i> The derivation, in three lines</p>
+  <div class="callout-body">
+<div class="math-display">$$q = \frac{\mathrm{FS}}{2^{N}}, \qquad \sigma_e^{2} = \frac{q^{2}}{12} \quad \text{(uniform error)}, \qquad P_{\text{sig}} = \frac{\mathrm{FS}^{2}}{8} \quad \text{(full-scale sine)}$$</div>
+<div class="math-display">$$\mathrm{SNR} = 10\log_{10}\!\left(\frac{\mathrm{FS}^{2}/8}{q^{2}/12}\right) = 10\log_{10}\!\left(\frac{12}{8}\cdot\frac{\mathrm{FS}^{2}\,2^{2N}}{\mathrm{FS}^{2}}\right) = 10\log_{10}\!\left(\tfrac{3}{2}\cdot 4^{N}\right)$$</div>
+<div class="math-display">$$\mathrm{SNR} = 20N\log_{10}2 + 10\log_{10}1.5 = 6.02N + 1.76\ \text{dB}$$</div>
+  </div>
+</aside>
+<p>The algebra is four substitutions: full scale over the code count, a twelfth of the step squared, and a full-scale sinusoid of power <span class="math">$\mathrm{FS}^2/8$</span>. Divide, and the step cancels — which is why the result is a function of word length, not of the converter.</p>
+<p>The input assumption is the strong one. <strong>Full-scale sinusoid</strong> means peak-to-peak exactly the converter's span, with no AGC backoff, no crest factor and no headroom. Lose 3 dB of it and the SNR falls by 3 dB.</p>
+<p>The 1.76 dB is not a converter property. A signal filling the range uniformly has power <span class="math">$\mathrm{FS}^2/12$</span> and gives exactly <span class="math">$6.02N$</span>; a sine's power is 1.5 times that, because a sine spends most of its time away from its peaks. The constant is a crest-factor credit, and any signal with a worse crest factor gets less of it.</p>
+<aside class="callout callout-warn">
+  <p class="callout-title"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> What the formula assumes</p>
+  <div class="callout-body">
+<p>It assumes a full-scale sinusoid. A PAM4 signal at the same launch power runs several dB below full scale, and every dB of backoff comes off the SNR.</p>
+<p>The formula is an upper bound on a real link, not a prediction of one.</p>
+  </div>
+</aside>
+<p>Figure 4 puts the line against a simulated quantiser.</p>
+<figure class="figure"><img src="assets/plots/snr-versus-bits.svg" alt="The ideal 6.02N + 1.76 dB line against a simulated quantiser, and the in-band SNR that oversampling adds. Measured points sit within a fraction of a dB from eight bits upward and noticeably under the line below that." loading="lazy"><figcaption><span class="fig-label">Figure 4</span><span class="fig-text">The ideal 6.02N + 1.76 dB line against a simulated quantiser, and the in-band SNR that oversampling adds. Measured points sit within a fraction of a dB from eight bits upward and noticeably under the line below that.</span></figcaption></figure>
+<p>The simulated 8-bit point lands about 0.15 dB under the ideal 49.9 dB, and the gap widens as resolution falls: half a dB at 5 bits and more than 2 dB at 2 bits. That is the uniform-error assumption degrading exactly where this chapter says it does. The direction of the error makes the formula safe: <strong>it is asymptotic and optimistic, so use it as a budget line and never as a datasheet claim.</strong></p>
+<div class="table-wrap"><table>
+<thead><tr><th style="text-align:left"><span class="math">$N$</span></th><th style="text-align:left"><span class="math">$6.02N + 1.76$</span></th><th style="text-align:left">what it corresponds to</th></tr></thead>
+<tbody>
+<tr><td style="text-align:left">4</td><td style="text-align:left">25.8 dB</td><td style="text-align:left">a low-resolution front end, spurs dominate</td></tr>
+<tr><td style="text-align:left">5.5</td><td style="text-align:left">34.9 dB</td><td style="text-align:left">a real 128 GSa/s ADC, at full scale, no backoff</td></tr>
+<tr><td style="text-align:left">8</td><td style="text-align:left">49.9 dB</td><td style="text-align:left">the nominal label on that same part</td></tr>
+<tr><td style="text-align:left">12</td><td style="text-align:left">74.0 dB</td><td style="text-align:left">a good 1 GSa/s instrument converter</td></tr>
+<tr><td style="text-align:left">16</td><td style="text-align:left">98.1 dB</td><td style="text-align:left">audio, where <span class="math">$N$</span> means something</td></tr>
+</tbody>
+</table></div>
+<p>The message is the gap between the second and third rows: the label says 8, the physics says 5.5, and the formula prices that at 15 dB.</p>
+<h2 id="dither-making-the-assumptions-true"><a class="heading-anchor" href="#dither-making-the-assumptions-true" aria-hidden="true">#</a>Dither: making the assumptions true</h2>
+<p>The three assumptions are not laws of nature. They are properties of the error, and the error is a function of the input.</p>
+<p>Add a small random signal before the quantiser, and the error's distribution, correlation and spectrum all change. A triangular (TPDF) dither of about one LSB is the classic choice: the smallest whose amplitude makes the error's mean and variance independent of the signal, which is exactly what the <span class="math">$q^2/12$</span> derivation needs. It costs the dither's own power, which adds to the error power in band.</p>
+<p>What dither does not do is remove error energy; it redistributes it. Figure 3's bottom panel is the demonstration: with a deliberately quiet dither the in-band error power is unchanged to within a tenth of a dB, while the worst spur falls to a floor nearly 30 dB below where it was. The total is conserved, the shape is not.</p>
+<aside class="callout callout-aside">
+  <p class="callout-title"><i class="fa-solid fa-comment-dots" aria-hidden="true"></i> Where this was worked out first</p>
+  <div class="callout-body">
+<p>Dither is not a DSP curiosity — it is why a 16-bit CD sounds better than 16 bits. The audio world settled the theory in the 1980s, and the result was counter-intuitive: adding noise improved the perceived resolution.</p>
+  </div>
+</aside>
+<p><strong>I would not put a dither DAC in front of a 128 GSa/s converter.</strong> At those rates the dither source is another analogue block in the signal path, adding noise, power and a calibration problem, to prettify the spectrum of a signal whose spurs the FEC is already correcting. Where dither earns its place is inside the DSP, on truncated coefficient and accumulator words, where it costs a few gates and turns a limit cycle into a floor.</p>
+<h2 id="oversampling"><a class="heading-anchor" href="#oversampling" aria-hidden="true">#</a>Oversampling</h2>
+<p>Oversampling attacks from the other side. Sample far faster than the signal bandwidth requires, and the same total error power <span class="math">$q^2/12$</span> spreads over a proportionally wider band. A digital filter then removes everything above the signal band:</p>
+<div class="math-display">$$\mathrm{SNR}_{\text{in band}} = 6.02N + 1.76 + 10\log_{10}(\mathrm{OSR})\ \text{dB}$$</div>
+<p>An OSR of 256 buys 24.1 dB — 4.0 bits — for nothing but speed. Figure 4's second panel draws the trade.</p>
+<p>Be exact about what changed: <strong>the total noise power did not fall.</strong> It is the same <span class="math">$q^2/12$</span>, spread thinner and then filtered. Oversampling does not clean the error up; it moves most of it out of band and lets you throw that part away.</p>
+<p>It also only works on noise. A spur from a deterministic error sits at a specific frequency; changing the sample rate relocates it rather than spreading it. That is why oversampling helps a converter with a poor noise floor far more than one whose limit is a third harmonic.</p>
+<p>The price is rate, and at the top of the range it is brutal. The rate needed is <span class="math">$f_s = 2B \cdot \mathrm{OSR}$</span> where <span class="math">$B$</span> is the signal bandwidth. For audio, <span class="math">$B = 20$</span> kHz and an OSR of 256 asks for 10.24 MSa/s — a part you can buy for a dollar. For a 64 GBd optical link, <span class="math">$B$</span> is tens of gigahertz and the same OSR asks for tens of terasamples per second, three orders of magnitude past the state of the art.</p>
+<p><strong>Oversampling is the cheapest bit in signal processing and the one an optical receiver can never afford.</strong> That is a statement about where the bandwidth is spent.</p>
+<h2 id="noise-shaping"><a class="heading-anchor" href="#noise-shaping" aria-hidden="true">#</a>Noise shaping</h2>
+<p>The oversampling benefit can be had without the oversampling ratio, by shaping the error instead of widening the band.</p>
+<p>Put the quantiser inside a feedback loop that subtracts the error it makes, and the error's transfer function is no longer flat. For a first-order loop it is <span class="math">$1 - z^{-1}$</span>, with magnitude squared</p>
+<div class="math-display">$$|H_e(f)|^{2} = 4\sin^{2}\!\left(\pi \frac{f}{f_s}\right)$$</div>
+<p>Small at DC, rising to four at Nyquist. The loop has not reduced the error; it has pushed it to frequencies the signal does not occupy, where the decimation filter removes it.</p>
+<figure class="figure"><img src="assets/plots/osr-and-noise-shaping.svg" alt="Flat against first-order-shaped quantisation noise, and the in-band SNR each delivers. The shaped spectrum is far lower in band and far higher out of band, and its total power is larger, not smaller." loading="lazy"><figcaption><span class="fig-label">Figure 5</span><span class="fig-text">Flat against first-order-shaped quantisation noise, and the in-band SNR each delivers. The shaped spectrum is far lower in band and far higher out of band, and its total power is larger, not smaller.</span></figcaption></figure>
+<p>The slopes are the headline. Unshaped noise in a band that halves gains 3.01 dB per doubling of OSR; first-order shaped noise gains 9.03 dB, because both the band and the in-band part of the rising spectrum shrink. Measured off figure 5's curves, the two come out at 3.01 and 9.02 dB per octave. A second-order loop would give 15 dB per doubling, at the cost of a stability problem and a much harder analogue loop.</p>
+<p>The point readers miss is the first panel. Integrating the shaped spectrum to Nyquist gives exactly twice the flat one: <strong>first-order noise shaping increases total noise power by 3.0 dB while reducing in-band noise power.</strong> It trades total power for spectral placement, which is why the crossover matters. At 4 bits and OSR 16 the flat quantiser gives 40.9 dB in band and the shaped one 59.8 dB — 19 dB from the same converter and the same step, paid for with 3 dB of total power the filter throws away. Below an OSR of 1.66 the shaping is not worth its own penalty.</p>
+<p><strong>At 64 GHz this is not a converter architecture, it is a DSP technique.</strong> A first-order loop needs the quantiser and its feedback path to settle inside a fraction of a 64 GHz clock period, which is a physics problem rather than a layout one. The same mathematics reappears downstream, in truncated accumulators and FFT stages, where error feedback instead of round-to-nearest buys the same 9 dB per octave with no analogue loop at all.</p>
+<h2 id="enob-the-number-that-is-actually-delivered"><a class="heading-anchor" href="#enob-the-number-that-is-actually-delivered" aria-hidden="true">#</a>ENOB: the number that is actually delivered</h2>
+<p>The number a link budget needs is the effective number of bits, defined through the measurement a datasheet actually makes:</p>
+<div class="math-display">$$\mathrm{ENOB} = \frac{\mathrm{SINAD} - 1.76}{6.02}$$</div>
+<p>SINAD is signal to noise <em>and distortion</em>: signal power over everything else in band, harmonics and spurs included. That is why it is the right quantity. A converter can have a 55 dB noise floor and a third harmonic at <span class="math">$-45$</span> dBc, and the tone you care about is damaged by the harmonic, not the floor.</p>
+<aside class="callout callout-note">
+  <p class="callout-title"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> SINAD, SNDR, SNR — the same measurement, three names</p>
+  <div class="callout-body">
+<p>SNDR and SINAD are the same measurement, taken from an FFT with the DC bin and the fundamental excluded.</p>
+<p>SNR is SINAD with the harmonic terms removed. If a datasheet quotes only SNR, you have not been told the number you need.</p>
+  </div>
+</aside>
+<p>The gap between label and ENOB comes from five places, all live at 128 GSa/s.</p>
+<p><strong>Clock jitter.</strong> A sampling instant that wanders by <span class="math">$\sigma_t$</span> turns a signal at frequency <span class="math">$f$</span> into a phase error, giving an SNR of <span class="math">$-20\log_{10}(2\pi f \sigma_t)$</span>. At 100 fs RMS — a good aperture specification — a 32 GHz component is limited to 34 dB and a 64 GHz component to 27.9 dB, the same order as the quantisation floor of a 5.5-bit converter. <strong>At these rates the clock is not a supporting component, it is a co-equal limit.</strong></p>
+<p><strong>Comparator offset and non-linearity.</strong> A 6-bit flash needs 63 comparators, each resolving a fraction of an LSB, and no process gives that away. Differential non-linearity makes the steps unequal, integral non-linearity bends the staircase, and both are exactly the harmonics SINAD counts.</p>
+<p><strong>Thermal noise.</strong> The sampling network's own <span class="math">$kT/C$</span> noise is a floor under everything else: 0.29 mV rms at 50 fF and room temperature. With a 0.8 V span at 8 bits the LSB is 3.1 mV, so the sampler alone contributes a tenth of a step.</p>
+<p><strong>Interleaving.</strong> A 128 GSa/s converter is dozens of cores at a few gigahertz each, and the mismatch between them appears as spurs at <span class="math">$f_{\text{in}} \pm k f_{\text{sub}}$</span>. A static skew of 100 fs between cores at a 32 GHz input is a spur near <span class="math">$-34$</span> dBc — the level of the 5.5-bit quantisation floor, moving with the input frequency.</p>
+<p><strong>And it is not a 1 kSa/s converter.</strong> The track-and-hold must acquire a full-scale step in picoseconds, the clock must cross millimetres of silicon with picosecond matching, and the calibration engine is a DSP of its own.</p>
+<aside class="callout callout-try">
+  <p class="callout-title"><i class="fa-solid fa-flask" aria-hidden="true"></i> What I would measure before believing a datasheet</p>
+  <div class="callout-body">
+<p>Ask for SINAD against input frequency, at the sample rate and amplitude you will use. A curve that stops at 10 GHz says nothing about 32 GHz.</p>
+<p>Then back off the 3 dB your AGC will take, and read it again.</p>
+  </div>
+</aside>
+<p><strong>I would buy ENOB with calibration and digital correction, not with comparators.</strong> Past about six effective bits the analogue matching needed is beyond what a high-speed process gives away, and the die area is better spent on the loop that cancels the error than on the devices that try not to make it. That is the honest reading of why an 8-bit part delivers 5.5: the last 2.5 bits were never going to survive contact with 64 GHz.</p>
+<h2 id="the-figure-of-merit"><a class="heading-anchor" href="#the-figure-of-merit" aria-hidden="true">#</a>The figure of merit</h2>
+<p>Two numbers compare converters across speed and resolution. Walden's figure of merit is <span class="math">$P/(2^{\mathrm{ENOB}} \cdot f_s)$</span> in joules per conversion step; Schreier's is <span class="math">$\mathrm{SNDR} + 10\log_{10}(f_s/2P)$</span> in dB. Each normalises power by resolution <em>and</em> rate — the admission that the three trade. A 5.5 ENOB part at 128 GSa/s performs <span class="math">$2^{5.5} \times 128 \times 10^{9} \approx 5.8 \times 10^{12}$</span> conversion-steps per second, so at a respectable 200 fJ per step it burns about 1.2 W and lands near 142 dB on Schreier's scale, against 170-plus for the best slow converters. <strong>At 128 GSa/s you are not choosing between eight bits and twelve. You are choosing between bandwidth and everything else, and the bandwidth wins.</strong></p>
+<h2 id="what-to-carry-forward"><a class="heading-anchor" href="#what-to-carry-forward" aria-hidden="true">#</a>What to carry forward</h2>
+<ul>
+<li>A quantiser is a staircase. Its step is <span class="math">$q = \mathrm{FS}/2^N$</span>, and every downstream decision is a decision about the size of that step.</li>
+<li>Mid-tread puts a level at zero and a dead zone around it; mid-rise trades the exact zero for one more level. Use mid-tread.</li>
+<li>The error is a deterministic, bounded, signal-correlated sawtooth. <span class="math">$q^2/12$</span> and a flat floor require three assumptions that a low-resolution sine breaks.</li>
+<li><span class="math">$6.02N + 1.76$</span> dB follows from <span class="math">$q = \mathrm{FS}/2^N$</span>, a uniform error and a full-scale sinusoid. The 1.76 dB is the sine's crest-factor credit, not a converter property.</li>
+<li>Dither makes the assumptions true by redistributing error power; oversampling moves it out of band without reducing it; noise shaping moves it out of band while increasing the total.</li>
+<li>ENOB is measured through SINAD. Design to it and ignore the label.</li>
+</ul>
+<p>The next chapter takes the decibel for granted a little less than this one did. This chapter used dB for every number in it, and dB is exactly the kind of unit that is obvious right up to the moment it is not.</p>
+<aside class="callout callout-optical">
+  <p class="callout-title"><i class="fa-solid fa-tower-broadcast" aria-hidden="true"></i> Where this shows up in an optical link</p>
+  <div class="callout-body">
+<p><strong>A coherent receiver runs its ADCs at 2 samples per symbol.</strong> A 64 GBd link therefore samples at 128 GSa/s, and at that rate the converter sold as 8-bit delivers 5 to 5.5 effective bits.</p>
+<p><strong>Do the arithmetic on the budget.</strong> At 5.5 ENOB the quantisation SNR is <span class="math">$6.02 \times 5.5 + 1.76 \approx 35$</span> dB. A real link runs at 15-25 dB of OSNR, so the converter sits comfortably below the system limit — which is exactly why the extra bits were spent on speed rather than on resolution. No version of this trade makes a 12-bit 32 GSa/s part the better choice.</p>
+<p><strong>There is no oversampling gain to collect.</strong> Two samples per symbol puts the converter's Nyquist bandwidth at 64 GHz, which is the band the link occupies, so the <span class="math">$10\log_{10}(\mathrm{OSR})$</span> credit that rescues an audio converter is worth essentially nothing here. Read generously — 2 Sa/symbol against a signal band near 32 GHz is an OSR of 2 — the credit is 3 dB, half a bit, and it assumes a white error and a brick-wall filter. The noise-shaping alternative needs an analogue loop settling in a fraction of a 16 ps period. <strong>The optical receiver buys its margin in OSNR, not in OSR.</strong></p>
+<p><strong>Where the bits actually go.</strong> PAM4 puts four levels in the eye NRZ fills with two, so the levels are three times closer at the same average power: <span class="math">$20\log_{10}3 \approx 9.5$</span> dB of effective SNR penalty for the same launch power. That pushes the system much nearer its 35 dB quantisation floor, and it is why PAM4 front ends are so sensitive to ADC performance. The margin that was comfortable at 16-QAM is not comfortable when the signal is four levels and the channel is a cable.</p>
+<p><strong>And the 5.5 bits are the budget for the whole receive chain.</strong> An unscaled 512-point FFT grows by <span class="math">$\log_2 N = 9$</span> bits across its nine butterfly stages, so block floating point with a per-stage scaling schedule is what keeps those 5.5 bits meaningful from input to output. Get the schedule wrong and it shows up one of two ways: clipping on a peak, which is loud, or six dB of low-order bits quietly lost to over-scaling, which is not. A saturating add is a decision about which signal you are willing to lose, and it belongs in the algorithm design, not the RTL review.</p>
+  </div>
+</aside>
+<nav class="pager" aria-label="Chapter navigation"><a class="prev" href="sampling-and-aliasing.html"><span class="dir">&larr; Previous</span><span class="ttl">Sampling and Aliasing</span></a><a class="next" href="decibels-and-dynamic-range.html"><span class="dir">Next &rarr;</span><span class="ttl">Decibels and Dynamic Range</span></a></nav>
+</main>
+</div>
+<footer class="site-footer">
+  <div class="inner">
+    <span>&copy; Nguyen Quang Binh &middot; Embedded Software Engineer - Optical DSP</span>
+    <span class="spacer"></span>
+    <a href="https://github.com/sprchuoi" target="_blank" rel="noopener">GitHub</a> &middot; <a href="https://www.linkedin.com/in/sprchuoi" target="_blank" rel="noopener">LinkedIn</a> &middot; <a href="mailto:quangbinhlxcity@gmail.com">quangbinhlxcity@gmail.com</a> &middot; <a href="../index.html">CV</a>
+  </div>
+</footer>
+<script src="assets/blog.js" defer></script>
+</body>
+</html>

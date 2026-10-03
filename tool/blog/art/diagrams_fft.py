@@ -24,7 +24,12 @@ def _bit_reverse(index: int, bits: int) -> int:
 
 
 def fft_radix2_tree() -> str:
-    c = S.Canvas(880, 480, title="Radix-2 decimation in time for N = 8")
+    note = ["Each stage performs N/2 = 4 butterflies, and there are "
+            "log\u2082N = 3 stages: 12 complex multiplies.",
+            "The direct DFT needs N\u00b2 = 64. The ratio grows as N/log\u2082N, "
+            "which is why every large transform in the world is an FFT."]
+    c = S.Canvas(880, int(420 + S.callout_height(790, note, body_size=11.5) + 14),
+                 title="Radix-2 decimation in time for N = 8")
     c.heading("Halve the problem, twice, and the N-squared term disappears")
 
     levels = [
@@ -81,11 +86,7 @@ def fft_radix2_tree() -> str:
                          f"C {S.num(last_x + 34)} {S.num(cy)} 620 {S.num(target)} "
                          f"644 {S.num(target)}", stroke=S.RULE, width=1.2))
 
-    c.add(S.callout(56, 420, 790, "The cost falls out of the tree",
-                    ["Each stage performs N/2 = 4 butterflies, and there are "
-                     "log\u2082N = 3 stages: 12 complex multiplies.",
-                     "The direct DFT needs N\u00b2 = 64. The ratio grows as N/log\u2082N, "
-                     "which is why every large transform in the world is an FFT."],
+    c.add(S.callout(56, 420, 790, "The cost falls out of the tree", note,
                     kind="accent"))
     return c.render()
 
