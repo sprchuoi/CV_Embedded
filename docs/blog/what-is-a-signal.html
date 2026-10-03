@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What a Signal Actually Is - DSP, from First Principles to the Optical Link</title>
+<meta name="description" content="Continuous time versus discrete time, the domain and range of a signal, and the mental model that makes every later chapter obvious.">
+<meta name="color-scheme" content="light dark">
+<meta property="og:type" content="article">
+<meta property="og:title" content="What a Signal Actually Is - DSP, from First Principles to the Optical Link">
+<meta property="og:description" content="Continuous time versus discrete time, the domain and range of a signal, and the mental model that makes every later chapter obvious.">
+<link rel="icon" href="../favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link rel="stylesheet" href="assets/blog.css">
+<script>
+  window.MathJax = {
+  "tex": {
+    "inlineMath": [
+      [
+        "$",
+        "$"
+      ],
+      [
+        "\\(",
+        "\\)"
+      ]
+    ],
+    "displayMath": [
+      [
+        "$$",
+        "$$"
+      ],
+      [
+        "\\[",
+        "\\]"
+      ]
+    ],
+    "processEscapes": true,
+    "tags": "none",
+    "macros": {
+      "twopi": "2\\pi",
+      "dd": "\\mathrm{d}",
+      "E": "\\mathbb{E}",
+      "j": "\\mathrm{j}",
+      "argmin": "\\operatorname*{arg\\,min}"
+    }
+  },
+  "options": {
+    "skipHtmlTags": [
+      "script",
+      "noscript",
+      "style",
+      "textarea",
+      "pre",
+      "code"
+    ],
+    "ignoreHtmlClass": "no-mathjax"
+  },
+  "chtml": {
+    "scale": 1.02
+  }
+};
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="index.html">
+      <span class="mark" aria-hidden="true">DSP</span>
+      <span>Nguyen Quang Binh</span>
+      <span class="sub">signal processing notes</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="vision.html">Vision</a>
+      <a href="index.html" aria-current="page">Curriculum</a>
+      <a href="../index.html">CV</a>
+      <a href="https://github.com/sprchuoi">GitHub</a>
+      <button class="icon-btn" type="button" data-theme-toggle aria-pressed="false"
+              title="Switch theme" aria-label="Switch colour theme"><i class="fa-solid fa-moon" aria-hidden="true"></i></button>
+    </nav>
+  </div>
+  <div class="read-progress" role="presentation"></div>
+</header>
+<div class="layout">
+<nav class="toc" aria-label="On this page">
+<p class="toc-title">On this page</p>
+<ol><li class="lvl-2"><a href="#the-domain-and-the-range">The domain and the range</a></li><li class="lvl-2"><a href="#two-questions-four-worlds">Two questions, four worlds</a></li><li class="lvl-2"><a href="#the-elementary-signals">The elementary signals</a></li><li class="lvl-2"><a href="#the-same-signal-written-down-twice">The same signal, written down twice</a></li><li class="lvl-2"><a href="#four-ways-to-write-the-same-thing">Four ways to write the same thing</a></li><li class="lvl-2"><a href="#deterministic-and-random">Deterministic and random</a></li><li class="lvl-2"><a href="#energy-and-power">Energy and power</a></li><li class="lvl-2"><a href="#periodicity-and-symmetry">Periodicity and symmetry</a></li><li class="lvl-2"><a href="#what-to-carry-forward">What to carry forward</a></li></ol>
+</nav>
+<main id="main" class="prose">
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    <a href="index.html">Curriculum</a><span class="sep">/</span>Signals, Sampling and Number Systems
+  </nav>
+  <header class="article-head">
+    <h1>What a Signal Actually Is</h1>
+    <p class="article-standfirst">Continuous time versus discrete time, the domain and range of a signal, and the mental model that makes every later chapter obvious.</p>
+    <div class="article-meta"><span class="level-badge" data-level="Beginner">Beginner</span><span>12 min read</span><div class="taglist"><span class="tag">fundamentals</span></div></div>
+  </header>
+<p>Ask ten engineers what a signal is and most will name a physical quantity: a voltage, a current, the light in a fibre. Those answers aim at the wrong object. A signal is not the voltage; it is the <em>description</em> of how the voltage changes.</p>
+<p>Formally, a signal is a function, and a function has two parts. The <strong>domain</strong> is what varies. The <strong>range</strong> is what is measured. Write <span class="math">$x(t)$</span> and you have not written a voltage; you have written a rule that returns a number for every instant <span class="math">$t$</span> you ask about.</p>
+<p>I write DSP for coherent optical receivers, where the quantity being described is the optical field and the description is eight-bit numbers arriving at 128 GSa/s. Both get called "the signal" in the same meeting; keeping them apart is the first useful habit this course can give you.</p>
+<p>This chapter is the vocabulary, and it is deliberately easy. Everything after it is a variation on it.</p>
+<h2 id="the-domain-and-the-range"><a class="heading-anchor" href="#the-domain-and-the-range" aria-hidden="true">#</a>The domain and the range</h2>
+<p>Change the domain and the signal changes, even when the rule underneath is identical.</p>
+<p>The domain is usually time, but it need not be. A photograph is a signal whose domain is two spatial dimensions. A spectrum is a signal whose domain is frequency. The samples in a processor have a domain that is the integer index <span class="math">$n$</span>. The range is whatever the measurement produced.</p>
+<div class="table-wrap"><table>
+<thead><tr><th style="text-align:left">Description</th><th style="text-align:left">Domain</th><th style="text-align:left">Range</th></tr></thead>
+<tbody>
+<tr><td style="text-align:left">Photodiode current</td><td style="text-align:left">time</td><td style="text-align:left">amperes</td></tr>
+<tr><td style="text-align:left">Spectrum analyser trace</td><td style="text-align:left">frequency</td><td style="text-align:left">power per hertz</td></tr>
+<tr><td style="text-align:left">Stored samples</td><td style="text-align:left">integer index <span class="math">$n$</span></td><td style="text-align:left">converter codes</td></tr>
+</tbody>
+</table></div>
+<p>Two consequences save time later.</p>
+<p>A <strong>waveform</strong> is a drawing; the <strong>signal</strong> is the function it depicts. One drawing can describe a function with no physical quantity behind it at all, which is what a simulation is.</p>
+<p>And the description is not the quantity. A clipped ADC output is a bad description; it does not follow that the light was bad. The reverse holds too — when a link misbehaves, ask first which of the two is broken.</p>
+<aside class="callout callout-key">
+  <p class="callout-title"><i class="fa-solid fa-key" aria-hidden="true"></i> Start every argument here</p>
+  <div class="callout-body">
+<p>Name the domain and the range before you argue about a signal. Most disagreements about DSP are two people naming different objects.</p>
+  </div>
+</aside>
+<h2 id="two-questions-four-worlds"><a class="heading-anchor" href="#two-questions-four-worlds" aria-hidden="true">#</a>Two questions, four worlds</h2>
+<p>There are two independent questions here, and beginners routinely collapse them into one.</p>
+<ol>
+<li>Is the <strong>domain</strong> continuous or discrete? Continuous time means a value at every instant; discrete time means values only at integer indices <span class="math">$n$</span>.</li>
+<li>Is the <strong>range</strong> continuous or discrete? A continuous range can take any value in an interval; a discrete range is restricted to a finite set of levels.</li>
+</ol>
+<p>Two questions, two answers each: four kinds of signal. Figure 1 draws one of each.</p>
+<figure class="figure"><img src="assets/diagrams/signal-four-domains.svg" alt="The four-way classification. Sampling makes the domain discrete, quantising makes the range discrete, and the two decisions are independent." loading="lazy"><figcaption><span class="fig-label">Figure 1</span><span class="fig-text">The four-way classification. Sampling makes the domain discrete, quantising makes the range discrete, and the two decisions are independent.</span></figcaption></figure>
+<ul>
+<li><strong>Continuous time, continuous amplitude</strong> — an <em>analogue</em> signal. The physical world: a photodiode's load voltage, the field in a fibre.</li>
+<li><strong>Discrete time, continuous amplitude</strong> — a <em>sampled</em> signal. A sample-and-hold output, or the samples at an ADC input before they are rounded. Times on a grid; values not.</li>
+<li><strong>Continuous time, discrete amplitude</strong> — a <em>quantised analogue</em> signal. A PWM laser drive, or a PAM waveform in the analogue domain: every instant has a value, but only a few.</li>
+<li><strong>Discrete time, discrete amplitude</strong> — a <em>digital</em> signal. Both axes are on a grid, and this is the only combination a processor can hold.</li>
+</ul>
+<aside class="callout callout-warn">
+  <p class="callout-title"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> Digital is not a synonym for sampled</p>
+  <div class="callout-body">
+<p>A sampled signal can still take any value, and arithmetic on it can be exact. Round it to a code and you have added a second, quite different kind of error.</p>
+  </div>
+</aside>
+<p>An 8-bit ADC at 128 GSa/s has a digital output; its input, and the sample-and-hold feeding it, are analogue.</p>
+<h2 id="the-elementary-signals"><a class="heading-anchor" href="#the-elementary-signals" aria-hidden="true">#</a>The elementary signals</h2>
+<p>Six shapes cover most of the vocabulary. Figure 2 draws them with the numbers that pin each one down.</p>
+<figure class="figure"><img src="assets/plots/signal-elementary-waveforms.svg" alt="The elementary waveforms with the numbers that define them. The impulse is the one shape missing, because it has no width to draw." loading="lazy"><figcaption><span class="fig-label">Figure 2</span><span class="fig-text">The elementary waveforms with the numbers that define them. The impulse is the one shape missing, because it has no width to draw.</span></figcaption></figure>
+<p><strong>The sinusoid</strong> is three numbers: an amplitude <span class="math">$A$</span>, a frequency <span class="math">$f_0$</span> and a phase <span class="math">$\phi$</span>.</p>
+<div class="math-display">$$x(t) = A\sin(2\pi f_0 t + \phi)$$</div>
+<p>The figure's sinusoid has <span class="math">$A = 1$</span>, <span class="math">$f_0 = 0.5$</span> Hz and a period of 2 s; its phase of <span class="math">$\pi/3$</span> means it arrives 0.33 s early. Two traps live here. The angular frequency <span class="math">$\omega = 2\pi f$</span> is not the frequency <span class="math">$f$</span>, and mixing the two is a factor-of-<span class="math">$2\pi$</span> bug that survives review because the plot still looks right. And amplitude is a peak, not an RMS value: a 1 V sine delivers <span class="math">$A^2/2 = 0.5$</span> W into 1 Ω, not 1 W.</p>
+<p><strong>The complex exponential</strong> <span class="math">$e^{j\omega t}$</span> is one signal, not two. It is a point rotating about the origin at a constant rate; the two curves in the figure are its coordinates — the shadows it casts on the real and imaginary axes.</p>
+<div class="math-display">$$e^{j\omega t} = \cos\omega t + j\sin\omega t$$</div>
+<p>Calling it "a cosine and a sine" is what makes I/Q confusing later: it invites you to treat two views of one object as two.</p>
+<p><strong>The step</strong> <span class="math">$u(t)$</span> separates two values at a single instant. An ideal step has infinite bandwidth, so a real one has a rise time; that rise time is about <span class="math">$0.35/B$</span>, often the first bandwidth number a link budget needs.</p>
+<p><strong>The rectangular pulse</strong> is two numbers, a height and a width. The figure's is 1.0 high and 1.5 s wide, so its energy is <span class="math">$1.0^2 \times 1.5 = 1.5$</span> — the height alone tells you nothing.</p>
+<p><strong>The decaying exponential</strong> has exactly one number, the time constant <span class="math">$\tau$</span>. With <span class="math">$\tau = 0.6$</span> s, one time constant later the value is <span class="math">$1/e = 0.368$</span> of where it started, and by <span class="math">$5\tau = 3$</span> s it is done. Every switch-on transient has this shape.</p>
+<p><strong>The impulse</strong> is the one shape the figure cannot draw, because it has no width. In discrete time it is the easiest signal here: 1 at <span class="math">$n = 0$</span>, 0 everywhere else. It is defined by what it does in a sum, where it picks out one term and discards the rest — the basis of the impulse-sum view, and of convolution in chapter 10.</p>
+<p>The last panel adds a <strong>chirp</strong>: a sinusoid whose frequency climbs.</p>
+<aside class="callout callout-try">
+  <p class="callout-title"><i class="fa-solid fa-flask" aria-hidden="true"></i> Reading a datasheet</p>
+  <div class="callout-body">
+<p>Take the next converter datasheet you open: sample rate and bits place its output in exactly one of Figure 1's four worlds.</p>
+  </div>
+</aside>
+<h2 id="the-same-signal-written-down-twice"><a class="heading-anchor" href="#the-same-signal-written-down-twice" aria-hidden="true">#</a>The same signal, written down twice</h2>
+<p>Notation does real work in Figure 3. Round brackets, as in <span class="math">$x(t)$</span>, mean a continuous domain. Square brackets, as in <span class="math">$x[n]$</span>, mean the integer index <span class="math">$n$</span>.</p>
+<figure class="figure"><img src="assets/plots/signal-continuous-vs-discrete.svg" alt="One two-tone signal, written twice: a curve with a value at every instant, and the 16 or 64 numbers a sampler would keep." loading="lazy"><figcaption><span class="fig-label">Figure 3</span><span class="fig-text">One two-tone signal, written twice: a curve with a value at every instant, and the 16 or 64 numbers a sampler would keep.</span></figcaption></figure>
+<p>The figure takes one signal — a 2 Hz sine plus a 5 Hz sine at half the amplitude, over one second — and shows it both ways. At 16 samples per second there are sixteen numbers; at 64 there are sixty-four. The list is not a worse drawing of the curve. It is a different kind of object, and the values in between are simply not in it.</p>
+<p>That gap is the whole business of the next chapter. Anything you claim about the signal between samples is an assumption you brought with you, not a measurement you made; the assumption that makes reconstruction possible is band-limitedness.</p>
+<p>One practical warning, because it costs people weeks. The index <span class="math">$n$</span> carries no seconds. A frequency axis built from <span class="math">$n$</span> alone is wrong by exactly the sample rate, and more spectra have shipped with the wrong axis than anyone would like to admit.</p>
+<h2 id="four-ways-to-write-the-same-thing"><a class="heading-anchor" href="#four-ways-to-write-the-same-thing" aria-hidden="true">#</a>Four ways to write the same thing</h2>
+<p>Take four numbers: 2.0, 3.0, 1.0 and 0.5. Figure 4 shows four descriptions of the signal they define.</p>
+<figure class="figure"><img src="assets/diagrams/signal-four-views.svg" alt="Four descriptions of the same four numbers: a graph, a table, a vector, and a sum of scaled impulses." loading="lazy"><figcaption><span class="fig-label">Figure 4</span><span class="fig-text">Four descriptions of the same four numbers: a graph, a table, a vector, and a sum of scaled impulses.</span></figcaption></figure>
+<ol>
+<li><strong>A graph</strong> — what a human reads.</li>
+<li><strong>A table</strong> — what goes in a lab notebook, with an index column.</li>
+<li><strong>A vector</strong> — what a processor holds. <span class="math">$x = [2.0,\ 3.0,\ 1.0,\ 0.5]^{\mathsf{T}}$</span>, four numbers, fixed length. The object has no time axis; the sample period lives in a register beside it.</li>
+<li><strong>A sum of scaled impulses</strong> — what the mathematics uses. <span class="math">$x[n] = 2\delta[n] + 3\delta[n-1] + 1\delta[n-2] + 0.5\delta[n-3]$</span>.</li>
+</ol>
+<p>These are not four approximations but one object in four notations, each making a different question easy.</p>
+<p>The fourth view looks like notation for its own sake until you ask what a linear system does to it. If the response to one impulse is known, linearity and time invariance give the response to every scaled, shifted copy, and the whole response is the sum of those. That is convolution, and it is chapter 10.</p>
+<p>The third view is the one that ships. A vector is subject to everything a computer does to vectors: finite word length, fixed buffers, an index that runs off the end. Most catastrophic DSP bugs are not mathematical but a vector of the wrong length or the wrong scaling.</p>
+<h2 id="deterministic-and-random"><a class="heading-anchor" href="#deterministic-and-random" aria-hidden="true">#</a>Deterministic and random</h2>
+<p>Some signals can be written down. Hand the sinusoid a time and it returns <span class="math">$x(t)$</span> with no room for argument. Call those deterministic.</p>
+<p>Others cannot. Thermal noise in a transimpedance amplifier, ASE beat noise in a coherent receiver, the jitter that smears an eye diagram — no formula predicts the next sample. They can still be described, but statistically: a distribution, a mean, an autocorrelation, a power spectral density. One captured record is a <em>realisation</em>, not the signal.</p>
+<p>This matters, because the machinery of the next sixteen chapters is deterministic. Fourier transforms, convolution and the z-transform are stated for functions in the ordinary sense, and they still apply to random signals — but on average, in the mean-square sense, not sample by sample. A finite noise record has a DFT; its periodogram does not settle. Random signals get their own theorems in chapter 18.</p>
+<p>The honest other half: the deterministic case is not a toy. Every receiver block is designed and tested on deterministic inputs, and much of the engineering is keeping noise small enough that the description stays useful.</p>
+<h2 id="energy-and-power"><a class="heading-anchor" href="#energy-and-power" aria-hidden="true">#</a>Energy and power</h2>
+<p>Two quantities decide which theorems you may use, and the difference between them is the difference between a pulse and a carrier.</p>
+<aside class="callout callout-math">
+  <p class="callout-title"><i class="fa-solid fa-square-root-variable" aria-hidden="true"></i> The two definitions</p>
+  <div class="callout-body">
+<div class="math-display">$$E = \int_{-\infty}^{\infty} |x(t)|^2\,dt \qquad \text{or} \qquad E = \sum_{n=-\infty}^{\infty} |x[n]|^2$$</div>
+<div class="math-display">$$P = \lim_{T\to\infty} \frac{1}{2T}\int_{-T}^{T} |x(t)|^2\,dt \qquad \text{or} \qquad P = \lim_{N\to\infty} \frac{1}{2N+1}\sum_{n=-N}^{N} |x[n]|^2$$</div>
+  </div>
+</aside>
+<p>A signal with finite, non-zero energy is an <strong>energy signal</strong>. Finite energy spread over infinite time averages to zero, so every energy signal has <span class="math">$P = 0$</span>. A signal whose energy grows without limit but whose average rate does not is a <strong>power signal</strong>. The classes do not overlap: a finite-energy signal has zero average power, and a finite-power signal has infinite energy.</p>
+<p>Figure 5 shows one of each. The Gaussian pulse above starts and ends, and its running integral settles on 1.2533. The sine below is still running at <span class="math">$t = 20$</span> s: its running energy has reached 10, while energy divided by elapsed time settles on 0.5000 — <span class="math">$A^2/2$</span> for unit amplitude.</p>
+<figure class="figure"><img src="assets/plots/signal-energy-vs-power.svg" alt="An energy signal above a power signal. The pulse&#x27;s running energy settles; the sine&#x27;s keeps climbing while its average settles." loading="lazy"><figcaption><span class="fig-label">Figure 5</span><span class="fig-text">An energy signal above a power signal. The pulse's running energy settles; the sine's keeps climbing while its average settles.</span></figcaption></figure>
+<div class="table-wrap"><table>
+<thead><tr><th style="text-align:left">Signal</th><th style="text-align:left">Energy</th><th style="text-align:left">Average power</th><th style="text-align:left">Class</th></tr></thead>
+<tbody>
+<tr><td style="text-align:left">Impulse <span class="math">$\delta[n]$</span></td><td style="text-align:left">1</td><td style="text-align:left">0</td><td style="text-align:left">energy</td></tr>
+<tr><td style="text-align:left">Rectangular pulse, height 1, width 1.5 s</td><td style="text-align:left">1.5</td><td style="text-align:left">0</td><td style="text-align:left">energy</td></tr>
+<tr><td style="text-align:left">Decaying exponential <span class="math">$e^{-t/\tau}u(t)$</span></td><td style="text-align:left"><span class="math">$\tau/2$</span></td><td style="text-align:left">0</td><td style="text-align:left">energy</td></tr>
+<tr><td style="text-align:left">Sinusoid, amplitude <span class="math">$A$</span></td><td style="text-align:left">infinite</td><td style="text-align:left"><span class="math">$A^2/2$</span></td><td style="text-align:left">power</td></tr>
+<tr><td style="text-align:left">Unit step</td><td style="text-align:left">infinite</td><td style="text-align:left"><span class="math">$1/2$</span></td><td style="text-align:left">power</td></tr>
+<tr><td style="text-align:left">Zero-mean stationary noise</td><td style="text-align:left">infinite</td><td style="text-align:left">variance</td><td style="text-align:left">power</td></tr>
+</tbody>
+</table></div>
+<p>Why care? Because the theorems differ. Energy signals have a Fourier transform in the ordinary sense and obey Parseval's theorem: energy computed in time equals energy computed in frequency. Power signals do not — the transform integral diverges — so they are characterised by an autocorrelation and a power spectral density instead, which is where chapter 18 begins. Apply an energy theorem to a power signal and the spectrum never settles.</p>
+<p>A practical sting in the same tail: a spectrum analyser measures power, while the FFT of a finite record measures something energy-like. That is why transform amplitudes need normalising and the window changes the number you read.</p>
+<h2 id="periodicity-and-symmetry"><a class="heading-anchor" href="#periodicity-and-symmetry" aria-hidden="true">#</a>Periodicity and symmetry</h2>
+<p>Two structural properties appear in almost every frequency-domain result, so they are worth naming now.</p>
+<p>A signal is <strong>periodic</strong> with period <span class="math">$T_0$</span> if <span class="math">$x(t) = x(t + T_0)$</span> for every <span class="math">$t$</span>; the smallest such <span class="math">$T_0$</span> is <em>the</em> period, and <span class="math">$f_0 = 1/T_0$</span> is the fundamental. A periodic signal that is not identically zero has infinite energy and finite average power, so it is always a power signal.</p>
+<p>A signal is <strong>even</strong> if <span class="math">$x[-n] = x[n]$</span> and <strong>odd</strong> if <span class="math">$x[-n] = -x[n]$</span>, and every signal is the sum of one of each:</p>
+<div class="math-display">$$x_e[n] = \frac{x[n] + x[-n]}{2}, \qquad x_o[n] = \frac{x[n] - x[-n]}{2}$$</div>
+<p>Cosine is even, sine is odd, and a sinusoid with a phase shift is a mixture — which is precisely what a phase shift is. A real even signal has only cosine terms in its Fourier series; a real odd signal only sine terms. For any real signal, the spectrum is conjugate-symmetric, <span class="math">$X[-k] = \overline{X[k]}$</span>, so half the bins are redundant: a factor of two in work and memory, free.</p>
+<p>One warning belongs with periodicity. The DFT assumes its record is one period of a periodic signal. If the record holds 100.5 periods, the wrap-around discontinuity has energy at every frequency and every bin is contaminated. That is leakage, chapter 8.</p>
+<h2 id="what-to-carry-forward"><a class="heading-anchor" href="#what-to-carry-forward" aria-hidden="true">#</a>What to carry forward</h2>
+<ul>
+<li>A signal is a function. Name its domain and its range before you name anything else.</li>
+<li>Two independent questions — continuous or discrete in time, and in amplitude — give four kinds of signal; only discrete/discrete is digital, and only discrete/discrete is what a processor holds.</li>
+<li>The elementary signals: a sinusoid (three numbers), a complex exponential (one point, two views), a step, an impulse, a rectangular pulse, a decaying exponential.</li>
+<li>Deterministic signals can be written down; random ones are described statistically, with their own theorems in chapter 18.</li>
+<li>Finite energy means zero average power; finite power means infinite energy. The theorems differ, so know which class you are in.</li>
+<li>The same signal is a graph, a table, a vector and a sum of impulses; the vector runs, the impulse sum enables convolution in chapter 10.</li>
+</ul>
+<aside class="callout callout-optical">
+  <p class="callout-title"><i class="fa-solid fa-tower-broadcast" aria-hidden="true"></i> Where this shows up in an optical link</p>
+  <div class="callout-body">
+<p><strong>The receiver chain is the four-way classification, made physical.</strong> Light in the fibre is continuous in time and amplitude — quadrant one. The photodiode turns it into a photocurrent, still continuous in both. The sample-and-hold makes time discrete and leaves amplitude on a continuum. It looks continuous on a scope; the information is a list of samples. The ADC rounds each sample to a code, and the signal is discrete in both. Everything after that is arithmetic.</p>
+<p><strong>That conversion is the last point at which a mistake is recoverable.</strong> An impairment present in the photocurrent can still be argued with. Once it is a code, it is indistinguishable from signal. Sample rate, full scale and word length are decisions you do not get to revisit. That is the motivation for this first part of the course.</p>
+<p><strong>And here signal-versus-description stops being philosophical.</strong> 64 GBd PAM4 is not the light; it is a description of the light's intensity. Recovering that description is the receiver's whole job. At two samples per symbol that is 128 GSa/s, and at eight bits 128 GB/s per polarisation. Two polarisations put roughly a quarter of a terabyte per second into the DSP.</p>
+<p><strong>Every impairment the later chapters attack is a transformation of that function.</strong> Dispersion is a convolution of the field with a channel response. Carrier phase noise is a multiplication by a slowly turning phasor. Quantisation is a staircase applied to the range. They are coupled, and that is what makes the domain hard. The equaliser that undoes dispersion also rotates the constellation it adapts on. The phase estimator wants a constellation that is not dispersing. Untangling the two is chapters 29 to 32.</p>
+  </div>
+</aside>
+<nav class="pager" aria-label="Chapter navigation"><span></span><a class="next" href="sampling-and-aliasing.html"><span class="dir">Next &rarr;</span><span class="ttl">Sampling and Aliasing</span></a></nav>
+</main>
+</div>
+<footer class="site-footer">
+  <div class="inner">
+    <span>&copy; Nguyen Quang Binh &middot; Embedded Software Engineer - Optical DSP</span>
+    <span class="spacer"></span>
+    <a href="https://github.com/sprchuoi" target="_blank" rel="noopener">GitHub</a> &middot; <a href="https://www.linkedin.com/in/sprchuoi" target="_blank" rel="noopener">LinkedIn</a> &middot; <a href="mailto:quangbinhlxcity@gmail.com">quangbinhlxcity@gmail.com</a> &middot; <a href="../index.html">CV</a>
+  </div>
+</footer>
+<script src="assets/blog.js" defer></script>
+</body>
+</html>

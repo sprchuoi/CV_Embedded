@@ -27,6 +27,9 @@ from typing import Callable
 # toolchain does not require numpy.
 MODULES: dict[str, tuple[str, ...]] = {
     "diagrams": (
+        "diagrams_signals",
+        "diagrams_quantization",
+        "diagrams_decibels",
         "diagrams_sampling",
         "diagrams_fft",
         "diagrams_fir",
@@ -35,6 +38,9 @@ MODULES: dict[str, tuple[str, ...]] = {
         "diagrams_dispersion",
     ),
     "plots": (
+        "plots_signals",
+        "plots_quantization",
+        "plots_decibels",
         "plots_sampling",
         "plots_fft",
         "plots_fir",
