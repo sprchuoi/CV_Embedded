@@ -9,6 +9,21 @@
     "linkedin": "https://www.linkedin.com/in/sprchuoi",
     "site": "../index.html"
   },
+  "pages": [
+    {
+      "slug": "domain",
+      "title": "The domain",
+      "summary": "What this blog is about, and the shape of the problem the whole course aims at: turning light into bits at rates where the arithmetic is the design.",
+      "placement": "index"
+    },
+    {
+      "slug": "vision",
+      "title": "Vision and Research",
+      "summary": "What I am trying to build, what I am reading and measuring, and the questions I do not have answers to yet.",
+      "placement": "page",
+      "nav": "Vision"
+    }
+  ],
   "parts": [
     {
       "id": "foundations",
