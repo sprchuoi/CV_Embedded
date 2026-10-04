@@ -8,12 +8,20 @@ Markers in the HTML delimit each generated region:
     <!-- SKILLS_START -->          ... <!-- SKILLS_END -->
     <!-- AWARDS_START -->          ... <!-- AWARDS_END -->
     <!-- WORK_EXPERIENCE_START --> ... <!-- WORK_EXPERIENCE_END -->
+    <!-- WORK_EXPERIENCE_FULL_START --> ... <!-- WORK_EXPERIENCE_FULL_END -->
     <!-- PROJECTS_START -->        ... <!-- PROJECTS_END -->
     <!-- EDUCATION_START -->       ... <!-- EDUCATION_END -->
     <!-- ACHIEVEMENTS_START -->    ... <!-- ACHIEVEMENTS_END -->
 
+WORK_EXPERIENCE renders as a flow chart only -- company, role and dates, one
+step per role, each linking to that company's detail page under docs/work/.
+WORK_EXPERIENCE_FULL is the same content as those detail pages, rendered inline
+for the page's "Full" view; both call cv_html.render_company_roles, so the
+inline view and the pages cannot disagree.
+
 Structure and inline-markup parsing live in cv_dox.py, shared with the LaTeX
-sidebar renderer so the two cannot drift.
+sidebar renderer so the two cannot drift. Body, field and bullet rendering is
+shared with the work-detail page builder and lives in cv_html.py.
 """
 
 import html as html_mod
@@ -21,6 +29,9 @@ import sys
 from pathlib import Path
 
 import cv_dox as C
+from cv_html import (bullet_html, inline_html, render_body_items,
+                     render_company_roles, split_title_dates, work_companies,
+                     work_slug)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DOX_FILE = REPO_ROOT / 'docs' / 'NguyenQuangBinh_CV.dox'
@@ -32,6 +43,7 @@ MARKERS = {
     'skills':          ('<!-- SKILLS_START -->',          '<!-- SKILLS_END -->'),
     'awards':          ('<!-- AWARDS_START -->',          '<!-- AWARDS_END -->'),
     'work_experience': ('<!-- WORK_EXPERIENCE_START -->', '<!-- WORK_EXPERIENCE_END -->'),
+    'work_experience_full': ('<!-- WORK_EXPERIENCE_FULL_START -->', '<!-- WORK_EXPERIENCE_FULL_END -->'),
     'projects':        ('<!-- PROJECTS_START -->',        '<!-- PROJECTS_END -->'),
     'open_source':     ('<!-- OPEN_SOURCE_START -->',     '<!-- OPEN_SOURCE_END -->'),
     'education':       ('<!-- EDUCATION_START -->',       '<!-- EDUCATION_END -->'),
@@ -50,90 +62,6 @@ CONTACT_ICONS = {
     'link':     ('fas fa-external-link-alt', 4),
     'location': ('fas fa-map-marker-alt',  5),
 }
-
-
-# --- inline markup -> HTML ------------------------------------------------
-
-def inline_html(text: str) -> str:
-    """Render cv_dox inline tokens to HTML, escaping only literal text."""
-    out = []
-    for tok in C.tokenize_inline(text):
-        if tok[0] == 'text':
-            out.append(html_mod.escape(tok[1]))
-        elif tok[0] == 'bold':
-            out.append(f'<strong>{inline_html(tok[1])}</strong>')
-        elif tok[0] == 'em':
-            out.append(f'<em>{inline_html(tok[1])}</em>')
-        else:
-            url = html_mod.escape(tok[2], quote=True)
-            out.append(f'<a href="{url}" target="_blank" rel="noopener">{inline_html(tok[1])}</a>')
-    return ''.join(out)
-
-
-def split_title_dates(title: str):
-    """Split "Title | Dates" on the first pipe."""
-    if '|' in title:
-        left, right = title.split('|', 1)
-        return left.strip(), right.strip()
-    return title.strip(), ''
-
-
-def _bullet_html(b: C.Bullet) -> str:
-    """Render one bullet, recursing into nested children."""
-    if b.label and b.value:
-        text = f'<strong>{html_mod.escape(b.label)}:</strong> {inline_html(b.value)}'
-    elif b.label and not b.children:
-        text = f'<strong>{html_mod.escape(b.label)}</strong>'
-    else:
-        text = inline_html(b.text)
-
-    if b.children:
-        inner = '\n'.join(f'\t\t\t<li>{_bullet_html(k)}</li>' for k in b.children)
-        return f'{text}\n\t\t<ul class="resume-list">\n{inner}\n\t\t</ul>'
-    return text
-
-
-def render_body_items(items, child_blocks=()) -> list:
-    """Render a parsed body into HTML lines.
-
-    Fields and paragraphs break the bullet run; consecutive bullets are grouped
-    into a single <ul>. Nested @paragraph projects are appended last, which is
-    where they appear in the source.
-    """
-    out = []
-    bullets = []
-
-    def flush():
-        if bullets:
-            out.append('\t<ul class="resume-list">')
-            out.extend(bullets)
-            out.append('\t</ul>')
-            bullets.clear()
-
-    for it in items:
-        if isinstance(it, C.Bullet):
-            bullets.append(f'\t\t<li>{_bullet_html(it)}</li>')
-            continue
-
-        flush()
-        if isinstance(it, C.Field):
-            label = html_mod.escape(it.label)
-            if it.value:
-                out.append(f'\t<p><strong>{label}:</strong> {inline_html(it.value)}</p>')
-            else:
-                out.append(f'\t<p class="mb-2"><strong>{label}:</strong></p>')
-        elif isinstance(it, C.Para):
-            out.append(f'\t<p class="mb-2">{inline_html(it.text)}</p>')
-
-    flush()
-
-    for child in child_blocks:
-        name, sub = split_title_dates(child.title)
-        out.append('\t<div class="item-meta text-muted mt-2"><strong>' + inline_html(name) + '</strong>'
-                   + (f' &mdash; {inline_html(sub)}' if sub else '') + '</div>')
-        out.extend(render_body_items(C.parse_items(child.body)))
-        out.append('\t')
-    return out
 
 
 # --- section renderers ----------------------------------------------------
@@ -192,23 +120,77 @@ def build_skills(block: C.Block) -> str:
     return '\n'.join(blocks)
 
 
-def build_work(block: C.Block) -> str:
-    """Companies (@subsection) -> roles (@subsubsection) -> projects (@paragraph)."""
-    divs = []
-    for company in block.children:
-        for i, role in enumerate(company.children):
-            first = (i == 0)
-            parts = ['<div class="item mb-4">' if first else '<div class="item mb-3">']
-            if first:
-                parts.append(f'\t<h4 class="resume-position-title font-weight-bold mb-1">'
-                             f'{inline_html(company.title)}</h4>')
+def build_work_chart(block: C.Block) -> str:
+    """Work history as a flow chart of links: company, role and dates only.
+
+    One step per role, so a company the CV lists twice (Bosch: SDV then Central
+    Gateway) shows the sequence it actually had. Every step links to that
+    company's detail page -- the responsibilities, nested projects and tools
+    that used to sit on this page now live there, built by
+    tool/build_work_pages.py from the same .dox.
+
+    The bullet detail is deliberately absent: this page is the timeline, the
+    work/ pages are the record.
+    """
+    steps = []
+    for company in work_companies(block):
+        href = f'work/{work_slug(company.key)}.html'
+        company_name, _ = split_title_dates(company.title)
+        for role in company.children:
             title, dates = split_title_dates(role.title)
-            meta = inline_html(title) + (f' | <em>{inline_html(dates)}</em>' if dates else '')
-            parts.append(f'\t<div class="resume-position-time text-muted mb-2">{meta}</div>')
-            parts.extend(render_body_items(C.parse_items(role.body), role.children))
-            parts.append('</div>')
-            divs.append('\n'.join(parts))
-    return '\n\n'.join(divs) or '<div class="item mb-3"><em>No work experience parsed.</em></div>'
+            current = ' is-current' if 'present' in dates.lower() else ''
+            date_icon = 'far fa-calendar-alt'
+            steps.append(
+                f'\t<li class="work-flow-step">\n'
+                f'\t\t<a class="work-flow-card{current}" href="{html_mod.escape(href, quote=True)}">\n'
+                f'\t\t\t<span class="work-flow-dot" aria-hidden="true"></span>\n'
+                f'\t\t\t<span class="work-flow-text">\n'
+                f'\t\t\t\t<span class="work-flow-company">{inline_html(company_name)}</span>\n'
+                f'\t\t\t\t<span class="work-flow-role">{inline_html(title)}</span>\n'
+                f'\t\t\t\t<span class="work-flow-dates">'
+                f'<i class="{date_icon} mr-1" aria-hidden="true"></i>{inline_html(dates)}</span>\n'
+                f'\t\t\t</span>\n'
+                f'\t\t\t<span class="work-flow-open" aria-hidden="true">'
+                f'<i class="fas fa-arrow-right"></i></span>\n'
+                f'\t\t</a>\n'
+                f'\t</li>')
+
+    if not steps:
+        return '<div class="item mb-3"><em>No work experience parsed.</em></div>'
+    return '<ol class="work-flow">\n' + '\n'.join(steps) + '\n</ol>'
+
+
+def build_work_full(block: C.Block) -> str:
+    """The full work detail inline, for the CV page's "Full" view.
+
+    Deliberately the same body as each company's work/ page -- both go through
+    cv_html.render_company_roles -- so the inline view can never disagree with
+    the page it links to. Each company keeps a link to that page, which is
+    where the flow-chart cards point too.
+    """
+    divs = []
+    for company in work_companies(block):
+        company_name, location = split_title_dates(company.title)
+        slug = html_mod.escape(work_slug(company.key), quote=True)
+
+        head = (f'\t<h4 class="resume-position-title font-weight-bold mb-1">'
+                f'{inline_html(company_name)}')
+        if location:
+            head += f' <span class="work-full-location">{inline_html(location)}</span>'
+        head += '</h4>'
+
+        divs.append('\n'.join([
+            '<div class="work-full-company">',
+            head,
+            f'\t<p class="work-full-page-link"><a class="resume-link" href="work/{slug}.html">'
+            f'Open full page<i class="fas fa-external-link-alt ml-2" aria-hidden="true"></i></a></p>',
+            render_company_roles(company),
+            '</div>',
+        ]))
+
+    if not divs:
+        return '<div class="item mb-3"><em>No work experience parsed.</em></div>'
+    return '\n\n'.join(divs)
 
 
 def build_projects(block: C.Block) -> str:
@@ -251,11 +233,11 @@ def _build_list_section(block: C.Block, icon: str) -> str:
                        f'<strong>{html_mod.escape(head)}</strong>')
             out.append('\t<ul class="list-unstyled item-meta text-muted mb-0 mt-1">')
             for kid in it.children:
-                out.append(f'\t\t<li>{_bullet_html(kid)}</li>')
+                out.append(f'\t\t<li>{bullet_html(kid)}</li>')
             out.append('\t</ul>')
             out.append('</li>')
         else:
-            out.append(f'<li class="mb-2"><i class="{icon} mr-2 text-primary"></i>{_bullet_html(it)}</li>')
+            out.append(f'<li class="mb-2"><i class="{icon} mr-2 text-primary"></i>{bullet_html(it)}</li>')
     return '\n'.join(out)
 
 
@@ -283,7 +265,8 @@ RENDERERS = {
     'summary': build_summary,
     'skills': build_skills,
     'awards': build_awards,
-    'work_experience': build_work,
+    'work_experience': build_work_chart,
+    'work_experience_full': build_work_full,
     'projects': build_projects,
     'education': build_education,
     'achievements': build_achievements,
@@ -293,6 +276,12 @@ RENDERERS = {
     # so both reuse those renderers rather than duplicating them.
     'interests': build_skills,
     'open_source': build_projects,
+}
+
+# Renderers whose output key is not a .dox section key of its own: the work
+# history renders the same section twice, as the chart and as the full view.
+RENDERER_SECTIONS = {
+    'work_experience_full': 'work_experience',
 }
 
 
@@ -379,9 +368,10 @@ def main() -> int:
 
     empty = []
     for key, render in RENDERERS.items():
-        if key not in sections:
+        source = RENDERER_SECTIONS.get(key, key)
+        if source not in sections:
             continue
-        inner = render(sections[key])
+        inner = render(sections[source])
         if not inner.strip():
             empty.append(key)
         html, ok = replace_block(html, *MARKERS[key], inner)

@@ -27,6 +27,12 @@
 	<!-- Theme CSS -->
 	<link id="theme-style" rel="stylesheet" href="assets/css/devresume.css">
 
+	<!-- Work-history flow chart + the company pages it links to -->
+	<link rel="stylesheet" href="assets/css/work-flow.css">
+
+	<!-- Summary/Full view toggle + live GitHub star counts -->
+	<script src="assets/js/cv.js" defer></script>
+
 </head>
 
 <body>
@@ -183,10 +189,64 @@
 						<!-- MAIN CONTENT -->
 						<div class="resume-main col-12 col-lg-8 col-xl-9 pl-0 pl-lg-5">
 							<section class="work-section py-3">
-								<h3 class="text-uppercase resume-section-heading mb-4">Work Experiences</h3>
-								<!-- WORK_EXPERIENCE_START -->
+								<div class="work-section-head">
+									<h3 class="text-uppercase resume-section-heading mb-0">Work History</h3>
+									<div class="view-toggle" role="tablist" aria-label="Work history view">
+										<button type="button" role="tab" id="work-tab-summary" class="view-toggle-btn is-active"
+											aria-controls="work-view-summary" aria-selected="true">Summary</button>
+										<button type="button" role="tab" id="work-tab-full" class="view-toggle-btn"
+											aria-controls="work-view-full" aria-selected="false" tabindex="-1">Full</button>
+									</div>
+								</div>
+
+								<div id="work-view-summary" role="tabpanel" aria-labelledby="work-tab-summary" tabindex="0">
+									<p class="work-flow-hint">Pick a company to open its record, or switch to <b>Full</b>
+										to read the detail here.</p>
+									<!-- WORK_EXPERIENCE_START -->
+<ol class="work-flow">
+	<li class="work-flow-step">
+		<a class="work-flow-card is-current" href="work/marvell.html">
+			<span class="work-flow-dot" aria-hidden="true"></span>
+			<span class="work-flow-text">
+				<span class="work-flow-company">Marvell Technology</span>
+				<span class="work-flow-role">Senior Embedded Software/Firmware Engineer</span>
+				<span class="work-flow-dates"><i class="far fa-calendar-alt mr-1" aria-hidden="true"></i>August 2026 - Present</span>
+			</span>
+			<span class="work-flow-open" aria-hidden="true"><i class="fas fa-arrow-right"></i></span>
+		</a>
+	</li>
+	<li class="work-flow-step">
+		<a class="work-flow-card" href="work/bosch.html">
+			<span class="work-flow-dot" aria-hidden="true"></span>
+			<span class="work-flow-text">
+				<span class="work-flow-company">Bosch Global Software Technologies</span>
+				<span class="work-flow-role">Embedded Software Engineer</span>
+				<span class="work-flow-dates"><i class="far fa-calendar-alt mr-1" aria-hidden="true"></i>April 2024 - August 2026</span>
+			</span>
+			<span class="work-flow-open" aria-hidden="true"><i class="fas fa-arrow-right"></i></span>
+		</a>
+	</li>
+	<li class="work-flow-step">
+		<a class="work-flow-card" href="work/bosch.html">
+			<span class="work-flow-dot" aria-hidden="true"></span>
+			<span class="work-flow-text">
+				<span class="work-flow-company">Bosch Global Software Technologies</span>
+				<span class="work-flow-role">Embedded Software Engineer</span>
+				<span class="work-flow-dates"><i class="far fa-calendar-alt mr-1" aria-hidden="true"></i>October 2023 - April 2024</span>
+			</span>
+			<span class="work-flow-open" aria-hidden="true"><i class="fas fa-arrow-right"></i></span>
+		</a>
+	</li>
+</ol>
+<!-- WORK_EXPERIENCE_END -->
+								</div>
+
+								<div id="work-view-full" role="tabpanel" aria-labelledby="work-tab-full" tabindex="0" hidden>
+									<!-- WORK_EXPERIENCE_FULL_START -->
+<div class="work-full-company">
+	<h4 class="resume-position-title font-weight-bold mb-1">Marvell Technology <span class="work-full-location">Ho Chi Minh City, Vietnam</span></h4>
+	<p class="work-full-page-link"><a class="resume-link" href="work/marvell.html">Open full page<i class="fas fa-external-link-alt ml-2" aria-hidden="true"></i></a></p>
 <div class="item mb-4">
-	<h4 class="resume-position-title font-weight-bold mb-1">Marvell Technology | Ho Chi Minh City, Vietnam</h4>
 	<div class="resume-position-time text-muted mb-2">Senior Embedded Software/Firmware Engineer | <em>August 2026 - Present</em></div>
 	<p><strong>Domain:</strong> Optical DSP</p>
 	<p><strong>Product:</strong> AEC</p>
@@ -197,9 +257,12 @@
 		<li>Work across PAM3 and PAM4 modulation and equalisation paths for high-speed optical links</li>
 	</ul>
 </div>
+</div>
 
+<div class="work-full-company">
+	<h4 class="resume-position-title font-weight-bold mb-1">Bosch Global Software Technologies <span class="work-full-location">Ho Chi Minh City, Vietnam</span></h4>
+	<p class="work-full-page-link"><a class="resume-link" href="work/bosch.html">Open full page<i class="fas fa-external-link-alt ml-2" aria-hidden="true"></i></a></p>
 <div class="item mb-4">
-	<h4 class="resume-position-title font-weight-bold mb-1">Bosch Global Software Technologies | Ho Chi Minh City, Vietnam</h4>
 	<div class="resume-position-time text-muted mb-2">Embedded Software Engineer | <em>April 2024 - August 2026</em></div>
 	<p><strong>Product:</strong> Perfectly Keyless</p>
 	<p class="mb-2"><strong>Responsibilities:</strong></p>
@@ -231,7 +294,7 @@
 	
 </div>
 
-<div class="item mb-3">
+<div class="item mb-4">
 	<div class="resume-position-time text-muted mb-2">Embedded Software Engineer | <em>October 2023 - April 2024</em></div>
 	<p><strong>Product:</strong> Central Gateway</p>
 	<p><strong>Project:</strong> ISUZU, OTS</p>
@@ -242,7 +305,9 @@
 		<li>Proficient in developing AUTOSAR Application software components and RTE configuration</li>
 	</ul>
 </div>
-<!-- WORK_EXPERIENCE_END -->
+</div>
+<!-- WORK_EXPERIENCE_FULL_END -->
+								</div>
 							</section>
 							<!--//work-section-->
 
@@ -279,7 +344,7 @@
 		<li>Covers CA hierarchies, secure enclaves, flash secure boot, SSL/TLS and HSM key-signing operations</li>
 		<li>Published as a browsable, searchable documentation site with live diagrams, built with MkDocs Material</li>
 	</ul>
-	<p><strong>Link:</strong> <a href="https://github.com/sprchuoi/securebootloader" target="_blank" rel="noopener">github.com/sprchuoi/securebootloader</a></p>
+	<p><strong>Link:</strong> <a href="https://sprchuoi.github.io/securebootloader/" target="_blank" rel="noopener">https://sprchuoi.github.io/securebootloader/</a></p>
 </div>
 
 <div class="item mb-4">

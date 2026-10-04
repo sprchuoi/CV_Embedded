@@ -63,6 +63,11 @@ jobs:
       - name: Update HTML from DOX
         run: python3 tool/update_html_from_dox.py
 
+      # The flow chart on index.html links into docs/work/, so these pages must
+      # exist before the blog's link checker runs over the site.
+      - name: Build the work-history detail pages
+        run: python3 tool/build_work_pages.py
+
       # Fails the deploy on a broken figure or a dangling link rather than
       # publishing one. Standard library only: the figure SVGs are committed.
       - name: Build the DSP blog
@@ -77,7 +82,10 @@ jobs:
 
   # ------------------------------------------------------------------ tests --
   # The blog generator is hand-written and is the thing that decides what the
-  # published site contains, so it gets its own gate.
+  # published site contains, so it gets its own gate. The CV's page generator
+  # and page script are gated here too: the suite checks that docs/index.html
+  # and docs/work/ still match a fresh render, and (via node, which the runner
+  # already has) runs docs/assets/js/cv.js against a stub DOM.
   #
   # This job runs on 3.11, the version the README declares as the minimum. That
   # matters: the figure modules are only *imported* when numpy is installed, so
