@@ -1,0 +1,335 @@
+/*
+ * Work-history flow chart, and the per-company pages it links to.
+ *
+ * docs/index.html shows the CV's work history as a linked flow chart only
+ * (company, role, dates); docs/work/<company>.html carries the detail behind
+ * each step. Both pages load this file, after devresume.css.
+ *
+ * Palette follows the theme: #2c3e50 primary, #54b689 accent, #767676 muted.
+ */
+
+/* --- the chart (docs/index.html) ---------------------------------------- */
+
+/* A hidden pane must stay hidden whatever display the rules below set. */
+[hidden] {
+	display: none !important;
+}
+
+.work-section-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.5rem;
+	margin-bottom: 0.75rem;
+}
+
+.view-toggle {
+	display: inline-flex;
+	padding: 0.15rem;
+	border: 1px solid #e1e6ec;
+	border-radius: 1rem;
+	background: #f6f8fa;
+}
+
+.view-toggle-btn {
+	padding: 0.15rem 0.75rem;
+	border: 0;
+	border-radius: 1rem;
+	background: transparent;
+	color: #767676;
+	font-size: 0.8125rem;
+	line-height: 1.5;
+	cursor: pointer;
+	transition: background 0.15s ease, color 0.15s ease;
+}
+
+.view-toggle-btn:hover {
+	color: #2c3e50;
+}
+
+.view-toggle-btn.is-active {
+	background: #2c3e50;
+	color: #fff;
+}
+
+.view-toggle-btn:focus-visible {
+	outline: 2px solid #54b689;
+	outline-offset: 1px;
+}
+
+.work-flow-hint {
+	margin-top: 0;
+	margin-bottom: 1.25rem;
+	color: #767676;
+	font-size: 0.875rem;
+}
+
+.work-flow {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.work-flow-step {
+	position: relative;
+	padding-left: 2.25rem;
+}
+
+.work-flow-step + .work-flow-step {
+	margin-top: 1.1rem;
+}
+
+/*
+ * The rail: one segment per step, from this step's dot down to the next one's.
+ * 1.45rem is the dot centre (1.1rem + half of 0.7rem), which sits on the
+ * company line; 2.55rem is the 1.1rem gap to the next step plus that same
+ * 1.45rem. Keeping both numbers here means the line always lands on a dot,
+ * however tall a card grows.
+ */
+.work-flow-step::before {
+	content: "";
+	position: absolute;
+	left: 0.45rem;
+	top: 1.45rem;
+	bottom: -2.55rem;
+	width: 2px;
+	background: #dfe4ea;
+}
+
+.work-flow-step:last-child::before {
+	display: none;
+}
+
+.work-flow-card {
+	display: flex;
+	align-items: center;
+	position: relative;
+	padding: 0.85rem 1rem;
+	border: 1px solid #e1e6ec;
+	border-radius: 0.6rem;
+	background: #fff;
+	color: #2c3e50;
+	text-decoration: none;
+	box-shadow: 0 1px 3px rgba(44, 62, 80, 0.07);
+	transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.work-flow-card:hover,
+.work-flow-card:focus {
+	border-color: #2c3e50;
+	color: #2c3e50;
+	text-decoration: none;
+	box-shadow: 0 6px 18px rgba(44, 62, 80, 0.16);
+}
+
+.work-flow-card:focus-visible {
+	outline: 2px solid #54b689;
+	outline-offset: 2px;
+}
+
+/* The dot on the rail. The card starts at 2.25rem, the rail at 0.45rem. */
+.work-flow-dot {
+	position: absolute;
+	left: -2.1rem;
+	top: 1.1rem;
+	width: 0.7rem;
+	height: 0.7rem;
+	border-radius: 50%;
+	background: #2c3e50;
+	box-shadow: 0 0 0 3px #fff;
+}
+
+.work-flow-card.is-current .work-flow-dot {
+	background: #54b689;
+	box-shadow: 0 0 0 3px #fff, 0 0 0 5px rgba(84, 182, 137, 0.35);
+}
+
+.work-flow-text {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.work-flow-company {
+	font-weight: 700;
+	line-height: 1.25;
+}
+
+.work-flow-role {
+	color: #34495e;
+	font-size: 0.9375rem;
+	line-height: 1.3;
+}
+
+.work-flow-dates {
+	color: #767676;
+	font-size: 0.8125rem;
+	line-height: 1.4;
+}
+
+.work-flow-open {
+	margin-left: auto;
+	padding-left: 0.75rem;
+	color: #b7c0cc;
+	font-size: 0.875rem;
+	transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.work-flow-card:hover .work-flow-open,
+.work-flow-card:focus .work-flow-open {
+	color: #54b689;
+	transform: translateX(2px);
+}
+
+/* --- company detail pages (docs/work/<company>.html) -------------------- */
+
+.work-page-nav {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.5rem;
+	margin-bottom: 1.5rem;
+	padding-bottom: 1rem;
+	border-bottom: 1px solid #e1e6ec;
+}
+
+.work-page-links {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.4rem;
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.work-page-link {
+	display: inline-block;
+	padding: 0.2rem 0.7rem;
+	border: 1px solid #e1e6ec;
+	border-radius: 1rem;
+	color: #34495e;
+	font-size: 0.8125rem;
+	text-decoration: none;
+	transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.work-page-link:hover,
+.work-page-link:focus {
+	border-color: #2c3e50;
+	color: #2c3e50;
+	text-decoration: none;
+}
+
+.work-page-link.is-active {
+	background: #2c3e50;
+	border-color: #2c3e50;
+	color: #fff;
+}
+
+.work-page-header {
+	margin-bottom: 1.5rem;
+}
+
+.work-page-company {
+	margin-bottom: 0.25rem;
+	color: #2c3e50;
+	font-size: 1.5rem;
+}
+
+.work-page-location {
+	margin-bottom: 0;
+	color: #767676;
+	font-size: 0.875rem;
+}
+
+.work-page-footer {
+	margin-top: 2rem;
+	margin-bottom: 0;
+	padding-top: 1rem;
+	border-top: 1px solid #e1e6ec;
+}
+
+/*
+ * The detail body reuses the index page's <ul class="resume-list"> markup,
+ * which the theme never styled. Scope the tidier list to these pages so the
+ * CV itself is untouched.
+ */
+.work-page-roles .resume-list {
+	margin: 0 0 0.75rem;
+	padding-left: 1.15rem;
+}
+
+.work-page-roles .resume-list li {
+	margin-bottom: 0.25rem;
+}
+
+/* --- the "Full" view on docs/index.html --------------------------------- */
+
+/*
+ * Same body as a company page, one company after another; the separator is
+ * what tells the reader a new company has started.
+ */
+.work-full-company + .work-full-company {
+	margin-top: 2rem;
+	padding-top: 1.5rem;
+	border-top: 1px solid #eef1f5;
+}
+
+.work-full-location {
+	color: #767676;
+	font-size: 0.875rem;
+	font-weight: 400;
+}
+
+.work-full-page-link {
+	margin-bottom: 0.75rem;
+	font-size: 0.8125rem;
+}
+
+.work-full-company .resume-list {
+	margin: 0 0 0.75rem;
+	padding-left: 1.15rem;
+}
+
+.work-full-company .resume-list li {
+	margin-bottom: 0.25rem;
+}
+
+/* --- live GitHub star counts (injected by assets/js/cv.js) -------------- */
+
+.git-stars {
+	display: inline-block;
+	margin-left: 0.4rem;
+	padding: 0.05rem 0.45rem;
+	border: 1px solid #e1e6ec;
+	border-radius: 1rem;
+	background: #fff;
+	color: #767676;
+	font-size: 0.75rem;
+	line-height: 1.4;
+	vertical-align: middle;
+	white-space: nowrap;
+}
+
+/* A repo with stars gets the theme's gold; a zero stays quiet. */
+.git-stars.has-stars {
+	border-color: #ffe08a;
+	background: #fffaf0;
+	color: #8a6d1a;
+}
+
+@media (max-width: 575.98px) {
+	.work-flow-step {
+		padding-left: 1.75rem;
+	}
+
+	.work-flow-step::before {
+		left: 0.3rem;
+	}
+
+	.work-flow-dot {
+		left: -1.7rem;
+	}
+}

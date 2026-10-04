@@ -90,7 +90,7 @@ Embedded software engineer working across bare-metal, RTOS and embedded Linux, w
 - Covers CA hierarchies, secure enclaves, flash secure boot, SSL/TLS and HSM key-signing operations
 - Published as a browsable, searchable documentation site with live diagrams, built with MkDocs Material
 
-<b>Link:</b> [github.com/sprchuoi/securebootloader](https://github.com/sprchuoi/securebootloader)
+<b>Link:</b> [https://sprchuoi.github.io/securebootloader/](https://sprchuoi.github.io/securebootloader/)
 
 @subsection oss_smart_home_idf ESP32 Voice-Activated Smart Home | ESP-IDF
 - Dual-core FreeRTOS architecture with I2S audio capture and on-device wake-word detection
