@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Compliance Test in Practice - DSP, from First Principles to the Optical Link</title>
+<meta name="description" content="A full nine-step procedure for a 1000BASE-T and 10GBASE-KR port, four ways to get a wrong answer with a correct instrument, and a symptom-to-cause table for when the eye will not open.">
+<meta name="color-scheme" content="light dark">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Compliance Test in Practice - DSP, from First Principles to the Optical Link">
+<meta property="og:description" content="A full nine-step procedure for a 1000BASE-T and 10GBASE-KR port, four ways to get a wrong answer with a correct instrument, and a symptom-to-cause table for when the eye will not open.">
+<meta property="og:locale" content="en">
+<link rel="alternate" hreflang="en" href="https://sprchuoi.github.io/CV_Embedded/blog/ethernet-compliance-test-in-practice.html">
+<link rel="alternate" hreflang="vi" href="https://sprchuoi.github.io/CV_Embedded/blog/vi/index.html">
+<link rel="alternate" hreflang="x-default" href="https://sprchuoi.github.io/CV_Embedded/blog/ethernet-compliance-test-in-practice.html">
+<link rel="canonical" href="https://sprchuoi.github.io/CV_Embedded/blog/ethernet-compliance-test-in-practice.html">
+<link rel="icon" href="../favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link rel="stylesheet" href="assets/blog.css">
+<script>
+  window.MathJax = {
+  "tex": {
+    "inlineMath": [
+      [
+        "$",
+        "$"
+      ],
+      [
+        "\\(",
+        "\\)"
+      ]
+    ],
+    "displayMath": [
+      [
+        "$$",
+        "$$"
+      ],
+      [
+        "\\[",
+        "\\]"
+      ]
+    ],
+    "processEscapes": true,
+    "tags": "none",
+    "macros": {
+      "twopi": "2\\pi",
+      "dd": "\\mathrm{d}",
+      "E": "\\mathbb{E}",
+      "j": "\\mathrm{j}",
+      "argmin": "\\operatorname*{arg\\,min}"
+    }
+  },
+  "options": {
+    "skipHtmlTags": [
+      "script",
+      "noscript",
+      "style",
+      "textarea",
+      "pre",
+      "code"
+    ],
+    "ignoreHtmlClass": "no-mathjax"
+  },
+  "chtml": {
+    "scale": 1.02
+  }
+};
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body data-copy="Copy" data-copied="Copied"
+      data-copy-failed="Failed"
+      data-theme-dark="Switch to dark theme" data-theme-light="Switch to light theme">
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="index.html">
+      <span class="mark" aria-hidden="true">DSP</span>
+      <span>Nguyen Quang Binh</span>
+      <span class="sub">signal processing notes</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="vision.html">Vision</a>
+      <a href="index.html" aria-current="page">Curriculum</a>
+      <a href="../index.html">CV</a>
+      <a href="https://github.com/sprchuoi">GitHub</a>
+      <div class="lang-switch" role="group" aria-label="Language"><span class="is-current" lang="en" aria-current="true">EN</span><a href="vi/index.html" hreflang="vi" lang="vi" title="Tiếng Việt">VI</a></div>
+      <button class="icon-btn" type="button" data-theme-toggle aria-pressed="false"
+              title="Switch colour theme" aria-label="Switch colour theme"><i class="fa-solid fa-moon" aria-hidden="true"></i></button>
+    </nav>
+  </div>
+  <div class="read-progress" role="presentation"></div>
+</header>
+<div class="layout">
+<nav class="toc" aria-label="On this page">
+<p class="toc-title">On this page</p>
+<ol><li class="lvl-2"><a href="#the-bench">The bench</a></li><li class="lvl-2"><a href="#the-nine-steps">The nine steps</a></li><li class="lvl-2"><a href="#four-ways-to-be-wrong">Four ways to be wrong</a></li><li class="lvl-2"><a href="#the-report-is-a-set-of-margins">The report is a set of margins</a></li><li class="lvl-2"><a href="#reading-a-failure">Reading a failure</a></li><li class="lvl-2"><a href="#where-this-connects">Where this connects</a></li><li class="lvl-2"><a href="#in-the-optical-link">In the optical link</a></li></ol>
+</nav>
+<main id="main" class="prose">
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    <a href="index.html">Curriculum</a><span class="sep">/</span>IEEE Ethernet, Measured
+  </nav>
+  <header class="article-head">
+    <h1>Compliance Test in Practice</h1>
+    <p class="article-standfirst">A full nine-step procedure for a 1000BASE-T and 10GBASE-KR port, four ways to get a wrong answer with a correct instrument, and a symptom-to-cause table for when the eye will not open.</p>
+    <div class="article-meta"><span class="level-badge" data-level="Intermediate to Advanced">Intermediate to Advanced</span><span>9 min read</span><div class="taglist"><span class="tag">compliance</span><span class="tag">test</span><span class="tag">de-embedding</span><span class="tag">calibration</span></div></div>
+  </header>
+<p>Everything in this part has been a measurement. This chapter is the procedure that produces them, in the order a lab actually runs it, and the four ways a correct instrument produces a wrong number. It is the least mathematical chapter in the part and the one most likely to decide whether a product ships, because a compliance number that cannot be defended is worse than no number at all.</p>
+<p>The reason is structural. A standard specifies the port, and the port is not where you can put a probe. Everything between the port and the instrument -- a fixture, a cable, a connector, a probe -- is a measurement artefact, and every one of them has to be removed before the number means anything. That removal is <strong>de-embedding</strong>, and it is where most compliance arguments are actually won or lost.</p>
+<h2 id="the-bench"><a class="heading-anchor" href="#the-bench" aria-hidden="true">#</a>The bench</h2>
+<figure class="figure"><img src="assets/diagrams/compliance-test-setup.svg" alt="A compliance bench: pattern generator, DUT, fixture, scope and analysis." loading="lazy"><figcaption><span class="fig-label">Figure 1</span><span class="fig-text">A compliance bench: pattern generator, DUT, fixture, scope and analysis.</span></figcaption></figure>
+<p>Each block in that picture has a job and a failure mode.</p>
+<ul>
+<li><strong>Pattern generator.</strong> Produces the pattern the standard names, at the specified amplitude and rise time. Failure mode: running a shorter or easier pattern because it finishes sooner.</li>
+<li><strong>DUT.</strong> The port under test, powered, trained, and in the state the standard specifies. Failure mode: measuring before the equaliser has converged or the FEC has locked.</li>
+<li><strong>Fixture.</strong> The mechanical and electrical interface. Its loss and its impedance discontinuities are part of the measurement and must be characterised. Failure mode: treating the fixture as transparent.</li>
+<li><strong>Scope.</strong> Analogue bandwidth above twice the baud rate, so that the measurement is of the DUT and not of the instrument. Failure mode: a scope that filters away exactly the high-frequency content the mask constrains.</li>
+<li><strong>Analysis.</strong> Mask test, eye measurements, jitter decomposition, and extrapolation to a low error ratio. Failure mode: extrapolating a non-Gaussian distribution as though it were Gaussian.</li>
+</ul>
+<aside class="callout callout-key">
+  <p class="callout-title"><i class="fa-solid fa-key" aria-hidden="true"></i> Probe at the reference plane, or move the plane</p>
+  <div class="callout-body">
+<p>Every measurement is made at a stated <strong>reference plane</strong>, and the standard names it: the DUT's own connector pins. If the probe sits anywhere else, the fixture's loss between the two planes is either added or removed from the result, and the result is wrong by that amount. De-embedding is the operation that moves the measurement back to the named plane.</p>
+  </div>
+</aside>
+<h2 id="the-nine-steps"><a class="heading-anchor" href="#the-nine-steps" aria-hidden="true">#</a>The nine steps</h2>
+<p>This is the sequence for a 1000BASE-T or 10GBASE-KR port, and the order is not arbitrary: each step assumes the one before it.</p>
+<ol>
+<li><strong>State the reference plane and the limits.</strong> Both come from the standard, and both go on the report before any data is taken.</li>
+<li><strong>Characterise the fixture.</strong> Measure its insertion loss and return loss as a function of frequency, and its group delay. This is an S-parameter measurement, and it is the DFT chapter's worked example applied to a test accessory.</li>
+<li><strong>Calibrate the instrument at the plane you will probe.</strong> A scope calibration performed at the probe tip is a different calibration from one at the DUT pins. Calibrate where you measure, or de-embed to where you claim to measure.</li>
+<li><strong>Confirm the link is in steady state.</strong> Trained, equaliser converged, FEC locked, and -- critically -- a record of how long you waited. A link measured during adaptation produces a number that improves if you wait, which means the number was not the link's.</li>
+<li><strong>Verify the pattern and the amplitude.</strong> Read them off the instrument, do not assume them from the setup file. A pattern generator that has silently defaulted to PRBS7 will produce a beautiful, wrong eye.</li>
+<li><strong>Capture with enough record.</strong> Enough unit intervals for the persistence to be meaningful, and enough resolution to see the narrowest mask feature. Both are the DFT chapter's three numbers.</li>
+<li><strong>Measure, do not eyeball.</strong> Eye height and width from the histograms, jitter decomposed into random and deterministic components, and the mask test run by the software rather than by your judgement of the picture.</li>
+<li><strong>Compare against the limits, in the stated units and bandwidth.</strong> A power in dBm/MHz compared against a limit in dBm/100 kHz is a 10 dB error, and it is invisible in the report.</li>
+<li><strong>Record the provenance.</strong> Reference plane, fixture de-embedding, pattern, equaliser state, record length, and bits examined. A number without provenance is not a measurement; it is an opinion with units.</li>
+</ol>
+<aside class="callout callout-try">
+  <p class="callout-title"><i class="fa-solid fa-flask" aria-hidden="true"></i> The step people skip</p>
+  <div class="callout-body">
+<p>Step 4. Nearly every "the link passed yesterday and fails today" investigation ends with an adaptation or thermal state that had not settled. Write down the settling time and the temperature, and check them first.</p>
+  </div>
+</aside>
+<p><strong>Step 6 deserves a figure of its own</strong>, because "enough record" is two separate requirements that are easy to conflate: enough unit intervals for the persistence to be meaningful, and enough frequency resolution to see the narrowest mask feature.</p>
+<figure class="figure"><img src="assets/plots/dft-resolution-demo.svg" alt="The same signal at two record lengths: resolution is a measurement requirement." loading="lazy"><figcaption><span class="fig-label">Figure 2</span><span class="fig-text">The same signal at two record lengths: resolution is a measurement requirement.</span></figcaption></figure>
+<p>A record too short for the feature does not produce a warning. It produces a smooth, plausible, wrong number -- which is the resolution argument from the DFT chapter, arriving on the bench as a checkbox.</p>
+<h2 id="four-ways-to-be-wrong"><a class="heading-anchor" href="#four-ways-to-be-wrong" aria-hidden="true">#</a>Four ways to be wrong</h2>
+<figure class="figure"><img src="assets/diagrams/compliance-failure-modes.svg" alt="Four failure modes that produce a believable, wrong compliance number." loading="lazy"><figcaption><span class="fig-label">Figure 3</span><span class="fig-text">Four failure modes that produce a believable, wrong compliance number.</span></figcaption></figure>
+<p>None of these is an instrument fault. Each is a correct instrument answering a slightly different question from the one the standard asked.</p>
+<p><strong>Wrong reference plane.</strong> Probing at the fixture output instead of the DUT pins moves the plane by the fixture's loss and its stub. On a short backplane channel with 22 dB of loss at Nyquist, a fixture that contributes 2 dB is a 9% error in the margin, consistently in one direction.</p>
+<p><strong>Unequalised measurement.</strong> Measuring before the receiver's own equaliser has converged, or with its DFE disabled, reports the <em>channel</em> rather than the <em>link</em>. The eye can be closed where the product's is open, and the failure is often a test-equipment configuration rather than a hardware problem.</p>
+<p><strong>Insufficient analogue bandwidth.</strong> A scope at less than twice the baud rate removes high-frequency content before the mask ever sees it. Rise times look slower (which is often flattering), jitter looks lower, and the mask passes. The error is systematic and always in the optimistic direction.</p>
+<p><strong>Pattern mismatch.</strong> PRBS7 where PRBS31 is specified skips the long runs that stress AC coupling and baseline wander. The result is a clean measurement of a link that will fail in the field.</p>
+<aside class="callout callout-warn">
+  <p class="callout-title"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> All four fail in the same direction</p>
+  <div class="callout-body">
+<p>Wrong plane, unequalised, under-bandwidth, short pattern: every one of them tends to make the link look <em>better</em>. That asymmetry is why compliance procedures are written down and followed, rather than improvised by an engineer who knows what a good eye looks like.</p>
+  </div>
+</aside>
+<h2 id="the-report-is-a-set-of-margins"><a class="heading-anchor" href="#the-report-is-a-set-of-margins" aria-hidden="true">#</a>The report is a set of margins</h2>
+<p>A compliance report does not have one number. It has a set of comparisons, and the interesting information is which ones are comfortable.</p>
+<figure class="figure"><img src="assets/plots/compliance-eye-margins.svg" alt="Measured eye parameters against their limits, and the margin each leaves." loading="lazy"><figcaption><span class="fig-label">Figure 4</span><span class="fig-text">Measured eye parameters against their limits, and the margin each leaves.</span></figcaption></figure>
+<p>The figure is a representative 10GBASE-KR result, and its shape is the useful part. One parameter fails and four pass; of the four, one is comfortable and one is a few per cent from the line. A pass/fail summary collapses all of that into a single word and throws away the only information a designer needs.</p>
+<p>Three habits make a report useful rather than merely true:</p>
+<ul>
+<li><strong>Report the margin, not just the verdict.</strong> "Eye width 0.34 UI against a 0.30 UI limit" tells the next engineer where the risk is. "Pass" does not.</li>
+<li><strong>Report the measurement uncertainty.</strong> Every number has one, and it comes from the fixture de-embedding, the instrument's own noise, and the record length. A 4% margin inside a 5% uncertainty is not a pass; it is a coin flip.</li>
+<li><strong>Report the conditions.</strong> Temperature, supply, and settling time. A link at 25 &deg;C with nominal supply is the best case, and the standard's limits apply across a range.</li>
+</ul>
+<p>Two more practical facts are worth stating because they cost real projects time:</p>
+<ul>
+<li><strong>A margin that is comfortable at the pin can be negative at the far end of a real cable.</strong> Compliance is measured on a specified test channel, so passing it proves the port, not the deployment.</li>
+<li><strong>Deterministic margin does not average away, random margin does.</strong> Averaging more unit intervals improves the random component of jitter and leaves the deterministic component exactly where it was. If a measurement is not improving with more data, that is information, not a nuisance.</li>
+</ul>
+<h2 id="reading-a-failure"><a class="heading-anchor" href="#reading-a-failure" aria-hidden="true">#</a>Reading a failure</h2>
+<p>The failure modes and their diagnoses form a chain, and each link in it points at a chapter of this part.</p>
+<div class="table-wrap"><table>
+<thead><tr><th style="text-align:left">Symptom</th><th style="text-align:left">First place to look</th><th style="text-align:left">Why</th></tr></thead>
+<tbody>
+<tr><td style="text-align:left">Eye closed at the slicer</td><td style="text-align:left">the link budget</td><td style="text-align:left">the equaliser cannot invert loss it does not have signal for</td></tr>
+<tr><td style="text-align:left">Eye tall but narrow</td><td style="text-align:left">the transmitter clock, then timing recovery</td><td style="text-align:left">vertical margin present, horizontal margin absent</td></tr>
+<tr><td style="text-align:left">Pre-FEC error ratio near the cliff</td><td style="text-align:left">the eye diagram, then the budget</td><td style="text-align:left">the code is working but the margin is gone</td></tr>
+<tr><td style="text-align:left">Spectral mask failure</td><td style="text-align:left">the line code and the driver</td><td style="text-align:left">a transmitter-shape problem, not a receiver one</td></tr>
+<tr><td style="text-align:left">Good on the bench, fails in the field</td><td style="text-align:left">pattern, temperature, and settling</td><td style="text-align:left">the measurement conditions were the best case</td></tr>
+<tr><td style="text-align:left">Passes with one fixture, fails with another</td><td style="text-align:left">de-embedding</td><td style="text-align:left">the reference plane moved with the accessory</td></tr>
+</tbody>
+</table></div>
+<aside class="callout callout-note">
+  <p class="callout-title"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> The map, one more time</p>
+  <div class="callout-body">
+<p>The first chapter of this part drew the four steps -- prepare, cross, recover, decide -- and this table is that map used as a diagnostic. A symptom names a step; the step names a chapter. That is the whole reason the part is arranged the way it is.</p>
+  </div>
+</aside>
+<h2 id="where-this-connects"><a class="heading-anchor" href="#where-this-connects" aria-hidden="true">#</a>Where this connects</h2>
+<ul>
+<li>The bench is the link budget made physical: every block is a gain or a loss, and the reference plane decides which terms belong to the DUT.</li>
+<li>The eye measurements are the eye-diagram chapter, made under a procedure rather than by hand.</li>
+<li>The error ratio is the BERT chapter, with the pattern and the duration chosen by the standard rather than by convenience.</li>
+<li>The fixture characterisation is the DFT chapter applied to a measurement accessory, which is why de-embedding is a frequency-domain operation.</li>
+<li>The report is a set of margins, and the margin is the deliverable -- the verdict is only a summary of it.</li>
+</ul>
+<h2 id="in-the-optical-link"><a class="heading-anchor" href="#in-the-optical-link" aria-hidden="true">#</a>In the optical link</h2>
+<p><strong>The reference plane is the whole discipline in coherent optics too.</strong> An optical compliance measurement is made at a defined back-to-back point, and every patch cord, attenuator and connector between it and the instrument is characterised and removed. The vocabulary differs -- OSNR penalty rather than eye mask -- and the procedure is the same: state the plane, characterise the path, de-embed it.</p>
+<p><strong>The four failure modes have optical twins.</strong> Measuring before the carrier recovery loop has locked is the unequalised measurement. A receiver with insufficient bandwidth relative to the baud rate is the under-bandwidth scope. A pattern that never exercises the longest run is the wrong PRBS. And a measurement made at the wrong power, where the amplifier is not in its designed regime, is the wrong reference plane in a different currency.</p>
+<p><strong>And the margin discipline transfers unchanged.</strong> An optical link is signed off on pre-FEC error ratio on a reference channel, with the margin to the coding threshold recorded. A link that just passes has no margin; a link with 3 dB of margin survives a splice, an ageing laser, and a hot afternoon in a cabinet.</p>
+<p><strong>What this part has built, then, is the optical engineer's vocabulary in a domain where measurements are cheap.</strong> Copper Ethernet lets you iterate on a bench in minutes and see every impairment directly. That is the best possible training for fibre, where the same quantities are harder to observe and far more expensive to get wrong.</p>
+<nav class="pager" aria-label="Chapter navigation"><a class="prev" href="fft-and-dft-in-ethernet-compliance.html"><span class="dir">&larr; Previous</span><span class="ttl">The FFT and DFT in Ethernet Compliance</span></a><a class="next" href="coherent-optical-dsp-pipeline.html"><span class="dir">Next &rarr;</span><span class="ttl">The Coherent Optical Receiver: A DSP Pipeline Tour</span></a></nav>
+</main>
+</div>
+<footer class="site-footer">
+  <div class="inner">
+    <span>&copy; Nguyen Quang Binh &middot; Embedded Software Engineer - Optical DSP</span>
+    <span class="spacer"></span>
+    <a href="https://github.com/sprchuoi" target="_blank" rel="noopener">GitHub</a> &middot; <a href="https://www.linkedin.com/in/sprchuoi" target="_blank" rel="noopener">LinkedIn</a> &middot; <a href="mailto:quangbinhlxcity@gmail.com">quangbinhlxcity@gmail.com</a> &middot; <a href="../index.html">CV</a>
+  </div>
+</footer>
+<script src="assets/blog.js" defer></script>
+</body>
+</html>

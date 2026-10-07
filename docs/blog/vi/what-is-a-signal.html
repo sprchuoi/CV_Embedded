@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tín hiệu thực sự là gì - DSP, từ nguyên lý đầu tiên đến tuyến quang</title>
+<meta name="description" content="Thời gian liên tục so với thời gian rời rạc, miền xác định và miền giá trị của một tín hiệu, cùng mô hình tư duy khiến mọi chương sau trở nên hiển nhiên.">
+<meta name="color-scheme" content="light dark">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Tín hiệu thực sự là gì - DSP, từ nguyên lý đầu tiên đến tuyến quang">
+<meta property="og:description" content="Thời gian liên tục so với thời gian rời rạc, miền xác định và miền giá trị của một tín hiệu, cùng mô hình tư duy khiến mọi chương sau trở nên hiển nhiên.">
+<meta property="og:locale" content="vi">
+<link rel="alternate" hreflang="vi" href="https://sprchuoi.github.io/CV_Embedded/blog/vi/what-is-a-signal.html">
+<link rel="alternate" hreflang="en" href="https://sprchuoi.github.io/CV_Embedded/blog/what-is-a-signal.html">
+<link rel="alternate" hreflang="x-default" href="https://sprchuoi.github.io/CV_Embedded/blog/what-is-a-signal.html">
+<link rel="canonical" href="https://sprchuoi.github.io/CV_Embedded/blog/vi/what-is-a-signal.html">
+<link rel="icon" href="../../favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link rel="stylesheet" href="../assets/blog.css">
+<script>
+  window.MathJax = {
+  "tex": {
+    "inlineMath": [
+      [
+        "$",
+        "$"
+      ],
+      [
+        "\\(",
+        "\\)"
+      ]
+    ],
+    "displayMath": [
+      [
+        "$$",
+        "$$"
+      ],
+      [
+        "\\[",
+        "\\]"
+      ]
+    ],
+    "processEscapes": true,
+    "tags": "none",
+    "macros": {
+      "twopi": "2\\pi",
+      "dd": "\\mathrm{d}",
+      "E": "\\mathbb{E}",
+      "j": "\\mathrm{j}",
+      "argmin": "\\operatorname*{arg\\,min}"
+    }
+  },
+  "options": {
+    "skipHtmlTags": [
+      "script",
+      "noscript",
+      "style",
+      "textarea",
+      "pre",
+      "code"
+    ],
+    "ignoreHtmlClass": "no-mathjax"
+  },
+  "chtml": {
+    "scale": 1.02
+  }
+};
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body data-copy="Sao chép" data-copied="Đã chép"
+      data-copy-failed="Lỗi"
+      data-theme-dark="Chuyển sang nền tối" data-theme-light="Chuyển sang nền sáng">
+<a class="skip-link" href="#main">Bỏ qua nội dung</a>
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="../index.html">
+      <span class="mark" aria-hidden="true">DSP</span>
+      <span>Nguyen Quang Binh</span>
+      <span class="sub">ghi chú xử lý tín hiệu</span>
+    </a>
+    <nav class="site-nav" aria-label="Chính">
+      
+      <a href="../index.html" aria-current="page">Chương trình</a>
+      <a href="../../index.html">CV</a>
+      <a href="https://github.com/sprchuoi">GitHub</a>
+      <div class="lang-switch" role="group" aria-label="Ngôn ngữ"><span class="is-current" lang="vi" aria-current="true">VI</span><a href="../what-is-a-signal.html" hreflang="en" lang="en" title="English">EN</a></div>
+      <button class="icon-btn" type="button" data-theme-toggle aria-pressed="false"
+              title="Đổi giao diện" aria-label="Đổi giao diện"><i class="fa-solid fa-moon" aria-hidden="true"></i></button>
+    </nav>
+  </div>
+  <div class="read-progress" role="presentation"></div>
+</header>
+<div class="layout">
+<nav class="toc" aria-label="Trong bài này">
+<p class="toc-title">Trong bài này</p>
+<ol><li class="lvl-2"><a href="#miền-xác-định-và-miền-giá-trị">Miền xác định và miền giá trị</a></li><li class="lvl-2"><a href="#hai-câu-hỏi-bốn-thế-giới">Hai câu hỏi, bốn thế giới</a></li><li class="lvl-2"><a href="#các-tín-hiệu-sơ-cấp">Các tín hiệu sơ cấp</a></li><li class="lvl-2"><a href="#cùng-một-tín-hiệu-được-viết-ra-hai-lần">Cùng một tín hiệu, được viết ra hai lần</a></li><li class="lvl-2"><a href="#bốn-cách-viết-cùng-một-thứ">Bốn cách viết cùng một thứ</a></li><li class="lvl-2"><a href="#tất-định-và-ngẫu-nhiên">Tất định và ngẫu nhiên</a></li><li class="lvl-2"><a href="#năng-lượng-và-công-suất">Năng lượng và công suất</a></li><li class="lvl-2"><a href="#tuần-hoàn-và-đối-xứng">Tuần hoàn và đối xứng</a></li><li class="lvl-2"><a href="#những-gì-cần-mang-theo">Những gì cần mang theo</a></li></ol>
+</nav>
+<main id="main" class="prose">
+  <nav class="breadcrumb" aria-label="Đường dẫn">
+    <a href="index.html">Chương trình</a><span class="sep">/</span>Tín hiệu, lấy mẫu và hệ thống số
+  </nav>
+  <header class="article-head">
+    <h1>Tín hiệu thực sự là gì</h1>
+    <p class="article-standfirst">Thời gian liên tục so với thời gian rời rạc, miền xác định và miền giá trị của một tín hiệu, cùng mô hình tư duy khiến mọi chương sau trở nên hiển nhiên.</p>
+    <div class="article-meta"><span class="level-badge" data-level="Nhập môn">Nhập môn</span><span>16 phút đọc</span><div class="taglist"><span class="tag">fundamentals</span></div></div>
+  </header>
+<p>Hỏi mười kỹ sư xem tín hiệu là gì, phần lớn sẽ kể tên một đại lượng vật lý: một điện áp, một dòng điện, ánh sáng trong sợi quang. Những câu trả lời đó nhắm vào sai đối tượng. Tín hiệu không phải là điện áp; nó là <em>mô tả</em> về cách điện áp thay đổi.</p>
+<p>Về mặt hình thức, tín hiệu là một hàm, và một hàm có hai phần. <strong>Miền xác định</strong> (domain) là cái biến thiên. <strong>Miền giá trị</strong> (range) là cái được đo. Viết <span class="math">$x(t)$</span> không có nghĩa là bạn vừa viết một điện áp; bạn vừa viết một quy tắc trả về một con số cho mỗi thời điểm <span class="math">$t$</span> mà bạn hỏi tới.</p>
+<p>Tôi viết DSP cho các bộ thu quang coherent, nơi đại lượng được mô tả là trường quang còn phần mô tả là những con số tám bit đến với tốc độ 128 GSa/s. Cả hai đều được gọi là "tín hiệu" trong cùng một cuộc họp; giữ chúng tách bạch là thói quen hữu ích đầu tiên mà khóa học này có thể mang lại cho bạn.</p>
+<p>Chương này là phần từ vựng, và nó được cố ý làm cho dễ. Mọi thứ sau đây chỉ là một biến thể của nó.</p>
+<h2 id="miền-xác-định-và-miền-giá-trị"><a class="heading-anchor" href="#miền-xác-định-và-miền-giá-trị" aria-hidden="true">#</a>Miền xác định và miền giá trị</h2>
+<p>Đổi miền xác định thì tín hiệu đổi, kể cả khi quy tắc bên dưới là y hệt.</p>
+<p>Miền xác định thường là thời gian, nhưng không nhất thiết phải vậy. Một bức ảnh là tín hiệu có miền xác định là hai chiều không gian. Một phổ là tín hiệu có miền xác định là tần số. Các mẫu trong một bộ xử lý có miền xác định là chỉ số nguyên <span class="math">$n$</span>. Miền giá trị là bất cứ thứ gì mà phép đo tạo ra.</p>
+<div class="table-wrap"><table>
+<thead><tr><th style="text-align:left">Mô tả</th><th style="text-align:left">Miền xác định</th><th style="text-align:left">Miền giá trị</th></tr></thead>
+<tbody>
+<tr><td style="text-align:left">Dòng điện photodiode</td><td style="text-align:left">thời gian</td><td style="text-align:left">ampe</td></tr>
+<tr><td style="text-align:left">Vệt của máy phân tích phổ</td><td style="text-align:left">tần số</td><td style="text-align:left">công suất trên hertz</td></tr>
+<tr><td style="text-align:left">Mẫu đã lưu</td><td style="text-align:left">chỉ số nguyên <span class="math">$n$</span></td><td style="text-align:left">mã của bộ chuyển đổi</td></tr>
+</tbody>
+</table></div>
+<p>Hai hệ quả giúp tiết kiệm thời gian về sau.</p>
+<p>Một <strong>dạng sóng</strong> là một hình vẽ; <strong>tín hiệu</strong> là hàm mà nó mô tả. Một hình vẽ có thể mô tả một hàm không hề có đại lượng vật lý nào phía sau, và đó chính xác là một mô phỏng.</p>
+<p>Và phần mô tả không phải là đại lượng. Một đầu ra ADC bị cắt là một mô tả tồi; không thể suy ra rằng ánh sáng là tồi. Chiều ngược lại cũng đúng — khi một tuyến trục trặc, hãy hỏi trước xem trong hai thứ đó cái nào hỏng.</p>
+<aside class="callout callout-key">
+  <p class="callout-title"><i class="fa-solid fa-key" aria-hidden="true"></i> Bắt đầu mọi lập luận từ đây</p>
+  <div class="callout-body">
+<p>Hãy gọi tên miền xác định và miền giá trị trước khi tranh luận về một tín hiệu. Phần lớn những bất đồng về DSP là do hai người đang gọi tên hai đối tượng khác nhau.</p>
+  </div>
+</aside>
+<h2 id="hai-câu-hỏi-bốn-thế-giới"><a class="heading-anchor" href="#hai-câu-hỏi-bốn-thế-giới" aria-hidden="true">#</a>Hai câu hỏi, bốn thế giới</h2>
+<p>Ở đây có hai câu hỏi độc lập, và người mới thường gộp chúng thành một.</p>
+<ol>
+<li><strong>Miền xác định</strong> liên tục hay rời rạc? Thời gian liên tục nghĩa là có giá trị tại mọi thời điểm; thời gian rời rạc nghĩa là chỉ có giá trị tại các chỉ số nguyên <span class="math">$n$</span>.</li>
+<li><strong>Miền giá trị</strong> liên tục hay rời rạc? Miền giá trị liên tục có thể nhận mọi giá trị trong một khoảng; miền giá trị rời rạc bị giới hạn trong một tập mức hữu hạn.</li>
+</ol>
+<p>Hai câu hỏi, mỗi câu hai câu trả lời: bốn loại tín hiệu. Hình 1 vẽ mỗi loại một ví dụ.</p>
+<figure class="figure"><img src="../assets/diagrams/signal-four-domains.svg" alt="Phân loại bốn nhánh. Lấy mẫu làm miền xác định rời rạc, lượng tử hóa làm miền giá trị rời rạc, và hai quyết định này độc lập với nhau." loading="lazy"><figcaption><span class="fig-label">Hình 1</span><span class="fig-text">Phân loại bốn nhánh. Lấy mẫu làm miền xác định rời rạc, lượng tử hóa làm miền giá trị rời rạc, và hai quyết định này độc lập với nhau.</span></figcaption></figure>
+<ul>
+<li><strong>Thời gian liên tục, biên độ liên tục</strong> — tín hiệu <em>tương tự</em>. Thế giới vật lý: điện áp trên tải của một photodiode, trường trong một sợi quang.</li>
+<li><strong>Thời gian rời rạc, biên độ liên tục</strong> — tín hiệu <em>đã lấy mẫu</em>. Đầu ra của mạch sample-and-hold, hoặc các mẫu ở đầu vào ADC trước khi được làm tròn. Thời điểm nằm trên một lưới; giá trị thì không.</li>
+<li><strong>Thời gian liên tục, biên độ rời rạc</strong> — tín hiệu <em>tương tự đã lượng tử hóa</em>. Một mạch lái laser PWM, hoặc một dạng sóng PAM trong miền tương tự: mọi thời điểm đều có giá trị, nhưng chỉ có vài giá trị.</li>
+<li><strong>Thời gian rời rạc, biên độ rời rạc</strong> — tín hiệu <em>số</em>. Cả hai trục đều nằm trên lưới, và đây là tổ hợp duy nhất mà một bộ xử lý có thể lưu giữ.</li>
+</ul>
+<aside class="callout callout-warn">
+  <p class="callout-title"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> Số không đồng nghĩa với đã lấy mẫu</p>
+  <div class="callout-body">
+<p>Một tín hiệu đã lấy mẫu vẫn có thể nhận mọi giá trị, và phép tính trên nó vẫn có thể chính xác. Làm tròn nó thành một mã là bạn vừa thêm vào một loại sai số thứ hai, hoàn toàn khác.</p>
+  </div>
+</aside>
+<p>Một ADC 8 bit ở 128 GSa/s có đầu ra là số; đầu vào của nó, cùng mạch sample-and-hold cấp cho nó, là tương tự.</p>
+<h2 id="các-tín-hiệu-sơ-cấp"><a class="heading-anchor" href="#các-tín-hiệu-sơ-cấp" aria-hidden="true">#</a>Các tín hiệu sơ cấp</h2>
+<p>Sáu hình dạng bao trùm phần lớn từ vựng. Hình 2 vẽ chúng kèm những con số định nghĩa từng cái.</p>
+<figure class="figure"><img src="../assets/plots/signal-elementary-waveforms.svg" alt="Các dạng sóng sơ cấp cùng những con số định nghĩa chúng. Xung Dirac là hình dạng duy nhất vắng mặt, vì nó không có bề rộng để vẽ." loading="lazy"><figcaption><span class="fig-label">Hình 2</span><span class="fig-text">Các dạng sóng sơ cấp cùng những con số định nghĩa chúng. Xung Dirac là hình dạng duy nhất vắng mặt, vì nó không có bề rộng để vẽ.</span></figcaption></figure>
+<p><strong>Hình sin</strong> gồm ba con số: biên độ <span class="math">$A$</span>, tần số <span class="math">$f_0$</span> và pha <span class="math">$\phi$</span>.</p>
+<div class="math-display">$$x(t) = A\sin(2\pi f_0 t + \phi)$$</div>
+<p>Hình sin trong hình vẽ có <span class="math">$A = 1$</span>, <span class="math">$f_0 = 0.5$</span> Hz và chu kỳ 2 s; pha <span class="math">$\pi/3$</span> nghĩa là nó đến sớm 0.33 s. Có hai cái bẫy ở đây. Tần số góc <span class="math">$\omega = 2\pi f$</span> không phải là tần số <span class="math">$f$</span>, và trộn lẫn hai thứ này là một lỗi thừa số <span class="math">$2\pi$</span> vẫn sống sót qua cả bước review vì đồ thị trông vẫn đúng. Và biên độ là giá trị đỉnh, không phải giá trị hiệu dụng: một hình sin 1 V cấp <span class="math">$A^2/2 = 0.5$</span> W vào 1 Ω, không phải 1 W.</p>
+<p><strong>Hàm mũ phức</strong> <span class="math">$e^{j\omega t}$</span> là một tín hiệu, không phải hai. Nó là một điểm quay quanh gốc tọa độ với tốc độ không đổi; hai đường cong trong hình vẽ là các tọa độ của nó — những cái bóng mà nó đổ xuống trục thực và trục ảo.</p>
+<div class="math-display">$$e^{j\omega t} = \cos\omega t + j\sin\omega t$$</div>
+<p>Gọi nó là "một cos và một sin" chính là điều khiến I/Q trở nên khó hiểu về sau: cách gọi đó mời bạn coi hai cách nhìn một đối tượng như hai đối tượng.</p>
+<p><strong>Hàm bậc thang</strong> <span class="math">$u(t)$</span> chia tách hai giá trị tại một thời điểm duy nhất. Một bậc thang lý tưởng có băng thông vô hạn, nên bậc thang thực tế có thời gian lên; thời gian lên đó xấp xỉ <span class="math">$0.35/B$</span>, thường là con số băng thông đầu tiên mà một bài toán ngân sách tuyến cần.</p>
+<p><strong>Xung chữ nhật</strong> gồm hai con số, một chiều cao và một bề rộng. Xung trong hình vẽ cao 1.0 và rộng 1.5 s, nên năng lượng của nó là <span class="math">$1.0^2 \times 1.5 = 1.5$</span> — chỉ riêng chiều cao thì không cho bạn biết gì.</p>
+<p><strong>Hàm mũ tắt dần</strong> có đúng một con số, hằng số thời gian <span class="math">$\tau$</span>. Với <span class="math">$\tau = 0.6$</span> s, sau một hằng số thời gian giá trị còn <span class="math">$1/e = 0.368$</span> so với ban đầu, và tới <span class="math">$5\tau = 3$</span> s thì coi như xong. Mọi quá độ lúc bật nguồn đều có hình dạng này.</p>
+<p><strong>Xung Dirac</strong> là hình dạng duy nhất mà hình vẽ không thể vẽ, vì nó không có bề rộng. Trong miền thời gian rời rạc, nó là tín hiệu dễ nhất ở đây: bằng 1 tại <span class="math">$n = 0$</span>, bằng 0 ở mọi nơi khác. Nó được định nghĩa bởi việc nó làm gì trong một tổng, nơi nó chọn ra một số hạng và bỏ đi phần còn lại — nền tảng của cách nhìn theo tổng xung, và của phép tích chập ở chương 10.</p>
+<p>Ô cuối cùng thêm vào một <strong>chirp</strong>: một hình sin có tần số leo dần.</p>
+<aside class="callout callout-try">
+  <p class="callout-title"><i class="fa-solid fa-flask" aria-hidden="true"></i> Đọc một datasheet</p>
+  <div class="callout-body">
+<p>Mở cuốn datasheet bộ chuyển đổi tiếp theo bạn cầm lên: tốc độ lấy mẫu và số bit đặt đầu ra của nó vào đúng một trong bốn thế giới của Hình 1.</p>
+  </div>
+</aside>
+<h2 id="cùng-một-tín-hiệu-được-viết-ra-hai-lần"><a class="heading-anchor" href="#cùng-một-tín-hiệu-được-viết-ra-hai-lần" aria-hidden="true">#</a>Cùng một tín hiệu, được viết ra hai lần</h2>
+<p>Ký hiệu làm việc thật sự trong Hình 3. Dấu ngoặc tròn, như trong <span class="math">$x(t)$</span>, nghĩa là miền xác định liên tục. Dấu ngoặc vuông, như trong <span class="math">$x[n]$</span>, nghĩa là chỉ số nguyên <span class="math">$n$</span>.</p>
+<figure class="figure"><img src="../assets/plots/signal-continuous-vs-discrete.svg" alt="Một tín hiệu hai tông, được viết hai lần: một đường cong có giá trị tại mọi thời điểm, và 16 hoặc 64 con số mà một bộ lấy mẫu sẽ giữ lại." loading="lazy"><figcaption><span class="fig-label">Hình 3</span><span class="fig-text">Một tín hiệu hai tông, được viết hai lần: một đường cong có giá trị tại mọi thời điểm, và 16 hoặc 64 con số mà một bộ lấy mẫu sẽ giữ lại.</span></figcaption></figure>
+<p>Hình vẽ lấy một tín hiệu — một sin 2 Hz cộng một sin 5 Hz với nửa biên độ, trong một giây — và cho thấy nó theo cả hai cách. Ở 16 mẫu mỗi giây có mười sáu con số; ở 64 thì có sáu mươi tư. Danh sách đó không phải là một hình vẽ tồi hơn của đường cong. Nó là một loại đối tượng khác, và những giá trị nằm giữa đơn giản là không có trong đó.</p>
+<p>Khoảng trống đó chính là toàn bộ nội dung của chương tiếp theo. Bất cứ điều gì bạn khẳng định về tín hiệu giữa các mẫu đều là một giả định bạn mang theo, không phải một phép đo bạn thực hiện; giả định khiến việc tái dựng trở nên khả thi là tính băng thông hữu hạn (band-limitedness).</p>
+<p>Một cảnh báo thực tế, vì nó từng làm người ta mất hàng tuần. Chỉ số <span class="math">$n$</span> không mang đơn vị giây. Một trục tần số chỉ dựng từ <span class="math">$n$</span> sẽ sai đúng bằng tốc độ lấy mẫu, và đã có nhiều phổ được xuất xưởng với trục sai hơn mức ai đó muốn thừa nhận.</p>
+<h2 id="bốn-cách-viết-cùng-một-thứ"><a class="heading-anchor" href="#bốn-cách-viết-cùng-một-thứ" aria-hidden="true">#</a>Bốn cách viết cùng một thứ</h2>
+<p>Lấy bốn con số: 2.0, 3.0, 1.0 và 0.5. Hình 4 cho thấy bốn cách mô tả tín hiệu mà chúng định nghĩa.</p>
+<figure class="figure"><img src="../assets/diagrams/signal-four-views.svg" alt="Bốn cách mô tả cùng bốn con số: một đồ thị, một bảng, một vector, và một tổng các xung có tỉ lệ." loading="lazy"><figcaption><span class="fig-label">Hình 4</span><span class="fig-text">Bốn cách mô tả cùng bốn con số: một đồ thị, một bảng, một vector, và một tổng các xung có tỉ lệ.</span></figcaption></figure>
+<ol>
+<li><strong>Một đồ thị</strong> — thứ con người đọc.</li>
+<li><strong>Một bảng</strong> — thứ được ghi vào sổ tay phòng thí nghiệm, kèm một cột chỉ số.</li>
+<li><strong>Một vector</strong> — thứ bộ xử lý lưu giữ. <span class="math">$x = [2.0,\ 3.0,\ 1.0,\ 0.5]^{\mathsf{T}}$</span>, bốn con số, độ dài cố định. Đối tượng này không có trục thời gian; chu kỳ lấy mẫu nằm trong một thanh ghi bên cạnh.</li>
+<li><strong>Một tổng các xung có tỉ lệ</strong> — thứ mà toán học dùng. <span class="math">$x[n] = 2\delta[n] + 3\delta[n-1] + 1\delta[n-2] + 0.5\delta[n-3]$</span>.</li>
+</ol>
+<p>Đây không phải bốn phép xấp xỉ mà là một đối tượng dưới bốn cách ký hiệu, mỗi cách làm cho một câu hỏi khác nhau trở nên dễ dàng.</p>
+<p>Cách nhìn thứ tư trông như ký hiệu để mà ký hiệu, cho tới khi bạn hỏi một hệ thống tuyến tính làm gì với nó. Nếu biết đáp ứng với một xung, thì tính tuyến tính và tính bất biến theo thời gian cho ta đáp ứng với mọi bản sao đã được tỉ lệ và dịch, và toàn bộ đáp ứng là tổng của những cái đó. Đó là phép tích chập, và nó là chương 10.</p>
+<p>Cách nhìn thứ ba là cách được đưa vào sản phẩm. Một vector phải chịu mọi thứ mà máy tính làm với vector: độ dài từ hữu hạn, bộ đệm cố định, một chỉ số chạy quá cuối mảng. Phần lớn những lỗi DSP thảm khốc không mang tính toán học mà là một vector sai độ dài hoặc sai tỉ lệ.</p>
+<h2 id="tất-định-và-ngẫu-nhiên"><a class="heading-anchor" href="#tất-định-và-ngẫu-nhiên" aria-hidden="true">#</a>Tất định và ngẫu nhiên</h2>
+<p>Một số tín hiệu có thể viết ra được. Đưa cho hình sin một thời điểm và nó trả về <span class="math">$x(t)$</span> không có gì để tranh cãi. Hãy gọi chúng là tất định.</p>
+<p>Những tín hiệu khác thì không. Nhiễu nhiệt trong một bộ khuếch đại transimpedance, nhiễu phách ASE trong một bộ thu coherent, jitter làm nhòe một giản đồ mắt — không công thức nào dự đoán được mẫu tiếp theo. Chúng vẫn có thể được mô tả, nhưng theo thống kê: một phân bố, một giá trị trung bình, một tự tương quan, một mật độ phổ công suất. Một bản ghi thu được là một <em>thể hiện</em> (realisation), không phải là tín hiệu.</p>
+<p>Điều này quan trọng, vì bộ máy của mười sáu chương tiếp theo là tất định. Biến đổi Fourier, tích chập và biến đổi z được phát biểu cho các hàm theo nghĩa thông thường, và chúng vẫn áp dụng cho tín hiệu ngẫu nhiên — nhưng là theo trung bình, theo nghĩa bình phương trung bình, chứ không phải từng mẫu một. Một bản ghi nhiễu hữu hạn có DFT; periodogram của nó thì không hội tụ. Tín hiệu ngẫu nhiên có những định lý riêng ở chương 18.</p>
+<p>Nửa còn lại, một cách trung thực: trường hợp tất định không phải là đồ chơi. Mọi khối trong bộ thu đều được thiết kế và kiểm thử trên đầu vào tất định, và phần lớn công việc kỹ thuật là giữ cho nhiễu đủ nhỏ để phần mô tả vẫn còn hữu ích.</p>
+<h2 id="năng-lượng-và-công-suất"><a class="heading-anchor" href="#năng-lượng-và-công-suất" aria-hidden="true">#</a>Năng lượng và công suất</h2>
+<p>Hai đại lượng quyết định bạn được dùng những định lý nào, và khác biệt giữa chúng là khác biệt giữa một xung và một sóng mang.</p>
+<aside class="callout callout-math">
+  <p class="callout-title"><i class="fa-solid fa-square-root-variable" aria-hidden="true"></i> Hai định nghĩa</p>
+  <div class="callout-body">
+<div class="math-display">$$E = \int_{-\infty}^{\infty} |x(t)|^2\,dt \qquad \text{hoặc} \qquad E = \sum_{n=-\infty}^{\infty} |x[n]|^2$$</div>
+<div class="math-display">$$P = \lim_{T\to\infty} \frac{1}{2T}\int_{-T}^{T} |x(t)|^2\,dt \qquad \text{hoặc} \qquad P = \lim_{N\to\infty} \frac{1}{2N+1}\sum_{n=-N}^{N} |x[n]|^2$$</div>
+  </div>
+</aside>
+<p>Một tín hiệu có năng lượng hữu hạn và khác không là <strong>tín hiệu năng lượng</strong>. Năng lượng hữu hạn trải trên thời gian vô hạn thì trung bình bằng không, nên mọi tín hiệu năng lượng đều có <span class="math">$P = 0$</span>. Một tín hiệu có năng lượng tăng không giới hạn nhưng tốc độ trung bình thì không, là <strong>tín hiệu công suất</strong>. Hai lớp này không giao nhau: tín hiệu năng lượng hữu hạn có công suất trung bình bằng không, và tín hiệu công suất hữu hạn có năng lượng vô hạn.</p>
+<p>Hình 5 cho thấy mỗi loại một ví dụ. Xung Gauss ở trên bắt đầu rồi kết thúc, và tích phân chạy của nó hội tụ về 1.2533. Hình sin ở dưới vẫn đang chạy tại <span class="math">$t = 20$</span> s: năng lượng chạy của nó đã đạt 10, trong khi năng lượng chia cho thời gian trôi qua hội tụ về 0.5000 — <span class="math">$A^2/2$</span> với biên độ đơn vị.</p>
+<figure class="figure"><img src="../assets/plots/signal-energy-vs-power.svg" alt="Một tín hiệu năng lượng ở trên một tín hiệu công suất. Năng lượng chạy của xung hội tụ; của hình sin thì vẫn leo trong khi trung bình của nó hội tụ." loading="lazy"><figcaption><span class="fig-label">Hình 5</span><span class="fig-text">Một tín hiệu năng lượng ở trên một tín hiệu công suất. Năng lượng chạy của xung hội tụ; của hình sin thì vẫn leo trong khi trung bình của nó hội tụ.</span></figcaption></figure>
+<div class="table-wrap"><table>
+<thead><tr><th style="text-align:left">Tín hiệu</th><th style="text-align:left">Năng lượng</th><th style="text-align:left">Công suất trung bình</th><th style="text-align:left">Loại</th></tr></thead>
+<tbody>
+<tr><td style="text-align:left">Xung Dirac <span class="math">$\delta[n]$</span></td><td style="text-align:left">1</td><td style="text-align:left">0</td><td style="text-align:left">năng lượng</td></tr>
+<tr><td style="text-align:left">Xung chữ nhật, cao 1, rộng 1.5 s</td><td style="text-align:left">1.5</td><td style="text-align:left">0</td><td style="text-align:left">năng lượng</td></tr>
+<tr><td style="text-align:left">Hàm mũ tắt dần <span class="math">$e^{-t/\tau}u(t)$</span></td><td style="text-align:left"><span class="math">$\tau/2$</span></td><td style="text-align:left">0</td><td style="text-align:left">năng lượng</td></tr>
+<tr><td style="text-align:left">Hình sin, biên độ <span class="math">$A$</span></td><td style="text-align:left">vô hạn</td><td style="text-align:left"><span class="math">$A^2/2$</span></td><td style="text-align:left">công suất</td></tr>
+<tr><td style="text-align:left">Hàm bậc thang đơn vị</td><td style="text-align:left">vô hạn</td><td style="text-align:left"><span class="math">$1/2$</span></td><td style="text-align:left">công suất</td></tr>
+<tr><td style="text-align:left">Nhiễu dừng, trung bình không</td><td style="text-align:left">vô hạn</td><td style="text-align:left">phương sai</td><td style="text-align:left">công suất</td></tr>
+</tbody>
+</table></div>
+<p>Vì sao phải quan tâm? Vì các định lý khác nhau. Tín hiệu năng lượng có biến đổi Fourier theo nghĩa thông thường và tuân theo định lý Parseval: năng lượng tính trong miền thời gian bằng năng lượng tính trong miền tần số. Tín hiệu công suất thì không — tích phân biến đổi phân kỳ — nên chúng được đặc trưng bằng một tự tương quan và một mật độ phổ công suất, và đó là nơi chương 18 bắt đầu. Áp một định lý của tín hiệu năng lượng lên một tín hiệu công suất thì phổ sẽ không bao giờ hội tụ.</p>
+<p>Một điều nhức nhối thực tế ở cùng phần đuôi đó: một máy phân tích phổ đo công suất, trong khi FFT của một bản ghi hữu hạn đo một thứ mang tính năng lượng. Đó là lý do biên độ của phép biến đổi cần được chuẩn hóa và cửa sổ làm thay đổi con số bạn đọc được.</p>
+<h2 id="tuần-hoàn-và-đối-xứng"><a class="heading-anchor" href="#tuần-hoàn-và-đối-xứng" aria-hidden="true">#</a>Tuần hoàn và đối xứng</h2>
+<p>Hai tính chất cấu trúc xuất hiện trong gần như mọi kết quả ở miền tần số, nên đáng được gọi tên ngay từ đây.</p>
+<p>Một tín hiệu là <strong>tuần hoàn</strong> với chu kỳ <span class="math">$T_0$</span> nếu <span class="math">$x(t) = x(t + T_0)$</span> với mọi <span class="math">$t$</span>; <span class="math">$T_0$</span> nhỏ nhất như vậy là <em>chu kỳ</em>, và <span class="math">$f_0 = 1/T_0$</span> là tần số cơ bản. Một tín hiệu tuần hoàn không đồng nhất bằng không có năng lượng vô hạn và công suất trung bình hữu hạn, nên nó luôn là tín hiệu công suất.</p>
+<p>Một tín hiệu là <strong>chẵn</strong> nếu <span class="math">$x[-n] = x[n]$</span> và <strong>lẻ</strong> nếu <span class="math">$x[-n] = -x[n]$</span>, và mọi tín hiệu là tổng của một thành phần chẵn và một thành phần lẻ:</p>
+<div class="math-display">$$x_e[n] = \frac{x[n] + x[-n]}{2}, \qquad x_o[n] = \frac{x[n] - x[-n]}{2}$$</div>
+<p>Cos là chẵn, sin là lẻ, và một hình sin có dịch pha là một hỗn hợp — đó chính xác là bản chất của một dịch pha. Một tín hiệu thực và chẵn chỉ có các số hạng cos trong chuỗi Fourier; một tín hiệu thực và lẻ chỉ có các số hạng sin. Với mọi tín hiệu thực, phổ có tính đối xứng liên hợp, <span class="math">$X[-k] = \overline{X[k]}$</span>, nên một nửa số bin là dư thừa: tiết kiệm một nửa công việc và bộ nhớ, miễn phí.</p>
+<p>Có một cảnh báo đi kèm tính tuần hoàn. DFT giả định bản ghi của nó là một chu kỳ của một tín hiệu tuần hoàn. Nếu bản ghi chứa 100.5 chu kỳ, thì chỗ gián đoạn do quấn vòng có năng lượng ở mọi tần số và mọi bin đều bị nhiễm bẩn. Đó là rò phổ, chương 8.</p>
+<h2 id="những-gì-cần-mang-theo"><a class="heading-anchor" href="#những-gì-cần-mang-theo" aria-hidden="true">#</a>Những gì cần mang theo</h2>
+<ul>
+<li>Tín hiệu là một hàm. Hãy gọi tên miền xác định và miền giá trị trước khi gọi tên bất cứ thứ gì khác.</li>
+<li>Hai câu hỏi độc lập — liên tục hay rời rạc theo thời gian, và theo biên độ — cho ra bốn loại tín hiệu; chỉ rời rạc/rời rạc mới là số, và chỉ rời rạc/rời rạc mới là thứ một bộ xử lý lưu giữ.</li>
+<li>Các tín hiệu sơ cấp: một hình sin (ba con số), một hàm mũ phức (một điểm, hai cách nhìn), một bậc thang, một xung Dirac, một xung chữ nhật, một hàm mũ tắt dần.</li>
+<li>Tín hiệu tất định có thể viết ra được; tín hiệu ngẫu nhiên được mô tả bằng thống kê, với những định lý riêng ở chương 18.</li>
+<li>Năng lượng hữu hạn nghĩa là công suất trung bình bằng không; công suất hữu hạn nghĩa là năng lượng vô hạn. Các định lý khác nhau, nên hãy biết mình đang ở lớp nào.</li>
+<li>Cùng một tín hiệu là một đồ thị, một bảng, một vector và một tổng các xung; vector thì chạy được, còn tổng xung mở đường cho phép tích chập ở chương 10.</li>
+</ul>
+<aside class="callout callout-optical">
+  <p class="callout-title"><i class="fa-solid fa-tower-broadcast" aria-hidden="true"></i> Điều này xuất hiện ở đâu trong một tuyến quang</p>
+  <div class="callout-body">
+<p><strong>Chuỗi bộ thu chính là phân loại bốn nhánh, được hiện thực hóa.</strong> Ánh sáng trong sợi quang liên tục theo thời gian và theo biên độ — góc phần tư thứ nhất. Photodiode biến nó thành dòng quang điện, vẫn liên tục ở cả hai phương diện. Mạch sample-and-hold làm thời gian rời rạc và để biên độ nằm trên một dải liên tục. Trên oscilloscope nó trông liên tục; nhưng thông tin là một danh sách các mẫu. ADC làm tròn từng mẫu thành một mã, và tín hiệu trở nên rời rạc ở cả hai phương diện. Mọi thứ sau đó là phép tính.</p>
+<p><strong>Phép biến đổi đó là điểm cuối cùng mà một sai lầm còn có thể cứu được.</strong> Một khiếm khuyết còn nằm trong dòng quang điện thì vẫn còn thương lượng được. Một khi nó đã thành một mã, nó không thể phân biệt được với tín hiệu. Tốc độ lấy mẫu, toàn thang và độ dài từ là những quyết định bạn không được xem lại. Đó là động lực cho phần đầu tiên này của khóa học.</p>
+<p><strong>Và ở đây, chuyện tín hiệu so với phần mô tả không còn là triết lý.</strong> PAM4 64 GBd không phải là ánh sáng; nó là một mô tả về cường độ của ánh sáng. Khôi phục lại phần mô tả đó là toàn bộ công việc của bộ thu. Ở hai mẫu mỗi ký hiệu, đó là 128 GSa/s, và ở tám bit là 128 GB/s cho mỗi phân cực. Hai phân cực đẩy vào DSP khoảng một phần tư terabyte mỗi giây.</p>
+<p><strong>Mọi khiếm khuyết mà các chương sau tấn công đều là một phép biến đổi của hàm đó.</strong> Tán sắc là một phép tích chập của trường với đáp ứng kênh truyền. Nhiễu pha sóng mang là một phép nhân với một phasor quay chậm. Lượng tử hóa là một cầu thang áp lên miền giá trị. Chúng ghép với nhau, và đó là điều khiến lĩnh vực này khó. Bộ cân bằng gỡ tán sắc cũng đồng thời quay chòm sao mà nó đang thích nghi. Bộ ước lượng pha lại muốn một chòm sao không bị tán sắc. Gỡ rối hai thứ đó là các chương 29 đến 32.</p>
+  </div>
+</aside>
+
+</main>
+</div>
+<footer class="site-footer">
+  <div class="inner">
+    <span>&copy; Nguyen Quang Binh &middot; Kỹ sư phần mềm nhúng - Optical DSP</span>
+    <span class="spacer"></span>
+    <a href="https://github.com/sprchuoi" target="_blank" rel="noopener">GitHub</a> &middot; <a href="https://www.linkedin.com/in/sprchuoi" target="_blank" rel="noopener">LinkedIn</a> &middot; <a href="mailto:quangbinhlxcity@gmail.com">quangbinhlxcity@gmail.com</a> &middot; <a href="../../index.html">CV</a>
+  </div>
+</footer>
+<script src="../assets/blog.js" defer></script>
+</body>
+</html>

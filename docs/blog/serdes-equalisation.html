@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SerDes Equalisation - DSP, from First Principles to the Optical Link</title>
+<meta name="description" content="CTLE, transmit FFE, receive FFE and DFE, what each one costs, and why a real link uses all four at once rather than choosing between them.">
+<meta name="color-scheme" content="light dark">
+<meta property="og:type" content="article">
+<meta property="og:title" content="SerDes Equalisation - DSP, from First Principles to the Optical Link">
+<meta property="og:description" content="CTLE, transmit FFE, receive FFE and DFE, what each one costs, and why a real link uses all four at once rather than choosing between them.">
+<meta property="og:locale" content="en">
+<link rel="alternate" hreflang="en" href="https://sprchuoi.github.io/CV_Embedded/blog/serdes-equalisation.html">
+<link rel="alternate" hreflang="vi" href="https://sprchuoi.github.io/CV_Embedded/blog/vi/index.html">
+<link rel="alternate" hreflang="x-default" href="https://sprchuoi.github.io/CV_Embedded/blog/serdes-equalisation.html">
+<link rel="canonical" href="https://sprchuoi.github.io/CV_Embedded/blog/serdes-equalisation.html">
+<link rel="icon" href="../favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link rel="stylesheet" href="assets/blog.css">
+<script>
+  window.MathJax = {
+  "tex": {
+    "inlineMath": [
+      [
+        "$",
+        "$"
+      ],
+      [
+        "\\(",
+        "\\)"
+      ]
+    ],
+    "displayMath": [
+      [
+        "$$",
+        "$$"
+      ],
+      [
+        "\\[",
+        "\\]"
+      ]
+    ],
+    "processEscapes": true,
+    "tags": "none",
+    "macros": {
+      "twopi": "2\\pi",
+      "dd": "\\mathrm{d}",
+      "E": "\\mathbb{E}",
+      "j": "\\mathrm{j}",
+      "argmin": "\\operatorname*{arg\\,min}"
+    }
+  },
+  "options": {
+    "skipHtmlTags": [
+      "script",
+      "noscript",
+      "style",
+      "textarea",
+      "pre",
+      "code"
+    ],
+    "ignoreHtmlClass": "no-mathjax"
+  },
+  "chtml": {
+    "scale": 1.02
+  }
+};
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body data-copy="Copy" data-copied="Copied"
+      data-copy-failed="Failed"
+      data-theme-dark="Switch to dark theme" data-theme-light="Switch to light theme">
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="index.html">
+      <span class="mark" aria-hidden="true">DSP</span>
+      <span>Nguyen Quang Binh</span>
+      <span class="sub">signal processing notes</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="vision.html">Vision</a>
+      <a href="index.html" aria-current="page">Curriculum</a>
+      <a href="../index.html">CV</a>
+      <a href="https://github.com/sprchuoi">GitHub</a>
+      <div class="lang-switch" role="group" aria-label="Language"><span class="is-current" lang="en" aria-current="true">EN</span><a href="vi/index.html" hreflang="vi" lang="vi" title="Tiếng Việt">VI</a></div>
+      <button class="icon-btn" type="button" data-theme-toggle aria-pressed="false"
+              title="Switch colour theme" aria-label="Switch colour theme"><i class="fa-solid fa-moon" aria-hidden="true"></i></button>
+    </nav>
+  </div>
+  <div class="read-progress" role="presentation"></div>
+</header>
+<div class="layout">
+<nav class="toc" aria-label="On this page">
+<p class="toc-title">On this page</p>
+<ol><li class="lvl-2"><a href="#four-filters-four-currencies">Four filters, four currencies</a></li><li class="lvl-2"><a href="#what-the-equalisers-are-aiming-at">What the equalisers are aiming at</a></li><li class="lvl-2"><a href="#the-frequency-domain-view">The frequency-domain view</a></li><li class="lvl-2"><a href="#the-dfe-and-its-price">The DFE, and its price</a></li><li class="lvl-2"><a href="#adaptation-and-how-the-taps-are-found">Adaptation, and how the taps are found</a></li><li class="lvl-2"><a href="#where-this-connects">Where this connects</a></li><li class="lvl-2"><a href="#in-the-optical-link">In the optical link</a></li></ol>
+</nav>
+<main id="main" class="prose">
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    <a href="index.html">Curriculum</a><span class="sep">/</span>SerDes for Optical Modules
+  </nav>
+  <header class="article-head">
+    <h1>SerDes Equalisation</h1>
+    <p class="article-standfirst">CTLE, transmit FFE, receive FFE and DFE, what each one costs, and why a real link uses all four at once rather than choosing between them.</p>
+    <div class="article-meta"><span class="level-badge" data-level="Specialist">Specialist</span><span>7 min read</span><div class="taglist"><span class="tag">equalisation</span><span class="tag">ffe</span><span class="tag">dfe</span><span class="tag">ctle</span></div></div>
+  </header>
+<p>A receiver with no equaliser sees what the channel leaves, and at 26 GHz that is not much. The previous chapter's pulse response is the whole problem in one picture: a main cursor, a smear of energy either side of it, and a decision threshold that has to be placed somewhere in between. Equalisation is the business of removing that smear, and a real lane uses four different tools to do it.</p>
+<p>This chapter is about which tool does what, what each one costs, and why a design uses all four rather than picking the best one.</p>
+<h2 id="four-filters-four-currencies"><a class="heading-anchor" href="#four-filters-four-currencies" aria-hidden="true">#</a>Four filters, four currencies</h2>
+<figure class="figure"><img src="assets/diagrams/serdes-equaliser-types.svg" alt="The four equalisers, what each does, and what each costs." loading="lazy"><figcaption><span class="fig-label">Figure 1</span><span class="fig-text">The four equalisers, what each does, and what each costs.</span></figcaption></figure>
+<p>The figure is the chapter's summary, and the column that matters is the cost.</p>
+<div class="table-wrap"><table>
+<thead><tr><th style="text-align:left">Equalser</th><th style="text-align:left">Where it sits</th><th style="text-align:left">What it removes</th><th style="text-align:left">What it costs</th></tr></thead>
+<tbody>
+<tr><td style="text-align:left">CTLE</td><td style="text-align:left">analogue, before the sampler</td><td style="text-align:left">broad high-frequency loss</td><td style="text-align:left">power, and added noise</td></tr>
+<tr><td style="text-align:left">TX FFE</td><td style="text-align:left">transmit, before the channel</td><td style="text-align:left">pre-cursor and post-cursor ISI</td><td style="text-align:left">launch amplitude</td></tr>
+<tr><td style="text-align:left">RX FFE</td><td style="text-align:left">digital, after the sampler</td><td style="text-align:left">both cursors, precisely</td><td style="text-align:left">noise gain, and ADC resolution</td></tr>
+<tr><td style="text-align:left">DFE</td><td style="text-align:left">at the decision</td><td style="text-align:left">post-cursor ISI, exactly</td><td style="text-align:left">latency, and error propagation</td></tr>
+</tbody>
+</table></div>
+<p>No single one of them is sufficient. The CTLE cannot be precise because it is analogue and untuned. The transmit FFE is limited by the driver's swing. The receive FFE amplifies noise along with signal. The DFE cannot correct a pre-cursor at all, because at the moment of the decision the future symbol has not been decided. Together they cover each other's weaknesses, which is why every 100G lane has all four.</p>
+<aside class="callout callout-key">
+  <p class="callout-title"><i class="fa-solid fa-key" aria-hidden="true"></i> The DFE is the only one that beats the noise</p>
+  <div class="callout-body">
+<p>All the others are linear filters, so they trade signal against noise and cannot improve the ratio. A DFE subtracts a weighted sum of <em>already-decided</em> bits, and since those bits are digital and known exactly, the subtraction is noiseless. That is the whole reason it exists.</p>
+  </div>
+</aside>
+<h2 id="what-the-equalisers-are-aiming-at"><a class="heading-anchor" href="#what-the-equalisers-are-aiming-at" aria-hidden="true">#</a>What the equalisers are aiming at</h2>
+<figure class="figure"><img src="assets/plots/serdes-pulse-response.svg" alt="The pulse response a SerDes characterises, and the eye it produces before equalisation." loading="lazy"><figcaption><span class="fig-label">Figure 2</span><span class="fig-text">The pulse response a SerDes characterises, and the eye it produces before equalisation.</span></figcaption></figure>
+<p>Everything in this chapter is defined by that upper panel. A SerDes characterisation measures the channel's response to a single symbol, sampled at the symbol rate, and the set of numbers it produces -- <code>h[0]</code>, <code>h[1]</code>, <code>h[-1]</code>, and so on -- is what every equaliser is designed against.</p>
+<ul>
+<li><strong><code>h[0]</code>, the main cursor</strong>, is the signal.</li>
+<li><strong><code>h[1]</code>, <code>h[2]</code>... the post-cursors</strong>, are energy that arrived late and landed on later symbols. They are the majority of the impairment at these rates.</li>
+<li><strong><code>h[-1]</code>, <code>h[-2]</code>... the pre-cursors</strong>, are energy that arrived early, caused by the channel's group delay varying with frequency.</li>
+</ul>
+<p>The lower panel is the eye those numbers produce, computed from the same taps rather than from a separately simulated waveform, so the two panels cannot disagree. Its closure is the ISI, and the annotation quotes both the measured eye height and the total post-cursor magnitude.</p>
+<h2 id="the-frequency-domain-view"><a class="heading-anchor" href="#the-frequency-domain-view" aria-hidden="true">#</a>The frequency-domain view</h2>
+<figure class="figure"><img src="assets/plots/serdes-equaliser-response.svg" alt="Channel, CTLE, FFE and their cascade on one axis." loading="lazy"><figcaption><span class="fig-label">Figure 3</span><span class="fig-text">Channel, CTLE, FFE and their cascade on one axis.</span></figcaption></figure>
+<p>Seen as magnitude responses, equalisation is a subtraction problem. The channel falls with frequency; the equalisers rise; what is left is the residual, and the residual at Nyquist is what the eye actually sees.</p>
+<p>Two things in that figure are worth reading carefully:</p>
+<ul>
+<li><strong>The cascade is not flat.</strong> A linear equaliser flattens the channel over the band where the signal has energy, and it cannot invert the deepest part of the loss without amplifying noise beyond usefulness. The residual is what the DFE or an MLSE receiver has to remove afterwards.</li>
+<li><strong>The CTLE and the FFE overlap in what they boost.</strong> This is deliberate redundancy: the CTLE buys cheap decibels before the sampler, and the FFE corrects what the CTLE's inexact shelf got wrong. Designing them as one filter split across two domains is the normal case.</li>
+</ul>
+<aside class="callout callout-math">
+  <p class="callout-title"><i class="fa-solid fa-square-root-variable" aria-hidden="true"></i> The noise penalty of a linear equaliser</p>
+  <div class="callout-body">
+<p>For a channel <span class="math">$H(f)$</span> and a linear equaliser <span class="math">$W(f)$</span>, the noise at the output grows by</p>
+<div class="math-display">$$\sigma^2_{\text{out}} = \sigma^2_{\text{in}} \int |W(f)|^2 \, df$$</div>
+<p>while the signal at the sampling instant is unchanged. A receive FFE that inverts 20 dB of loss therefore raises the noise floor by roughly 20 dB, which is why the <em>linear</em> part of a real receiver is always accompanied by a nonlinear one -- the DFE -- that removes ISI without touching the noise.</p>
+  </div>
+</aside>
+<h2 id="the-dfe-and-its-price"><a class="heading-anchor" href="#the-dfe-and-its-price" aria-hidden="true">#</a>The DFE, and its price</h2>
+<figure class="figure"><img src="assets/diagrams/dfe-principle.svg" alt="Decision feedback: the post-cursor the DFE subtracts, and the loop that does it." loading="lazy"><figcaption><span class="fig-label">Figure 4</span><span class="fig-text">Decision feedback: the post-cursor the DFE subtracts, and the loop that does it.</span></figcaption></figure>
+<figure class="figure"><img src="assets/plots/dfe-removes-postcursor.svg" alt="Removing the post-cursor: the pulse response before and after decision feedback." loading="lazy"><figcaption><span class="fig-label">Figure 5</span><span class="fig-text">Removing the post-cursor: the pulse response before and after decision feedback.</span></figcaption></figure>
+<p>The figure makes the mechanism a subtraction. The DFE holds the last <span class="math">$N$</span> decided bits, multiplies each by a tap weight, and subtracts the sum from the incoming sample:</p>
+<div class="math-display">$$\hat{y}[n] = y[n] - \sum_{k=1}^{N} w_k\, a[n-k]$$</div>
+<p>Because the <span class="math">$a[n-k]$</span> are the receiver's own hard decisions, this is exact whenever those decisions are right. Notice what the figure shows: the post-cursor taps are set to zero in the lower panel while the main cursor is untouched. That is the DFE's promise, and it is a promise no linear filter can make.</p>
+<p>The price appears the moment a decision is wrong. The wrong bit is subtracted from the next sample, which makes the next decision more likely to be wrong too. This is <strong>error propagation</strong>, and it converts what would be independent errors into bursts -- which matters enormously to the FEC, as the last chapter will show. It is also why DFE taps are adapted cautiously and why the first tap is often deliberately under-corrected.</p>
+<aside class="callout callout-warn">
+  <p class="callout-title"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> A DFE error is not one error</p>
+  <div class="callout-body">
+<p>A single wrong decision biases the next sample by one tap weight. If that bias is large enough to flip the next decision, the error propagates until a symbol happens to survive it. Burst lengths of two to four are routine on a well-designed lane, and the FEC's interleaving exists to cope with exactly that.</p>
+  </div>
+</aside>
+<h2 id="adaptation-and-how-the-taps-are-found"><a class="heading-anchor" href="#adaptation-and-how-the-taps-are-found" aria-hidden="true">#</a>Adaptation, and how the taps are found</h2>
+<p>None of these coefficients arrive by hand. They are found by a control loop that watches the slicer's error and adjusts.</p>
+<p>The update rule is the LMS family, and in silicon it is almost always reduced to sign-sign form:</p>
+<div class="math-display">$$w[n+1] = w[n] + \mu\, e[n]\, x[n] \qquad\Longrightarrow\qquad w[n+1] = w[n] + \mu\, \mathrm{sgn}(e[n])\, \mathrm{sgn}(x[n])$$</div>
+<p>Three practical consequences:</p>
+<ul>
+<li><strong>The step size is a stability choice.</strong> Large is fast and noisy, small is stable and slow. Deployed links gear-shift: coarse during acquisition, fine once locked.</li>
+<li><strong>The error signal has to come from somewhere.</strong> During training it comes from a known pattern; afterwards it comes from the slicer's own output, which means a decision error briefly corrupts the adaptation.</li>
+<li><strong>The loops have different bandwidths.</strong> The CTLE shelf, the FFE taps, the DFE taps and the VGA gain all adapt on different timescales, because the quantities they track -- temperature, supply, cable aging -- have different rates. Getting that hierarchy wrong produces a link that oscillates rather than one that fails.</li>
+</ul>
+<h2 id="where-this-connects"><a class="heading-anchor" href="#where-this-connects" aria-hidden="true">#</a>Where this connects</h2>
+<ul>
+<li>The pulse response is the object every equaliser is designed against; the eye is derived from it.</li>
+<li>Four equalisers cover four weaknesses: analogue imprecision, launch amplitude, noise gain, and pre-cursor ISI.</li>
+<li>A linear equaliser trades signal against noise and cannot beat it; a DFE removes post-cursor ISI without that penalty and pays in error propagation.</li>
+<li>Adaptation is a control loop with its own bandwidth, and its step size is a stability parameter.</li>
+<li>The burst errors a DFE creates are the reason the last chapter's FEC has to interleave.</li>
+</ul>
+<h2 id="in-the-optical-link"><a class="heading-anchor" href="#in-the-optical-link" aria-hidden="true">#</a>In the optical link</h2>
+<p><strong>The same four equalisers appear, rearranged.</strong> The PAM4 DSP used for IM-DD links and active electrical cables is built from the same set -- FFE, DFE, MLSE and a PLL -- with the same trade-offs, on a different channel. The transmitter-side pre-distortion here is the transmitter-side pre-emphasis there, and the receiver-side DFE is doing identical work on a different channel.</p>
+<p><strong>And in coherent optics the linear equaliser is the whole game.</strong> A coherent receiver's dispersion compensation is a frequency-domain equaliser, applied to a channel whose impairment is phase rather than magnitude. <a href="chromatic-dispersion-and-the-fde.html">Chromatic Dispersion and the Frequency-Domain Equaliser</a> works out why that is cheaper to do in the frequency domain than with a time-domain FIR -- the same argument that makes a SerDes FFE length a design variable rather than a fixed number.</p>
+<p><strong>What does not transfer is the DFE.</strong> A coherent receiver's ISI comes from bandwidth limitation and from residual dispersion, both of which are handled by the linear equaliser because a DFE at 100+ GBd with a decision feedback path is not affordable. That is one of the few places where the optical chain is architecturally simpler than the copper one, and it is bought with more ADC resolution.</p>
+<nav class="pager" aria-label="Chapter navigation"><a class="prev" href="serdes-channels-and-the-link-budget.html"><span class="dir">&larr; Previous</span><span class="ttl">SerDes Channels and the Link Budget</span></a><a class="next" href="serdes-clock-recovery-and-jitter.html"><span class="dir">Next &rarr;</span><span class="ttl">Clock Recovery and Jitter</span></a></nav>
+</main>
+</div>
+<footer class="site-footer">
+  <div class="inner">
+    <span>&copy; Nguyen Quang Binh &middot; Embedded Software Engineer - Optical DSP</span>
+    <span class="spacer"></span>
+    <a href="https://github.com/sprchuoi" target="_blank" rel="noopener">GitHub</a> &middot; <a href="https://www.linkedin.com/in/sprchuoi" target="_blank" rel="noopener">LinkedIn</a> &middot; <a href="mailto:quangbinhlxcity@gmail.com">quangbinhlxcity@gmail.com</a> &middot; <a href="../index.html">CV</a>
+  </div>
+</footer>
+<script src="assets/blog.js" defer></script>
+</body>
+</html>

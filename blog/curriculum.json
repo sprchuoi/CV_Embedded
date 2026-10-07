@@ -1,6 +1,7 @@
 {
   "title": "DSP, from First Principles to the Optical Link",
   "tagline": "A diagram-first course in digital signal processing. Every idea is drawn before it is derived, every chapter ends where it is actually used: inside a coherent optical modem.",
+  "site_url": "https://sprchuoi.github.io/CV_Embedded/blog/",
   "author": {
     "name": "Nguyen Quang Binh",
     "role": "Embedded Software Engineer - Optical DSP",
@@ -230,6 +231,50 @@
       ]
     },
     {
+      "id": "ieee-ethernet",
+      "level": "Intermediate to Advanced",
+      "title": "IEEE Ethernet, Measured",
+      "blurb": "Ethernet is the largest deployed population of the signal integrity problem: a standards body hands you a channel, a loss budget, a mask and a maximum error ratio, and every DSP idea in this course has to show up on a compliance report. This part takes the theory out of the notebook and onto the bench, in the order an engineer meets it.",
+      "articles": [
+        {
+          "slug": "ethernet-generations-and-the-data-processing-view",
+          "title": "Six Generations of Ethernet, and the Data-Processing View",
+          "summary": "From a shared coax bus with collision detection to 800G over eight lanes: what the physical layer added each time the channel ran out of margin, and the four steps every Ethernet generation actually performs.",
+          "tags": ["ethernet", "ieee8023", "history", "architecture"]
+        },
+        {
+          "slug": "ethernet-gain-and-the-link-budget",
+          "title": "Gain, Loss and the Ethernet Link Budget",
+          "summary": "What gain means once the channel is a 100-metre cable: insertion loss in dB against frequency, the Nyquist frequency that decides what the equaliser must supply, and the margin arithmetic a link is signed off on.",
+          "tags": ["gain", "link-budget", "insertion-loss", "nyquist"]
+        },
+        {
+          "slug": "reading-an-eye-diagram",
+          "title": "Reading an Eye Diagram",
+          "summary": "How a persistence trace is built, what eye height and eye width actually measure, why NRZ has one eye and PAM4 has three, and how to read a mask test without memorising it.",
+          "tags": ["eye-diagram", "eye-mask", "pam4", "signal-integrity"]
+        },
+        {
+          "slug": "bert-ber-and-fec",
+          "title": "BERT, BER and the FEC Contract",
+          "summary": "The measurement that justifies everything else: PRBS patterns, the bathtub curve, the Q-factor behind the numbers, and the pre-FEC error ratio a Reed-Solomon code is allowed to see.",
+          "tags": ["bert", "ber", "fec", "bathtub"]
+        },
+        {
+          "slug": "fft-and-dft-in-ethernet-compliance",
+          "title": "The FFT and DFT in Ethernet Compliance",
+          "summary": "The DFT is not a chapter you leave behind, it is the instrument: bin index to hertz, the transmit spectral mask, the equaliser response, and S-parameters pulled back into the time domain.",
+          "tags": ["fft", "dft", "spectral-mask", "s-parameters"]
+        },
+        {
+          "slug": "ethernet-compliance-test-in-practice",
+          "title": "Compliance Test in Practice",
+          "summary": "A full nine-step procedure for a 1000BASE-T and 10GBASE-KR port, four ways to get a wrong answer with a correct instrument, and a symptom-to-cause table for when the eye will not open.",
+          "tags": ["compliance", "test", "de-embedding", "calibration"]
+        }
+      ]
+    },
+    {
       "id": "optical",
       "level": "Specialist",
       "title": "Optical DSP",
@@ -276,6 +321,50 @@
           "title": "PAM4 DSP for IM-DD and Active Electrical Cables",
           "summary": "The short-reach chain: FFE, DFE, MLSE and PLL for 100G-per-lane PAM4 over copper and directly detected optics.",
           "tags": ["pam4", "ffe", "dfe", "aec"]
+        }
+      ]
+    },
+    {
+      "id": "serdes",
+      "level": "Specialist",
+      "title": "SerDes for Optical Modules",
+      "blurb": "A coherent DSP never touches the fibre directly. It is reached through 100-gigabit serial lanes -- host side and line side -- and a great many of an optical module's hard problems live on those lanes rather than in the equaliser. This part is the electrical interface between the DSP and the optics: channel, equalisation, clock recovery, jitter, and the error budget that binds them.",
+      "articles": [
+        {
+          "slug": "serdes-in-an-optical-module",
+          "title": "The SerDes in an Optical Module",
+          "summary": "The two electrical edges of a module, retimed versus gearbox architectures, and why an optical DSP's first design decision is how many serial lanes it faces.",
+          "tags": ["serdes", "optical-module", "architecture", "oif"]
+        },
+        {
+          "slug": "serdes-anatomy",
+          "title": "The Anatomy of a 100G Lane",
+          "summary": "Serializer to driver on the transmit side, CTLE to slicer on the receive side, and the four processing steps of the Ethernet part reappearing at chip scale.",
+          "tags": ["serdes", "driver", "ctle", "slicer"]
+        },
+        {
+          "slug": "serdes-channels-and-the-link-budget",
+          "title": "SerDes Channels and the Link Budget",
+          "summary": "Insertion loss and crosstalk at 26 GHz, how lane density sets the interference, and the channel operating margin arithmetic that replaces a hand-waved budget.",
+          "tags": ["channel", "insertion-loss", "crosstalk", "com"]
+        },
+        {
+          "slug": "serdes-equalisation",
+          "title": "SerDes Equalisation",
+          "summary": "CTLE, transmit FFE, receive FFE and DFE, what each one costs, and why a real link uses all four at once rather than choosing between them.",
+          "tags": ["equalisation", "ffe", "dfe", "ctle"]
+        },
+        {
+          "slug": "serdes-clock-recovery-and-jitter",
+          "title": "Clock Recovery and Jitter",
+          "summary": "The CDR loop, phase detectors, and the decomposition of jitter into random and deterministic parts -- the measurement that decides how much eye is left.",
+          "tags": ["cdr", "jitter", "timing"]
+        },
+        {
+          "slug": "serdes-fec-and-error-budget",
+          "title": "FEC, Burst Errors and the End-to-End Error Budget",
+          "summary": "How errors arrive at a SerDes end, why DFE error propagation makes them bursty, and how interleaving and code choice budget a module's whole link.",
+          "tags": ["fec", "error-budget", "interleaving"]
         }
       ]
     },

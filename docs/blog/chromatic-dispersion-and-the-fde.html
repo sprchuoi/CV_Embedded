@@ -9,6 +9,11 @@
 <meta property="og:type" content="article">
 <meta property="og:title" content="Chromatic Dispersion and the Frequency-Domain Equaliser - DSP, from First Principles to the Optical Link">
 <meta property="og:description" content="Dispersion as an all-pass phase curve, why time-domain equalisation loses to overlap-save FFT, and the block-size maths that decides it.">
+<meta property="og:locale" content="en">
+<link rel="alternate" hreflang="en" href="https://sprchuoi.github.io/CV_Embedded/blog/chromatic-dispersion-and-the-fde.html">
+<link rel="alternate" hreflang="vi" href="https://sprchuoi.github.io/CV_Embedded/blog/vi/index.html">
+<link rel="alternate" hreflang="x-default" href="https://sprchuoi.github.io/CV_Embedded/blog/chromatic-dispersion-and-the-fde.html">
+<link rel="canonical" href="https://sprchuoi.github.io/CV_Embedded/blog/chromatic-dispersion-and-the-fde.html">
 <link rel="icon" href="../favicon.ico">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -66,7 +71,9 @@
 </script>
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
-<body>
+<body data-copy="Copy" data-copied="Copied"
+      data-copy-failed="Failed"
+      data-theme-dark="Switch to dark theme" data-theme-light="Switch to light theme">
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
   <div class="inner">
@@ -80,8 +87,9 @@
       <a href="index.html" aria-current="page">Curriculum</a>
       <a href="../index.html">CV</a>
       <a href="https://github.com/sprchuoi">GitHub</a>
+      <div class="lang-switch" role="group" aria-label="Language"><span class="is-current" lang="en" aria-current="true">EN</span><a href="vi/index.html" hreflang="vi" lang="vi" title="Tiếng Việt">VI</a></div>
       <button class="icon-btn" type="button" data-theme-toggle aria-pressed="false"
-              title="Switch theme" aria-label="Switch colour theme"><i class="fa-solid fa-moon" aria-hidden="true"></i></button>
+              title="Switch colour theme" aria-label="Switch colour theme"><i class="fa-solid fa-moon" aria-hidden="true"></i></button>
     </nav>
   </div>
   <div class="read-progress" role="presentation"></div>
@@ -237,7 +245,7 @@
 <p><strong>Fixed point.</strong> The ADC hands over 5.5 effective bits, and the coefficient phase spans 14π across a 32 GHz band with a quadratic profile. Storing it needs enough resolution that the residual phase error does not eat margin the converter has already barely delivered — and Figure 6 measures where that stops mattering: 6 bits, 5.625° per bin, 0.33 dB. Four bits is 3.63 dB of link penalty, which a team would notice; eight bits is 0.00 dB for two more bits of coefficient ROM and a wider complex multiplier. The same discipline applies one level down, in the FFT: an unscaled 512-point transform can grow by 9 bits, so block floating point with a per-stage scaling schedule is the only way to keep the converter's 5.5 bits meaningful through nine butterfly stages. Get it wrong and you either clip on a peak or give away the low-order bits the 6-bit coefficient word protects.</p>
   </div>
 </aside>
-<nav class="pager" aria-label="Chapter navigation"><a class="prev" href="coherent-optical-dsp-pipeline.html"><span class="dir">&larr; Previous</span><span class="ttl">The Coherent Optical Receiver: A DSP Pipeline Tour</span></a><span></span></nav>
+<nav class="pager" aria-label="Chapter navigation"><a class="prev" href="coherent-optical-dsp-pipeline.html"><span class="dir">&larr; Previous</span><span class="ttl">The Coherent Optical Receiver: A DSP Pipeline Tour</span></a><a class="next" href="serdes-in-an-optical-module.html"><span class="dir">Next &rarr;</span><span class="ttl">The SerDes in an Optical Module</span></a></nav>
 </main>
 </div>
 <footer class="site-footer">

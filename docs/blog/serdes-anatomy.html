@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Anatomy of a 100G Lane - DSP, from First Principles to the Optical Link</title>
+<meta name="description" content="Serializer to driver on the transmit side, CTLE to slicer on the receive side, and the four processing steps of the Ethernet part reappearing at chip scale.">
+<meta name="color-scheme" content="light dark">
+<meta property="og:type" content="article">
+<meta property="og:title" content="The Anatomy of a 100G Lane - DSP, from First Principles to the Optical Link">
+<meta property="og:description" content="Serializer to driver on the transmit side, CTLE to slicer on the receive side, and the four processing steps of the Ethernet part reappearing at chip scale.">
+<meta property="og:locale" content="en">
+<link rel="alternate" hreflang="en" href="https://sprchuoi.github.io/CV_Embedded/blog/serdes-anatomy.html">
+<link rel="alternate" hreflang="vi" href="https://sprchuoi.github.io/CV_Embedded/blog/vi/index.html">
+<link rel="alternate" hreflang="x-default" href="https://sprchuoi.github.io/CV_Embedded/blog/serdes-anatomy.html">
+<link rel="canonical" href="https://sprchuoi.github.io/CV_Embedded/blog/serdes-anatomy.html">
+<link rel="icon" href="../favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link rel="stylesheet" href="assets/blog.css">
+<script>
+  window.MathJax = {
+  "tex": {
+    "inlineMath": [
+      [
+        "$",
+        "$"
+      ],
+      [
+        "\\(",
+        "\\)"
+      ]
+    ],
+    "displayMath": [
+      [
+        "$$",
+        "$$"
+      ],
+      [
+        "\\[",
+        "\\]"
+      ]
+    ],
+    "processEscapes": true,
+    "tags": "none",
+    "macros": {
+      "twopi": "2\\pi",
+      "dd": "\\mathrm{d}",
+      "E": "\\mathbb{E}",
+      "j": "\\mathrm{j}",
+      "argmin": "\\operatorname*{arg\\,min}"
+    }
+  },
+  "options": {
+    "skipHtmlTags": [
+      "script",
+      "noscript",
+      "style",
+      "textarea",
+      "pre",
+      "code"
+    ],
+    "ignoreHtmlClass": "no-mathjax"
+  },
+  "chtml": {
+    "scale": 1.02
+  }
+};
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body data-copy="Copy" data-copied="Copied"
+      data-copy-failed="Failed"
+      data-theme-dark="Switch to dark theme" data-theme-light="Switch to light theme">
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="index.html">
+      <span class="mark" aria-hidden="true">DSP</span>
+      <span>Nguyen Quang Binh</span>
+      <span class="sub">signal processing notes</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="vision.html">Vision</a>
+      <a href="index.html" aria-current="page">Curriculum</a>
+      <a href="../index.html">CV</a>
+      <a href="https://github.com/sprchuoi">GitHub</a>
+      <div class="lang-switch" role="group" aria-label="Language"><span class="is-current" lang="en" aria-current="true">EN</span><a href="vi/index.html" hreflang="vi" lang="vi" title="Tiếng Việt">VI</a></div>
+      <button class="icon-btn" type="button" data-theme-toggle aria-pressed="false"
+              title="Switch colour theme" aria-label="Switch colour theme"><i class="fa-solid fa-moon" aria-hidden="true"></i></button>
+    </nav>
+  </div>
+  <div class="read-progress" role="presentation"></div>
+</header>
+<div class="layout">
+<nav class="toc" aria-label="On this page">
+<p class="toc-title">On this page</p>
+<ol><li class="lvl-2"><a href="#the-transmit-side">The transmit side</a></li><li class="lvl-2"><a href="#the-receive-side">The receive side</a></li><li class="lvl-2"><a href="#one-lane-two-loops">One lane, two loops</a></li><li class="lvl-2"><a href="#where-this-connects">Where this connects</a></li><li class="lvl-2"><a href="#in-the-optical-link">In the optical link</a></li></ol>
+</nav>
+<main id="main" class="prose">
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    <a href="index.html">Curriculum</a><span class="sep">/</span>SerDes for Optical Modules
+  </nav>
+  <header class="article-head">
+    <h1>The Anatomy of a 100G Lane</h1>
+    <p class="article-standfirst">Serializer to driver on the transmit side, CTLE to slicer on the receive side, and the four processing steps of the Ethernet part reappearing at chip scale.</p>
+    <div class="article-meta"><span class="level-badge" data-level="Specialist">Specialist</span><span>7 min read</span><div class="taglist"><span class="tag">serdes</span><span class="tag">driver</span><span class="tag">ctle</span><span class="tag">slicer</span></div></div>
+  </header>
+<p>A 100-gigabit serial lane is the smallest complete communications system in this course. It has a transmitter, a channel, a receiver, an equaliser, a clock recovery loop, and a decision device, and it does all of it in a few square millimetres of silicon at 50 gigabaud. Everything the Ethernet part described at board level appears here at chip scale, with the same four steps: prepare, cross, recover, decide.</p>
+<p>The chapter takes the lane apart in the order the signal travels, because that order is also the order in which margin is spent.</p>
+<h2 id="the-transmit-side"><a class="heading-anchor" href="#the-transmit-side" aria-hidden="true">#</a>The transmit side</h2>
+<figure class="figure"><img src="assets/diagrams/serdes-tx-chain.svg" alt="The transmit side of a serial lane: serializer, FFE, driver, coupling." loading="lazy"><figcaption><span class="fig-label">Figure 1</span><span class="fig-text">The transmit side of a serial lane: serializer, FFE, driver, coupling.</span></figcaption></figure>
+<p>The transmit path is short and every block in it is deliberate.</p>
+<ul>
+<li><strong>The serializer</strong> takes a parallel word from the digital core and produces one bit stream at the baud rate. It is a shift register clocked at the line rate, and its timing is the transmitter's jitter floor: whatever the serializer's clock does appears directly on the line.</li>
+<li><strong>The transmit FFE</strong> is the pre-distortion filter from the previous section of this course, but placed <em>before</em> the driver. Its job is to invert, in advance, some of the loss the channel is about to inflict. It is trained either from a fixed preset or from a back-channel exchange with the far-end receiver.</li>
+<li><strong>The driver</strong> produces the actual voltage. It is a current-mode logic stage with a programmable swing and a controlled output impedance, and it is the block that sets the launched eye.</li>
+<li><strong>AC coupling</strong> is almost always present, which is why a long run of identical bits matters: the coupling capacitors charge and the baseline moves underneath the signal.</li>
+</ul>
+<figure class="figure"><img src="assets/diagrams/pre-emphasis.svg" alt="What a transmit FFE does to the waveform, and what it costs." loading="lazy"><figcaption><span class="fig-label">Figure 2</span><span class="fig-text">What a transmit FFE does to the waveform, and what it costs.</span></figcaption></figure>
+<p>The figure is the important idea. A transmit FFE does not amplify high frequencies; a driver has a fixed maximum swing and cannot exceed it. Instead, it <strong>de-emphasises</strong> the low frequencies -- a bit that repeats the previous bit is transmitted at reduced amplitude, and a bit that differs is transmitted at full amplitude. The channel's own low-pass response then restores the shape.</p>
+<p>The cost is on the figure: the launched eye is smaller than the driver's swing would allow. A 6 dB de-emphasis gives away 6 dB of launch amplitude to buy more than that at the far end, which is a good trade only on a channel that actually has the loss.</p>
+<aside class="callout callout-key">
+  <p class="callout-title"><i class="fa-solid fa-key" aria-hidden="true"></i> Pre-distortion cannot create signal</p>
+  <div class="callout-body">
+<p>The transmit FFE redistributes amplitude across time; it does not add any. Every decibel it spends on emphasis is a decibel of margin removed from the launched eye, and a link whose channel is already open gains nothing from it.</p>
+  </div>
+</aside>
+<h2 id="the-receive-side"><a class="heading-anchor" href="#the-receive-side" aria-hidden="true">#</a>The receive side</h2>
+<figure class="figure"><img src="assets/diagrams/serdes-rx-chain.svg" alt="The receive side of a serial lane: CTLE, VGA, sampler, FFE/DFE, slicer." loading="lazy"><figcaption><span class="fig-label">Figure 3</span><span class="fig-text">The receive side of a serial lane: CTLE, VGA, sampler, FFE/DFE, slicer.</span></figcaption></figure>
+<p>The receive path is longer, because this is where the margin has to be recovered.</p>
+<ul>
+<li><strong>The CTLE</strong> -- a continuous-time linear equaliser -- is an analogue high-frequency shelf placed before the sampler. It is cheap in power and it runs at full rate with no clock, which is why it exists at all. It also amplifies the noise that lives at high frequency, which is its cost.</li>
+</ul>
+<figure class="figure"><img src="assets/plots/ctle-response.svg" alt="What a CTLE shelf has to cancel, and the noise it amplifies doing it." loading="lazy"><figcaption><span class="fig-label">Figure 4</span><span class="fig-text">What a CTLE shelf has to cancel, and the noise it amplifies doing it.</span></figcaption></figure>
+<p>The figure is worth reading as two panels of one decision. The left panel shows the shelf rising to meet the channel's loss; the right panel shows what that costs. Peaking at high frequency amplifies the noise there, so a CTLE buys signal-to-noise ratio at low frequency and spends some of it back at high frequency. There is an optimum, and it is not the maximum peaking the circuit can produce.</p>
+<ul>
+<li><strong>The VGA</strong> sets the signal into the sampler's full scale, exactly as the AGC does in the optical front end. It is the same ceiling-and-floor problem as <a href="quantization-and-enob.html">Quantization, SNR and ENOB</a>.</li>
+<li><strong>The sampler</strong> is the analogue-to-digital boundary. Real SerDes use anywhere from one comparator to a small flash ADC per lane depending on how much digital equalisation follows.</li>
+<li><strong>The receive FFE and DFE</strong> do the precise work, in the digital domain, where coefficients are exact.</li>
+<li><strong>The slicer</strong> makes the decision, and the decisions feed back into the clock recovery loop.</li>
+</ul>
+<figure class="figure"><img src="assets/diagrams/slicer-decision.svg" alt="The slicer as the comparison it is, for NRZ and for PAM4." loading="lazy"><figcaption><span class="fig-label">Figure 5</span><span class="fig-text">The slicer as the comparison it is, for NRZ and for PAM4.</span></figcaption></figure>
+<p>The last figure is worth pausing on. The slicer is a comparator, and its output is one bit (or two, for PAM4) per symbol. Everything downstream -- the FEC, the error counter, the adaptation loops -- sees only that hard decision. The analogue distance that would tell you <em>how close</em> the decision was is discarded at this point, which is why error-correction coding in a SerDes has to be designed around a hard-decision metric.</p>
+<aside class="callout callout-aside">
+  <p class="callout-title"><i class="fa-solid fa-comment-dots" aria-hidden="true"></i> Soft decisions exist, and mostly do not ship</p>
+  <div class="callout-body">
+<p>A soft-decision demodulator keeps the analogue distance and gives the FEC decoder more to work with -- several decibels more, in principle. Almost no 100G lane uses one, because the extra ADC resolution and the wider datapath cost power and latency that the module does not have. Hard-decision FEC is the engineering compromise at these rates.</p>
+  </div>
+</aside>
+<h2 id="one-lane-two-loops"><a class="heading-anchor" href="#one-lane-two-loops" aria-hidden="true">#</a>One lane, two loops</h2>
+<p>Two feedback loops close around the receive chain, and they operate on different timescales.</p>
+<p><strong>The clock recovery loop</strong> runs from the slicer's decisions back to the sampler's clock phase. It is fast -- its bandwidth is in the megahertz -- and it must track the transmitter's wander while rejecting the noise on its own phase detector. The next chapter is about it.</p>
+<p><strong>The adaptation loops</strong> set the equaliser coefficients and the VGA gain. They are slower by design, because a coefficient that tracks too fast chases noise and a coefficient that tracks too slowly misses a temperature change. Adaptation is a control loop, not a filter, and its stability is a design parameter.</p>
+<figure class="figure"><img src="assets/diagrams/equaliser-adaptation.svg" alt="How the taps get their values: an error signal and a sign-sign update." loading="lazy"><figcaption><span class="fig-label">Figure 6</span><span class="fig-text">How the taps get their values: an error signal and a sign-sign update.</span></figcaption></figure>
+<p>The figure shows the mechanism, and one detail is worth carrying forward: the update is almost always <strong>sign-sign LMS</strong>.</p>
+<div class="math-display">$$w[n+1] = w[n] + \mu\, e[n]\, x[n] \quad\Longrightarrow\quad w[n+1] = w[n] + \mu\, \mathrm{sgn}(e[n])\, \mathrm{sgn}(x[n])$$</div>
+<p>The reduction replaces two multiplications per tap per sample with two comparators, and at 50 gigabaud that is the difference between affordable and not. Its cost is a slower, noisier convergence, which is why real links gear-shift: a coarse step size during acquisition, a fine one afterwards.</p>
+<h2 id="where-this-connects"><a class="heading-anchor" href="#where-this-connects" aria-hidden="true">#</a>Where this connects</h2>
+<ul>
+<li>The lane is the Ethernet part's four steps at chip scale: prepare in the serializer and driver, cross in the channel, recover in the equaliser, decide in the slicer.</li>
+<li>The transmit FFE is pre-distortion; it spends launch amplitude to buy margin at the far end.</li>
+<li>The receive chain recovers margin in stages, each with a different cost -- the CTLE in power and noise, the FFE in precision, the DFE in latency.</li>
+<li>The slicer discards the analogue distance, which is why the FEC that follows sees hard decisions only.</li>
+<li>Adaptation is a control loop, and its bandwidth is a stability parameter rather than a speed setting.</li>
+</ul>
+<h2 id="in-the-optical-link"><a class="heading-anchor" href="#in-the-optical-link" aria-hidden="true">#</a>In the optical link</h2>
+<p><strong>This is the same receiver, at a different rate and in a different domain.</strong> The coherent front end of <a href="coherent-optical-dsp-pipeline.html">The Coherent Optical Receiver: A DSP Pipeline Tour</a> has a CTLE-equivalent in its transimpedance amplifier, a VGA, an ADC array, a digital equaliser, and a slicer. The names differ; the sequence and the trade-offs do not.</p>
+<p><strong>One difference is fundamental: the optical receiver has no clock to recover from the data alone.</strong> A coherent receiver's symbol timing comes from a combination of the ADC clock and a digital timing recovery loop that operates on the sampled signal, not from an analogue phase interpolator locked to edges. That is why the optical part has no chapter equivalent to the CDR chapter here, and why timing recovery appears there as a DSP block rather than as a mixed-signal loop.</p>
+<p><strong>And the hard-decision argument is stronger in optics, not weaker.</strong> A coherent receiver's DSP already has more resolution than a SerDes sampler, so it <em>could</em> produce soft decisions cheaply -- and some do. But the power cost of carrying soft metrics through a 100+ GBd datapath is real, so most deployed coherent FEC is still hard-decision, exactly like the lane described here.</p>
+<nav class="pager" aria-label="Chapter navigation"><a class="prev" href="serdes-in-an-optical-module.html"><span class="dir">&larr; Previous</span><span class="ttl">The SerDes in an Optical Module</span></a><a class="next" href="serdes-channels-and-the-link-budget.html"><span class="dir">Next &rarr;</span><span class="ttl">SerDes Channels and the Link Budget</span></a></nav>
+</main>
+</div>
+<footer class="site-footer">
+  <div class="inner">
+    <span>&copy; Nguyen Quang Binh &middot; Embedded Software Engineer - Optical DSP</span>
+    <span class="spacer"></span>
+    <a href="https://github.com/sprchuoi" target="_blank" rel="noopener">GitHub</a> &middot; <a href="https://www.linkedin.com/in/sprchuoi" target="_blank" rel="noopener">LinkedIn</a> &middot; <a href="mailto:quangbinhlxcity@gmail.com">quangbinhlxcity@gmail.com</a> &middot; <a href="../index.html">CV</a>
+  </div>
+</footer>
+<script src="assets/blog.js" defer></script>
+</body>
+</html>

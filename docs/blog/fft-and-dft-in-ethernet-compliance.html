@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The FFT and DFT in Ethernet Compliance - DSP, from First Principles to the Optical Link</title>
+<meta name="description" content="The DFT is not a chapter you leave behind, it is the instrument: bin index to hertz, the transmit spectral mask, the equaliser response, and S-parameters pulled back into the time domain.">
+<meta name="color-scheme" content="light dark">
+<meta property="og:type" content="article">
+<meta property="og:title" content="The FFT and DFT in Ethernet Compliance - DSP, from First Principles to the Optical Link">
+<meta property="og:description" content="The DFT is not a chapter you leave behind, it is the instrument: bin index to hertz, the transmit spectral mask, the equaliser response, and S-parameters pulled back into the time domain.">
+<meta property="og:locale" content="en">
+<link rel="alternate" hreflang="en" href="https://sprchuoi.github.io/CV_Embedded/blog/fft-and-dft-in-ethernet-compliance.html">
+<link rel="alternate" hreflang="vi" href="https://sprchuoi.github.io/CV_Embedded/blog/vi/index.html">
+<link rel="alternate" hreflang="x-default" href="https://sprchuoi.github.io/CV_Embedded/blog/fft-and-dft-in-ethernet-compliance.html">
+<link rel="canonical" href="https://sprchuoi.github.io/CV_Embedded/blog/fft-and-dft-in-ethernet-compliance.html">
+<link rel="icon" href="../favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link rel="stylesheet" href="assets/blog.css">
+<script>
+  window.MathJax = {
+  "tex": {
+    "inlineMath": [
+      [
+        "$",
+        "$"
+      ],
+      [
+        "\\(",
+        "\\)"
+      ]
+    ],
+    "displayMath": [
+      [
+        "$$",
+        "$$"
+      ],
+      [
+        "\\[",
+        "\\]"
+      ]
+    ],
+    "processEscapes": true,
+    "tags": "none",
+    "macros": {
+      "twopi": "2\\pi",
+      "dd": "\\mathrm{d}",
+      "E": "\\mathbb{E}",
+      "j": "\\mathrm{j}",
+      "argmin": "\\operatorname*{arg\\,min}"
+    }
+  },
+  "options": {
+    "skipHtmlTags": [
+      "script",
+      "noscript",
+      "style",
+      "textarea",
+      "pre",
+      "code"
+    ],
+    "ignoreHtmlClass": "no-mathjax"
+  },
+  "chtml": {
+    "scale": 1.02
+  }
+};
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body data-copy="Copy" data-copied="Copied"
+      data-copy-failed="Failed"
+      data-theme-dark="Switch to dark theme" data-theme-light="Switch to light theme">
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="index.html">
+      <span class="mark" aria-hidden="true">DSP</span>
+      <span>Nguyen Quang Binh</span>
+      <span class="sub">signal processing notes</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="vision.html">Vision</a>
+      <a href="index.html" aria-current="page">Curriculum</a>
+      <a href="../index.html">CV</a>
+      <a href="https://github.com/sprchuoi">GitHub</a>
+      <div class="lang-switch" role="group" aria-label="Language"><span class="is-current" lang="en" aria-current="true">EN</span><a href="vi/index.html" hreflang="vi" lang="vi" title="Tiếng Việt">VI</a></div>
+      <button class="icon-btn" type="button" data-theme-toggle aria-pressed="false"
+              title="Switch colour theme" aria-label="Switch colour theme"><i class="fa-solid fa-moon" aria-hidden="true"></i></button>
+    </nav>
+  </div>
+  <div class="read-progress" role="presentation"></div>
+</header>
+<div class="layout">
+<nav class="toc" aria-label="On this page">
+<p class="toc-title">On this page</p>
+<ol><li class="lvl-2"><a href="#the-one-line-of-arithmetic">The one line of arithmetic</a></li><li class="lvl-2"><a href="#resolution-is-a-measurement-requirement-not-a-preference">Resolution is a measurement requirement, not a preference</a></li><li class="lvl-2"><a href="#the-transmit-spectral-mask">The transmit spectral mask</a></li><li class="lvl-2"><a href="#the-channel-and-the-equaliser-in-the-frequency-domain">The channel and the equaliser, in the frequency domain</a></li><li class="lvl-2"><a href="#a-worked-measurement">A worked measurement</a></li><li class="lvl-2"><a href="#where-this-connects">Where this connects</a></li><li class="lvl-2"><a href="#in-the-optical-link">In the optical link</a></li></ol>
+</nav>
+<main id="main" class="prose">
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    <a href="index.html">Curriculum</a><span class="sep">/</span>IEEE Ethernet, Measured
+  </nav>
+  <header class="article-head">
+    <h1>The FFT and DFT in Ethernet Compliance</h1>
+    <p class="article-standfirst">The DFT is not a chapter you leave behind, it is the instrument: bin index to hertz, the transmit spectral mask, the equaliser response, and S-parameters pulled back into the time domain.</p>
+    <div class="article-meta"><span class="level-badge" data-level="Intermediate to Advanced">Intermediate to Advanced</span><span>9 min read</span><div class="taglist"><span class="tag">fft</span><span class="tag">dft</span><span class="tag">spectral-mask</span><span class="tag">s-parameters</span></div></div>
+  </header>
+<p>This is the chapter where part two of the course stops being mathematics and becomes an instrument. A spectrum analyser, a vector network analyser, and the compliance software inside a real-time oscilloscope are all computing the discrete Fourier transform, and the DFT is the same transform derived in <a href="the-fft.html">The FFT: How It Got Fast</a>. What changes here is not the transform but the three numbers you feed it -- sample rate, record length, and window -- and the fact that those three numbers are on a test report.</p>
+<p>Ethernet is where that matters most, because so much of what a standard constrains is a frequency-domain quantity: the transmit spectral mask, the channel's insertion loss and return loss, crosstalk, and the equaliser's own response. A time-domain eye certificate and a frequency-domain mask certificate are two views of one link, and the DFT is the bridge.</p>
+<h2 id="the-one-line-of-arithmetic"><a class="heading-anchor" href="#the-one-line-of-arithmetic" aria-hidden="true">#</a>The one line of arithmetic</h2>
+<p>Everything begins with a single relationship, and it is the piece of arithmetic most often got wrong on a bench.</p>
+<figure class="figure"><img src="assets/diagrams/dft-bins-to-hertz.svg" alt="From a scope&#x27;s settings to the hertz of one bin." loading="lazy"><figcaption><span class="fig-label">Figure 1</span><span class="fig-text">From a scope's settings to the hertz of one bin.</span></figcaption></figure>
+<p>An <span class="math">$N$</span>-point DFT of a record sampled at <span class="math">$f_s$</span> produces <span class="math">$N$</span> bins spanning DC to <span class="math">$f_s$</span>, spaced by</p>
+<div class="math-display">$$\Delta f = \frac{f_s}{N} \quad\text{Hz per bin}, \qquad f_k = k\,\Delta f$$</div>
+<p>Three consequences, all of which show up on a test report:</p>
+<ul>
+<li><strong>The sample rate sets the span.</strong> A 20 GS/s scope can show you content up to 10 GHz, because the transform is periodic and the second half of the record mirrors the first.</li>
+<li><strong>The record length sets the resolution.</strong> Ten times longer record means ten times finer bins, and no change to the span.</li>
+<li><strong>They are independent.</strong> Doubling the sample rate doubles the span <em>and</em> doubles the hertz per bin. It buys no resolution whatsoever, which is the mistake the diagram exists to prevent.</li>
+</ul>
+<aside class="callout callout-try">
+  <p class="callout-title"><i class="fa-solid fa-flask" aria-hidden="true"></i> The sanity check that catches most errors</p>
+  <div class="callout-body">
+<p>Take the scope's stated resolution bandwidth, multiply by the number of points in the record, and see whether you get the sample rate. If you do not, one of the three numbers on the screen is not what you think it is.</p>
+  </div>
+</aside>
+<h2 id="resolution-is-a-measurement-requirement-not-a-preference"><a class="heading-anchor" href="#resolution-is-a-measurement-requirement-not-a-preference" aria-hidden="true">#</a>Resolution is a measurement requirement, not a preference</h2>
+<p>A compliance mask with a sharp corner at a specified frequency cannot be verified with a transform whose bins are wider than the feature. The resolution has to be chosen from what you are trying to see.</p>
+<figure class="figure"><img src="assets/plots/dft-resolution-demo.svg" alt="One tone at a short record and a long record: the same signal, two resolutions." loading="lazy"><figcaption><span class="fig-label">Figure 2</span><span class="fig-text">One tone at a short record and a long record: the same signal, two resolutions.</span></figcaption></figure>
+<p>The figure runs the same two-tone signal through the same DFT twice, changing only <span class="math">$N$</span>. At 60 MHz of resolution the two tones are one blur and the measurement would report a single spur at the wrong frequency. At 61 kHz they are resolved, and the bin they land in is meaningful.</p>
+<p>Two more facts about the transform matter for compliance, and both are properties of the window rather than the data:</p>
+<ul>
+<li><strong>Leakage is real and it is a windowing artefact.</strong> A tone that does not fall exactly on a bin spreads energy into its neighbours, and that spread can be mistaken for a spur. Rectangular windows leak most; Hann and Blackman-Harris leak less at the cost of wider main lobes.</li>
+<li><strong>The noise floor falls with a longer record.</strong> Averaging more samples of noise buys processing gain, roughly <span class="math">$10\log_{10}N$</span> decibels. That is why a mask measurement that looks noise-limited at one record length becomes clean at ten times the length.</li>
+</ul>
+<figure class="figure"><img src="assets/diagrams/dft-resolution-tradeoff.svg" alt="What a longer record buys, and what it costs." loading="lazy"><figcaption><span class="fig-label">Figure 3</span><span class="fig-text">What a longer record buys, and what it costs.</span></figcaption></figure>
+<p>The third curve on that figure is the one that is easy to forget: capture time. In a compliance measurement the link is live, and a record long enough to resolve a fine feature may also be long enough for the channel to have changed underneath it. The usual compromise is a few thousand to a few tens of thousands of points, chosen so the shortest feature of interest is several bins wide.</p>
+<h2 id="the-transmit-spectral-mask"><a class="heading-anchor" href="#the-transmit-spectral-mask" aria-hidden="true">#</a>The transmit spectral mask</h2>
+<p>Ethernet constrains the shape of what a transmitter emits, and the constraint is a mask on the power spectral density. The DFT is what measures it.</p>
+<figure class="figure"><img src="assets/plots/ethernet-spectral-mask.svg" alt="A 1000BASE-T transmit spectrum against its mask." loading="lazy"><figcaption><span class="fig-label">Figure 4</span><span class="fig-text">A 1000BASE-T transmit spectrum against its mask.</span></figcaption></figure>
+<p>The figure is a model of the specified shape rather than a measured port, and it shows the structure every Ethernet spectral mask has:</p>
+<ul>
+<li><strong>A high-pass corner at low frequency.</strong> Ethernet is AC-coupled, so the spectrum must roll off below a few megahertz. A transmitter that emits too much energy near DC is wasting power and causing baseline wander in every receiver on the link.</li>
+<li><strong>A flat region in the middle.</strong> This is where the signal lives, and where the mask is set by emissions regulation as much as by signal integrity.</li>
+<li><strong>A steep roll-off above the Nyquist frequency.</strong> Content above Nyquist cannot be recovered; it can only interfere with neighbouring channels. The mask makes it expensive to create.</li>
+</ul>
+<p>A real measurement adds three things this model does not have, and each is a place where a lab gets the wrong answer:</p>
+<ul>
+<li><strong>The mask is defined in a stated bandwidth.</strong> A power spectral density in dBm/MHz is not comparable to one in dBm/100 kHz, and standards state which. This is the same reference-discipline as <a href="decibels-and-dynamic-range.html">Decibels and Dynamic Range</a>.</li>
+<li><strong>The measurement bandwidth must be narrower than the mask's features.</strong> A resolution bandwidth wider than the roll-off corner reports a corner that does not exist.</li>
+<li><strong>The detector matters.</strong> Peak, average and quasi-peak detectors report different numbers for the same signal, and the standard says which one applies.</li>
+</ul>
+<aside class="callout callout-warn">
+  <p class="callout-title"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> The mask that passes for the wrong reason</p>
+  <div class="callout-body">
+<p>A spectrum measured with too coarse a resolution bandwidth smooths the peaks that the mask exists to catch. The result is a clean report and a failing product. Before trusting a mask measurement, confirm that the resolution bandwidth is well below the narrowest feature of the mask, and that the window is the one the standard names.</p>
+  </div>
+</aside>
+<h2 id="the-channel-and-the-equaliser-in-the-frequency-domain"><a class="heading-anchor" href="#the-channel-and-the-equaliser-in-the-frequency-domain" aria-hidden="true">#</a>The channel and the equaliser, in the frequency domain</h2>
+<p>The transmitter is only half of the frequency-domain story. The channel's response and the equaliser's response are the other half, and they are naturally measured as complex functions of frequency.</p>
+<p>Insertion loss, return loss and crosstalk are usually obtained from a vector network analyser as <strong>S-parameters</strong>: the complex ratios of incident and reflected waves at each port, per frequency. A four-pair Ethernet link is an eight-port network, and its full S-parameter set is a large matrix -- but the parts a link budget cares about are the forward transmission (insertion loss) and the input reflection (return loss).</p>
+<p>From the S-parameters, the same DFT machinery produces the things a time-domain engineer wants:</p>
+<ul>
+<li><strong>The impulse response</strong> is the inverse DFT of the transfer function. This is how a channel model is obtained for simulation, and it is exactly the operation in <a href="convolution-and-lti.html">Convolution, and Why Every DSP Block Is One</a>: multiplication in the frequency domain <em>is</em> convolution in time.</li>
+<li><strong>The equaliser's target response</strong> is the reciprocal of that transfer function over the band of interest, which is the mirror picture from the link-budget chapter, now as complex data rather than a sketch.</li>
+<li><strong>Group delay</strong>, the negative derivative of phase with respect to frequency, is where a channel's dispersive behaviour shows up. It is phase and group-delay territory, applied to a cable.</li>
+</ul>
+<aside class="callout callout-math">
+  <p class="callout-title"><i class="fa-solid fa-square-root-variable" aria-hidden="true"></i> Why the inverse DFT needs the phase</p>
+  <div class="callout-body">
+<p>The magnitude of the channel response tells you how much each frequency is attenuated, and that is enough for a loss budget. It is <em>not</em> enough for an impulse response: the shape of the received pulse depends on the phase, and a channel with flat magnitude and wild phase still destroys an eye. Any S-parameter file that reports magnitude only has thrown away the half of the answer that convolution needs.</p>
+  </div>
+</aside>
+<h2 id="a-worked-measurement"><a class="heading-anchor" href="#a-worked-measurement" aria-hidden="true">#</a>A worked measurement</h2>
+<p>Take the 1000BASE-T example from the first figure and follow it through as a bench procedure.</p>
+<ul>
+<li><strong>Settings.</strong> <span class="math">$f_s$</span> = 20 GS/s, <span class="math">$N$</span> = 2000 samples, so <span class="math">$\Delta f$</span> = 10 MHz per bin, over a span of DC to 10 GHz.</li>
+<li><strong>A spur at 410 MHz.</strong> It is bin 41, the 42nd bin counting from DC.</li>
+<li><strong>The mask is specified in dBm/MHz.</strong> Each bin is 10 MHz wide at this setting, so a bin's power is 10 dB above its density. Reporting the bin power as a density is a 10 dB error, in the optimistic direction if the limit is a maximum.</li>
+<li><strong>The spur is 45 dB below the carrier.</strong> Both are read from the same transform, so the ratio is unaffected by the window and the span -- which is why relative measurements are more robust than absolute ones.</li>
+</ul>
+<p>Every one of those steps is arithmetic from the one line at the top of the chapter, and every one of them is a place where a report can be wrong while looking entirely reasonable.</p>
+<h2 id="where-this-connects"><a class="heading-anchor" href="#where-this-connects" aria-hidden="true">#</a>Where this connects</h2>
+<ul>
+<li>The DFT is the instrument behind the spectrum, the channel response, and the equaliser's target; the bin spacing is <span class="math">$f_s/N$</span> and nothing else.</li>
+<li>Resolution is set by record length, the span by sample rate, and the noise floor by both. All three are on a test report.</li>
+<li>The spectral mask constrains the transmitter; S-parameters constrain the channel; together they are the frequency-domain half of the link budget.</li>
+<li>Magnitude without phase is not a channel model, because convolution needs both.</li>
+<li>The time-domain view of the same link is the eye diagram, and the next chapter puts both views into one procedure.</li>
+</ul>
+<h2 id="in-the-optical-link"><a class="heading-anchor" href="#in-the-optical-link" aria-hidden="true">#</a>In the optical link</h2>
+<p><strong>The frequency-domain equaliser is this chapter's DFT, deployed in silicon.</strong> <a href="chromatic-dispersion-and-the-fde.html">Chromatic Dispersion and the Frequency-Domain Equaliser</a> takes an FFT of a block of samples, multiplies by the inverse of the fibre's dispersion response, and transforms back. The measurement procedure here -- get the complex response, invert it, check the residual -- is that equaliser's design procedure, performed once at the bench instead of continuously in hardware.</p>
+<p><strong>The block size is the resolution, and it costs latency.</strong> A frequency-domain equaliser's FFT length sets how finely it can resolve the dispersion curve, and therefore how much residual dispersion is left. That trade is identical to the one in the resolution figure: more points buy finer correction and more delay.</p>
+<p><strong>And the mask has an optical analogue.</strong> An optical transmitter is specified by its eye mask and by its OSNR, and its spectrum is constrained by the grid and by neighbouring-channel crosstalk. The instrument that verifies it is an optical spectrum analyser rather than a scope FFT, but the arithmetic -- resolution bandwidth, reference bandwidth, relative measurement -- is unchanged.</p>
+<p><strong>One difference is worth naming.</strong> In copper, phase is usually described by S-parameters and handled by convolution. In optics, phase is the dominant impairment -- dispersion, polarisation rotation, laser linewidth -- and the frequency-domain view is not an alternative but the primary one. That is why this chapter's transform shows up in the optical part as a core datapath block rather than as a measurement tool.</p>
+<nav class="pager" aria-label="Chapter navigation"><a class="prev" href="bert-ber-and-fec.html"><span class="dir">&larr; Previous</span><span class="ttl">BERT, BER and the FEC Contract</span></a><a class="next" href="ethernet-compliance-test-in-practice.html"><span class="dir">Next &rarr;</span><span class="ttl">Compliance Test in Practice</span></a></nav>
+</main>
+</div>
+<footer class="site-footer">
+  <div class="inner">
+    <span>&copy; Nguyen Quang Binh &middot; Embedded Software Engineer - Optical DSP</span>
+    <span class="spacer"></span>
+    <a href="https://github.com/sprchuoi" target="_blank" rel="noopener">GitHub</a> &middot; <a href="https://www.linkedin.com/in/sprchuoi" target="_blank" rel="noopener">LinkedIn</a> &middot; <a href="mailto:quangbinhlxcity@gmail.com">quangbinhlxcity@gmail.com</a> &middot; <a href="../index.html">CV</a>
+  </div>
+</footer>
+<script src="assets/blog.js" defer></script>
+</body>
+</html>

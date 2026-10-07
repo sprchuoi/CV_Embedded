@@ -118,8 +118,13 @@ _AUTOLINK_RE = re.compile(r"(?<![\"'>=])\b(https?://[^\s<>()\[\]]+[^\s<>()\[\].,
 class _Inline:
     """Renders inline markdown, protecting math, code and raw HTML."""
 
-    def __init__(self) -> None:
+    def __init__(self, asset_prefix: str = "") -> None:
         self._store: list[str] = []
+        # Prepended to image sources: pages in docs/blog/<lang>/ need
+        # "../assets/..." where the prose (and the default language) says
+        # "assets/...". The prefix is a build-time path concern, so the prose
+        # stays identical between languages.
+        self.asset_prefix = asset_prefix
 
     def _stash(self, rendered: str) -> str:
         self._store.append(rendered)
@@ -152,7 +157,7 @@ class _Inline:
             alt, src, title = match.group(1), match.group(2), match.group(3)
             cls = f' class="{html.escape(title, quote=True)}"' if title else ""
             return self._stash(
-                f'<img src="{html.escape(src, quote=True)}" '
+                f'<img src="{html.escape(self.asset_prefix + src, quote=True)}" '
                 f'alt="{html.escape(alt, quote=True)}"{cls}>'
             )
 
@@ -219,10 +224,16 @@ _DIV_CLOSE_RE = re.compile(r"^\s*:::\s*$")
 
 
 class _Renderer:
-    def __init__(self) -> None:
+    def __init__(self, figure_label: str = "Figure", asset_prefix: str = "") -> None:
         self.anchors = _Anchors()
         self.toc: list[Heading] = []
         self.figure_captions: list[str] = []
+        # Localised at construction: the label is chrome, the caption is prose.
+        self.figure_label = figure_label
+        self.asset_prefix = asset_prefix
+
+    def _inline(self, text: str) -> str:
+        return _Inline(asset_prefix=self.asset_prefix).render(text)
 
     # -- entry point ------------------------------------------------------- #
 
@@ -324,7 +335,7 @@ class _Renderer:
             raise MarkdownError(f"unclosed ':::{kind}' block opened at line {i + 1}")
 
         default_title, icon = _ADMONITIONS[kind]
-        label = render_inline(title) if title else default_title
+        label = self._inline(title) if title else default_title
         inner = self._blocks(body)
         out.append(
             f'<aside class="callout callout-{kind}">\n'
@@ -373,7 +384,7 @@ class _Renderer:
         level = min(level, 5)
         anchor = self.anchors.make(strip_markup(raw))
         self.toc.append(Heading(level=level, text=strip_markup(raw), anchor=anchor))
-        label = render_inline(raw)
+        label = self._inline(raw)
         out.append(
             f'<h{level} id="{anchor}">'
             f'<a class="heading-anchor" href="#{anchor}" aria-hidden="true">#</a>{label}'
@@ -473,13 +484,13 @@ class _Renderer:
             i += 1
 
         head = "".join(
-            f'<th style="text-align:{aligns[k] if k < len(aligns) else "left"}">{render_inline(c)}</th>'
+            f'<th style="text-align:{aligns[k] if k < len(aligns) else "left"}">{self._inline(c)}</th>'
             for k, c in enumerate(header)
         )
         body = "\n".join(
             "<tr>"
             + "".join(
-                f'<td style="text-align:{aligns[k] if k < len(aligns) else "left"}">{render_inline(c)}</td>'
+                f'<td style="text-align:{aligns[k] if k < len(aligns) else "left"}">{self._inline(c)}</td>'
                 for k, c in enumerate(row)
             )
             + "</tr>"
@@ -521,19 +532,19 @@ class _Renderer:
             self.figure_captions.append(alt)
             cls = " ".join(["figure", *classes.split()])
             caption = (
-                f'<figcaption><span class="fig-label">Figure {number}</span>'
-                f"<span class=\"fig-text\">{render_inline(alt)}</span></figcaption>"
+                f'<figcaption><span class="fig-label">{html.escape(self.figure_label)} {number}</span>'
+                f"<span class=\"fig-text\">{self._inline(alt)}</span></figcaption>"
                 if alt
                 else ""
             )
             out.append(
                 f'<figure class="{cls}">'
-                f'<img src="{html.escape(src, quote=True)}" alt="{html.escape(strip_markup(alt), quote=True)}" loading="lazy">'
+                f'<img src="{html.escape(self.asset_prefix + src, quote=True)}" alt="{html.escape(strip_markup(alt), quote=True)}" loading="lazy">'
                 f"{caption}</figure>"
             )
             return i
 
-        out.append(f"<p>{render_inline(text)}</p>")
+        out.append(f"<p>{self._inline(text)}</p>")
         return i
 
 
@@ -560,9 +571,15 @@ def count_words(text: str) -> int:
     return len(re.findall(r"[\w'-]+", strip_markup(text)))
 
 
-def render(text: str) -> RenderResult:
-    """Render article Markdown to HTML plus its table of contents."""
-    renderer = _Renderer()
+def render(text: str, *, figure_label: str = "Figure",
+           asset_prefix: str = "") -> RenderResult:
+    """Render article Markdown to HTML plus its table of contents.
+
+    ``figure_label`` is the word before the figure number ("Figure", "Hình") and
+    ``asset_prefix`` is prepended to image sources, so a page one directory
+    below ``docs/blog/`` can share the same prose and the same figures.
+    """
+    renderer = _Renderer(figure_label=figure_label, asset_prefix=asset_prefix)
     body = renderer.render(text)
     return RenderResult(html=body, toc=renderer.toc,
                         figure_captions=renderer.figure_captions,

@@ -10,6 +10,28 @@
 
   var THEME_KEY = 'dsp-blog-theme';
 
+  /* Every user-visible string lives in a data- attribute on <body>, written by
+   * the page template in the page's own language. The fallbacks only matter if
+   * the script is somehow served against a page that predates them. */
+  var L = null;
+  function labels() {
+    if (!L) {
+      var b = document.body || {};
+      var get = function (name, fallback) {
+        var value = b.getAttribute ? b.getAttribute(name) : null;
+        return value || fallback;
+      };
+      L = {
+        copy: get('data-copy', 'Copy'),
+        copied: get('data-copied', 'Copied'),
+        failed: get('data-copy-failed', 'Failed'),
+        toDark: get('data-theme-dark', 'Switch to dark theme'),
+        toLight: get('data-theme-light', 'Switch to light theme')
+      };
+    }
+    return L;
+  }
+
   /* ------------------------------------------------------------- theming -- */
   function applyTheme(theme) {
     if (theme === 'dark' || theme === 'light') {
@@ -22,7 +44,7 @@
       var dark = theme === 'dark' ||
         (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches);
       btn.setAttribute('aria-pressed', String(dark));
-      btn.setAttribute('title', dark ? 'Switch to light theme' : 'Switch to dark theme');
+      btn.setAttribute('title', dark ? labels().toLight : labels().toDark);
       var icon = btn.querySelector('i');
       if (icon) { icon.className = dark ? 'fa-solid fa-sun' : 'fa-solid fa-moon'; }
     }
@@ -98,13 +120,13 @@
       var btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'copy-btn';
-      btn.textContent = 'Copy';
+      btn.textContent = labels().copy;
       btn.addEventListener('click', function () {
         var code = pre.querySelector('code');
         navigator.clipboard.writeText(code ? code.innerText : pre.innerText).then(function () {
-          btn.textContent = 'Copied';
-          window.setTimeout(function () { btn.textContent = 'Copy'; }, 1400);
-        }, function () { btn.textContent = 'Failed'; });
+          btn.textContent = labels().copied;
+          window.setTimeout(function () { btn.textContent = labels().copy; }, 1400);
+        }, function () { btn.textContent = labels().failed; });
       });
       pre.appendChild(btn);
     });

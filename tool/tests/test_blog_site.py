@@ -22,11 +22,14 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO))
 
-from tool.blog import site, theme  # noqa: E402
+from tool.blog import i18n, site, theme  # noqa: E402
 
 CURRICULUM = REPO / "blog" / "curriculum.json"
 POSTS = REPO / "blog" / "posts"
 PAGES = REPO / "blog" / "pages"
+VI_CURRICULUM = REPO / "blog" / "vi" / "curriculum.json"
+VI_POSTS = REPO / "blog" / "vi" / "posts"
+VI_PAGES = REPO / "blog" / "vi" / "pages"
 ASSETS = REPO / "docs" / "blog" / "assets"
 HAVE_NUMPY = importlib.util.find_spec("numpy") is not None
 
@@ -281,21 +284,88 @@ class TestBuild(unittest.TestCase):
     def test_build_writes_index_and_one_page_per_published_article(self):
         report = site.build(self.tmp)
         self.assertEqual(report.errors, [], f"build errors: {report.errors}")
-        curriculum = site.load_curriculum(
-            self.tmp / "blog" / "curriculum.json", self.tmp / "blog" / "posts",
-            self.tmp / "blog" / "pages")
-        published = curriculum.published
-        self.assertTrue(published, "expected at least one published article")
-        self.assertTrue((self.tmp / "docs" / "blog" / "index.html").exists())
-        for article in published:
-            self.assertTrue((self.tmp / "docs" / "blog" / f"{article.slug}.html").exists())
-        # one document per published chapter, plus the index, plus any page that
-        # asked for its own document (placement == "page").
-        standalone = [p for p in curriculum.pages
-                      if p.placement == "page" and p.written]
-        for page in standalone:
-            self.assertTrue((self.tmp / "docs" / "blog" / page.href).exists())
-        self.assertEqual(len(report.pages), len(published) + 1 + len(standalone))
+
+        # The build publishes every language that has a curriculum, so the
+        # expectation is summed over them rather than written for one tree.
+        expected = 0
+        for lang in i18n.LANGS:
+            base = (self.tmp / "blog" if lang == i18n.DEFAULT_LANG
+                    else self.tmp / "blog" / lang)
+            if not (base / "curriculum.json").exists():
+                continue
+            curriculum = site.load_curriculum(
+                base / "curriculum.json", base / "posts", base / "pages", lang=lang)
+            published = curriculum.published
+            self.assertTrue(published, f"expected a published article in '{lang}'")
+
+            out = (self.tmp / "docs" / "blog" if lang == i18n.DEFAULT_LANG
+                   else self.tmp / "docs" / "blog" / lang)
+            self.assertTrue((out / "index.html").exists(), f"{lang} index missing")
+            for article in published:
+                self.assertTrue((out / f"{article.slug}.html").exists(),
+                                f"{lang}/{article.slug}.html missing")
+
+            # one index, one document per published chapter, plus any page that
+            # asked for its own document (placement == "page").
+            standalone = [p for p in curriculum.pages
+                          if p.placement == "page" and p.written]
+            for page in standalone:
+                self.assertTrue((out / page.href).exists())
+            expected += len(published) + 1 + len(standalone)
+
+        self.assertEqual(len(report.pages), expected)
+
+    def test_build_renders_each_language_with_its_own_paths(self):
+        report = site.build(self.tmp)
+        self.assertEqual(report.errors, [], f"build errors: {report.errors}")
+        blog = self.tmp / "docs" / "blog"
+
+        vi_index = (blog / "vi" / "index.html").read_text(encoding="utf-8")
+        self.assertIn('<html lang="vi">', vi_index)
+        self.assertIn('class="lang-switch"', vi_index)
+        self.assertIn('hreflang="en"', vi_index)
+        # A chapter with no Vietnamese prose is marked and linked across, never
+        # hidden and never reported as unwritten.
+        self.assertIn("chapter is-fallback", vi_index)
+        self.assertIn('href="../the-fft.html"', vi_index)
+        self.assertIn(i18n.VI.english_only, vi_index)
+        # The framing page is translated, so the index carries Vietnamese prose.
+        self.assertIn(i18n.VI.start_here, vi_index)
+
+        vi_article = (blog / "vi" / "what-is-a-signal.html").read_text(encoding="utf-8")
+        self.assertIn('class="fig-label">Hình 1', vi_article)
+        self.assertIn('src="../assets/diagrams/', vi_article)
+        self.assertNotIn('src="assets/', vi_article)
+        self.assertIn('href="../what-is-a-signal.html"', vi_article)
+
+        en_article = (blog / "what-is-a-signal.html").read_text(encoding="utf-8")
+        self.assertIn('class="fig-label">Figure 1', en_article)
+        self.assertIn('src="assets/diagrams/', en_article)
+        self.assertIn('href="vi/what-is-a-signal.html"', en_article)
+        # Nothing is untranslated on the English side just because it is English.
+        en_index = (blog / "index.html").read_text(encoding="utf-8")
+        self.assertNotIn("chapter is-fallback", en_index)
+
+    def test_build_fails_when_a_declared_language_has_no_source(self):
+        shutil.rmtree(self.tmp / "blog" / "vi")
+        with self.assertRaises(site.CurriculumError) as ctx:
+            site.build(self.tmp)
+        self.assertIn("'vi'", str(ctx.exception))
+
+    def test_build_fails_when_a_language_curriculum_drifts(self):
+        manifest = self.tmp / "blog" / "vi" / "curriculum.json"
+        raw = json.loads(manifest.read_text(encoding="utf-8"))
+        # A chapter English has and Vietnamese no longer declares. It must be one
+        # with no Vietnamese post, or the loader would fail on the orphan first.
+        raw["parts"][-1]["articles"].pop()
+        manifest.write_text(json.dumps(raw), encoding="utf-8")
+
+        report = site.build(self.tmp, strict=True)
+        self.assertTrue(
+            any("vi: articles do not match" in e for e in report.errors),
+            report.errors)
+        self.assertFalse((self.tmp / "docs" / "blog" / "index.html").exists(),
+                         "a drifted structure must publish nothing at all")
 
     def test_build_copies_the_stylesheet(self):
         site.build(self.tmp)
@@ -411,6 +481,46 @@ class TestDiagramLayout(unittest.TestCase):
         missing = [f.name for f in figures
                    if "<title>" not in f.builder()]
         self.assertEqual(missing, [], "diagrams with no accessible title")
+
+
+class TestLanguages(unittest.TestCase):
+    """Cross-language integrity: the things a translator cannot check alone."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.en = site.load_curriculum(CURRICULUM, POSTS, PAGES)
+        cls.vi = site.load_curriculum(VI_CURRICULUM, VI_POSTS, VI_PAGES, lang="vi")
+
+    def test_vietnamese_mirrors_the_english_structure(self):
+        self.assertEqual(site.check_parity({"en": self.en, "vi": self.vi}), [])
+
+    def test_parity_names_a_chapter_a_translation_forgot(self):
+        vi = site.load_curriculum(VI_CURRICULUM, VI_POSTS, VI_PAGES, lang="vi")
+        vi.parts[-1].articles.pop()
+        vi.articles.pop()
+        problems = site.check_parity({"en": self.en, "vi": vi})
+        self.assertTrue(problems)
+        self.assertIn("neural-equalisers", problems[0])
+        self.assertIn("vi: articles do not match", problems[0])
+
+    def test_a_translated_chapter_keeps_every_figure(self):
+        en = self.en.by_slug("what-is-a-signal")
+        vi = self.vi.by_slug("what-is-a-signal")
+        self.assertTrue(vi.published, "the pilot chapter should be translated")
+        self.assertEqual(len(vi.rendered.figure_captions),
+                         len(en.rendered.figure_captions),
+                         "a translated chapter must reference the same figures")
+
+    def test_every_language_has_chrome_strings(self):
+        for lang in i18n.LANGS:
+            strings = i18n.strings(lang)
+            self.assertTrue(strings.label and strings.name and strings.code)
+            self.assertNotEqual(i18n.other_lang(lang), lang)
+        self.assertNotEqual(i18n.EN.on_this_page, i18n.VI.on_this_page)
+
+    def test_unknown_language_is_an_error_not_a_silent_fallback(self):
+        with self.assertRaises(KeyError):
+            i18n.strings("fr")
 
 
 class TestRenderedArticleMarkup(unittest.TestCase):

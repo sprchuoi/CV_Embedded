@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clock Recovery and Jitter - DSP, from First Principles to the Optical Link</title>
+<meta name="description" content="The CDR loop, phase detectors, and the decomposition of jitter into random and deterministic parts -- the measurement that decides how much eye is left.">
+<meta name="color-scheme" content="light dark">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Clock Recovery and Jitter - DSP, from First Principles to the Optical Link">
+<meta property="og:description" content="The CDR loop, phase detectors, and the decomposition of jitter into random and deterministic parts -- the measurement that decides how much eye is left.">
+<meta property="og:locale" content="en">
+<link rel="alternate" hreflang="en" href="https://sprchuoi.github.io/CV_Embedded/blog/serdes-clock-recovery-and-jitter.html">
+<link rel="alternate" hreflang="vi" href="https://sprchuoi.github.io/CV_Embedded/blog/vi/index.html">
+<link rel="alternate" hreflang="x-default" href="https://sprchuoi.github.io/CV_Embedded/blog/serdes-clock-recovery-and-jitter.html">
+<link rel="canonical" href="https://sprchuoi.github.io/CV_Embedded/blog/serdes-clock-recovery-and-jitter.html">
+<link rel="icon" href="../favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link rel="stylesheet" href="assets/blog.css">
+<script>
+  window.MathJax = {
+  "tex": {
+    "inlineMath": [
+      [
+        "$",
+        "$"
+      ],
+      [
+        "\\(",
+        "\\)"
+      ]
+    ],
+    "displayMath": [
+      [
+        "$$",
+        "$$"
+      ],
+      [
+        "\\[",
+        "\\]"
+      ]
+    ],
+    "processEscapes": true,
+    "tags": "none",
+    "macros": {
+      "twopi": "2\\pi",
+      "dd": "\\mathrm{d}",
+      "E": "\\mathbb{E}",
+      "j": "\\mathrm{j}",
+      "argmin": "\\operatorname*{arg\\,min}"
+    }
+  },
+  "options": {
+    "skipHtmlTags": [
+      "script",
+      "noscript",
+      "style",
+      "textarea",
+      "pre",
+      "code"
+    ],
+    "ignoreHtmlClass": "no-mathjax"
+  },
+  "chtml": {
+    "scale": 1.02
+  }
+};
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body data-copy="Copy" data-copied="Copied"
+      data-copy-failed="Failed"
+      data-theme-dark="Switch to dark theme" data-theme-light="Switch to light theme">
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="index.html">
+      <span class="mark" aria-hidden="true">DSP</span>
+      <span>Nguyen Quang Binh</span>
+      <span class="sub">signal processing notes</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="vision.html">Vision</a>
+      <a href="index.html" aria-current="page">Curriculum</a>
+      <a href="../index.html">CV</a>
+      <a href="https://github.com/sprchuoi">GitHub</a>
+      <div class="lang-switch" role="group" aria-label="Language"><span class="is-current" lang="en" aria-current="true">EN</span><a href="vi/index.html" hreflang="vi" lang="vi" title="Tiếng Việt">VI</a></div>
+      <button class="icon-btn" type="button" data-theme-toggle aria-pressed="false"
+              title="Switch colour theme" aria-label="Switch colour theme"><i class="fa-solid fa-moon" aria-hidden="true"></i></button>
+    </nav>
+  </div>
+  <div class="read-progress" role="presentation"></div>
+</header>
+<div class="layout">
+<nav class="toc" aria-label="On this page">
+<p class="toc-title">On this page</p>
+<ol><li class="lvl-2"><a href="#the-loop">The loop</a></li><li class="lvl-2"><a href="#jitter-decomposed">Jitter, decomposed</a></li><li class="lvl-2"><a href="#what-the-split-buys-you">What the split buys you</a></li><li class="lvl-2"><a href="#where-the-timing-budget-goes">Where the timing budget goes</a></li><li class="lvl-2"><a href="#where-this-connects">Where this connects</a></li><li class="lvl-2"><a href="#in-the-optical-link">In the optical link</a></li></ol>
+</nav>
+<main id="main" class="prose">
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    <a href="index.html">Curriculum</a><span class="sep">/</span>SerDes for Optical Modules
+  </nav>
+  <header class="article-head">
+    <h1>Clock Recovery and Jitter</h1>
+    <p class="article-standfirst">The CDR loop, phase detectors, and the decomposition of jitter into random and deterministic parts -- the measurement that decides how much eye is left.</p>
+    <div class="article-meta"><span class="level-badge" data-level="Specialist">Specialist</span><span>7 min read</span><div class="taglist"><span class="tag">cdr</span><span class="tag">jitter</span><span class="tag">timing</span></div></div>
+  </header>
+<p>Every SerDes has one loop the optical DSP chain does not: an analogue clock recovery loop, closing around the sampler, whose job is to decide <em>when</em> to look. It is the last analogue function in the receive path, and its quality sets the horizontal margin of the eye that everything else has been working to open.</p>
+<p>This chapter is that loop, and the measurement that decides how much of the eye is left once it has done its work.</p>
+<h2 id="the-loop"><a class="heading-anchor" href="#the-loop" aria-hidden="true">#</a>The loop</h2>
+<figure class="figure"><img src="assets/diagrams/cdr-loop.svg" alt="A clock and data recovery loop: phase detector, loop filter, phase interpolator, sampler." loading="lazy"><figcaption><span class="fig-label">Figure 1</span><span class="fig-text">A clock and data recovery loop: phase detector, loop filter, phase interpolator, sampler.</span></figcaption></figure>
+<p>A CDR has four parts, and each has a job worth naming.</p>
+<ul>
+<li><strong>The phase detector</strong> compares the sampling clock against the data's transitions. It produces one number per symbol (or per transition): too early, too late, or by how much.</li>
+<li><strong>The loop filter</strong> turns that stream of numbers into a control voltage or a control word. It sets the loop bandwidth, which is the design parameter that matters.</li>
+<li><strong>The phase interpolator</strong> selects an output phase from a multiphase clock, which is how a modern SerDes tunes its sampling instant without moving a VCO.</li>
+<li><strong>The sampler</strong> is the thing being steered.</li>
+</ul>
+<p>Two phase detectors dominate, and the choice between them is a choice about cost:</p>
+<ul>
+<li><strong>Bang-bang (Alexander)</strong> produces one bit per transition -- early or late -- and nothing more. It is cheap, needs no amplitude information, and its quantisation makes it noisy.</li>
+<li><strong>Mueller-Muller</strong> uses the samples themselves and produces a value proportional to the phase error. It is smoother and needs reliable decisions to work at all.</li>
+</ul>
+<figure class="figure"><img src="assets/plots/cdr-loop-bandwidth.svg" alt="Tracking error against jitter frequency for three loop bandwidths." loading="lazy"><figcaption><span class="fig-label">Figure 2</span><span class="fig-text">Tracking error against jitter frequency for three loop bandwidths.</span></figcaption></figure>
+<p>The left panel is the fundamental behaviour: a CDR is a high-pass filter for jitter. Jitter below the loop bandwidth is <em>tracked</em> -- the sampler moves with it and the eye does not close. Jitter above it is not tracked and passes through to the decision, where it closes the eye horizontally.</p>
+<p>That gives the loop bandwidth its trade, and it is a genuine trade rather than a tuning preference:</p>
+<ul>
+<li><strong>A wide loop</strong> tracks the transmitter's wander and any low-frequency drift, which is essential if the two ends have independent clocks. It also passes more of the incoming jitter through, and it is more sensitive to its own phase detector's noise.</li>
+<li><strong>A narrow loop</strong> filters incoming jitter aggressively and cannot follow a drifting clock. Too narrow, and the sampler simply loses the data.</li>
+</ul>
+<p>The right panel adds the second-order detail: a real loop has a damping factor, and low damping buys acquisition speed at the cost of <strong>jitter peaking</strong> just below the corner. Peaking is a gain greater than one, so the loop <em>amplifies</em> jitter in a band around its own bandwidth -- which is why a loop specified only by bandwidth is under-specified.</p>
+<aside class="callout callout-key">
+  <p class="callout-title"><i class="fa-solid fa-key" aria-hidden="true"></i> Bandwidth and peaking are separate specifications</p>
+  <div class="callout-body">
+<p>Two CDRs with the same bandwidth can differ by several decibels of jitter peaking, and peaking lands exactly where a system's jitter tends to sit. A datasheet that quotes a loop bandwidth and not a peaking figure has told you half of the loop's behaviour.</p>
+  </div>
+</aside>
+<h2 id="jitter-decomposed"><a class="heading-anchor" href="#jitter-decomposed" aria-hidden="true">#</a>Jitter, decomposed</h2>
+<p>The horizontal margin is measured in jitter, and total jitter is the least useful way to express it.</p>
+<figure class="figure"><img src="assets/diagrams/jitter-decomposition.svg" alt="Total jitter split into its random and deterministic parts, and the growth law each one obeys." loading="lazy"><figcaption><span class="fig-label">Figure 3</span><span class="fig-text">Total jitter split into its random and deterministic parts, and the growth law each one obeys.</span></figcaption></figure>
+<p>Total jitter is two mechanisms added together, and they behave completely differently.</p>
+<p><strong>Random jitter (RJ)</strong> is Gaussian and unbounded. It comes from thermal noise in the clock path, from the reference oscillator, and from the sampler's own aperture uncertainty. Its peak value depends on how long you observe: the more samples, the further into the tail you see.</p>
+<p><strong>Deterministic jitter (DJ)</strong> is bounded and does not grow with observation. It comes from ISI, from duty-cycle distortion in the clock, from power-supply coupling, and from crosstalk. Its worst case is a real worst case.</p>
+<p>The dual-Dirac model ties them together, and it is the standard used in every compliance specification:</p>
+<div class="math-display">$$\mathrm{TJ(BER)} = \mathrm{DJ} + 2\,Q(\mathrm{BER})\cdot \mathrm{RJ}, \qquad Q(10^{-12}) \approx 7.03$$</div>
+<figure class="figure"><img src="assets/plots/jitter-decomposition-plot.svg" alt="One jitter histogram and the growth of total jitter with observation length." loading="lazy"><figcaption><span class="fig-label">Figure 4</span><span class="fig-text">One jitter histogram and the growth of total jitter with observation length.</span></figcaption></figure>
+<p>The computed figure above shows the consequence on measured data. <strong>Total jitter grows with the measurement length, and it grows without bound</strong>, because the random part does. A total jitter figure is therefore meaningless without its sample count, and comparing two measurements taken over different durations is comparing nothing.</p>
+<aside class="callout callout-warn">
+  <p class="callout-title"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> The jitter number you cannot compare</p>
+  <div class="callout-body">
+<p>"TJ = 0.3 UI" measured over 10⁶ samples and the same figure measured over 10¹² samples are different quantities. Standards solve this by quoting TJ at a specified BER -- 10⁻¹² is the usual one -- which fixes the extrapolation. Any figure without that qualifier should be treated as advertising.</p>
+  </div>
+</aside>
+<h2 id="what-the-split-buys-you"><a class="heading-anchor" href="#what-the-split-buys-you" aria-hidden="true">#</a>What the split buys you</h2>
+<p>The decomposition is not bookkeeping; it is what makes the measurement actionable, because the two mechanisms have completely different fixes.</p>
+<div class="table-wrap"><table>
+<thead><tr><th style="text-align:left">Observation</th><th style="text-align:left">Likely cause</th><th style="text-align:left">Where to look</th></tr></thead>
+<tbody>
+<tr><td style="text-align:left">DJ large, RJ small</td><td style="text-align:left">ISI, duty-cycle distortion, crosstalk</td><td style="text-align:left">equaliser depth, clock duty cycle, layout</td></tr>
+<tr><td style="text-align:left">RJ large, DJ small</td><td style="text-align:left">thermal noise, reference clock, aperture</td><td style="text-align:left">receive front end, reference oscillator</td></tr>
+<tr><td style="text-align:left">Both large, TJ grows fast with sample count</td><td style="text-align:left">a noisy clock plus a lossy channel</td><td style="text-align:left">both, and the channel first</td></tr>
+<tr><td style="text-align:left">A floor that will not improve</td><td style="text-align:left">a deterministic impairment not being averaged</td><td style="text-align:left">pattern, reflection, power supply</td></tr>
+</tbody>
+</table></div>
+<p>The last row is the one that wastes the most time. Averaging more samples improves the random part and does nothing to the deterministic part, so a measurement that has stopped improving is telling you the remaining jitter is deterministic -- and no amount of additional data will remove it.</p>
+<aside class="callout callout-try">
+  <p class="callout-title"><i class="fa-solid fa-flask" aria-hidden="true"></i> Measure the loop, not just the jitter</p>
+  <div class="callout-body">
+<p>Sweep a sinusoidal jitter into the reference clock and measure the output jitter as a function of its frequency. The shape you get <em>is</em> the CDR's jitter transfer function, and it tells you the loop bandwidth and the peaking directly. It is the only measurement that characterises the loop rather than the link it happens to be in.</p>
+  </div>
+</aside>
+<h2 id="where-the-timing-budget-goes"><a class="heading-anchor" href="#where-the-timing-budget-goes" aria-hidden="true">#</a>Where the timing budget goes</h2>
+<p>A serial lane's horizontal budget is spent in a fixed order, and it is worth knowing which terms you can influence:</p>
+<ul>
+<li><strong>The transmitter's own jitter</strong>, including its clock source. This is the floor, and nothing downstream can improve it.</li>
+<li><strong>The channel's jitter</strong>, which is ISI expressed in the time domain. The equalisers from the previous chapter reduce it, which is why an equalised eye is wider as well as taller.</li>
+<li><strong>Crosstalk-induced jitter</strong>, which moves the crossing points rather than the rails.</li>
+<li><strong>The receiver's aperture uncertainty</strong>, which is the sampler's own contribution and is fixed by the silicon.</li>
+<li><strong>The CDR's own residual</strong>, which is whatever the loop failed to track plus whatever peaking it added.</li>
+</ul>
+<p>That is the same list as the noise budget from the previous chapter, viewed on the other axis. Vertical margin and horizontal margin are two measurements of the same impairments, and a link can be comfortable on one and marginal on the other -- which is exactly the diagnostic table this course used for the Ethernet eye diagram.</p>
+<h2 id="where-this-connects"><a class="heading-anchor" href="#where-this-connects" aria-hidden="true">#</a>Where this connects</h2>
+<ul>
+<li>The CDR is a high-pass filter for jitter: it tracks what is slow and passes what is fast.</li>
+<li>Loop bandwidth and peaking are separate specifications, and peaking lands where system jitter tends to be.</li>
+<li>Total jitter is RJ plus DJ, and only RJ grows with observation, so TJ is meaningless without a stated BER and sample count.</li>
+<li>The RJ/DJ split is what makes a jitter measurement actionable, because the two have different causes and different fixes.</li>
+<li>Horizontal margin and vertical margin are the same impairments on two axes, which is why the next chapter's error budget has to account for both.</li>
+</ul>
+<h2 id="in-the-optical-link"><a class="heading-anchor" href="#in-the-optical-link" aria-hidden="true">#</a>In the optical link</h2>
+<p><strong>There is no equivalent loop, and that changes the architecture.</strong> A coherent receiver samples with an ADC clocked by a free-running oscillator and recovers timing <em>digitally</em>, from the sampled signal. There is no phase interpolator steered by a bang-bang detector because there is no analogue sampling instant to steer -- timing recovery becomes a DSP block operating on the samples. Carrier phase estimation, later in the optical part, is the phase-domain cousin of this loop, and it operates on the same principle: track what is slow, filter what is fast.</p>
+<p><strong>Laser phase noise is the optical CDR's problem.</strong> Where a copper lane's jitter comes from ISI and clock noise, a coherent link's phase error comes largely from the transmitter and local-oscillator lasers. That is random jitter in the phase domain, and its linewidth sets the carrier recovery loop's bandwidth exactly as the reference clock sets a CDR's.</p>
+<p><strong>The RJ/DJ decomposition transfers unchanged.</strong> An optical link's penalty is decomposed into a random part from amplified spontaneous emission and a deterministic part from dispersion, nonlinearity and crosstalk, and the two are budgeted separately for the same reason: one averages down with more observation and the other does not. That habit -- never quote a single impairment number without its split -- is the most portable thing this chapter has to teach.</p>
+<nav class="pager" aria-label="Chapter navigation"><a class="prev" href="serdes-equalisation.html"><span class="dir">&larr; Previous</span><span class="ttl">SerDes Equalisation</span></a><a class="next" href="serdes-fec-and-error-budget.html"><span class="dir">Next &rarr;</span><span class="ttl">FEC, Burst Errors and the End-to-End Error Budget</span></a></nav>
+</main>
+</div>
+<footer class="site-footer">
+  <div class="inner">
+    <span>&copy; Nguyen Quang Binh &middot; Embedded Software Engineer - Optical DSP</span>
+    <span class="spacer"></span>
+    <a href="https://github.com/sprchuoi" target="_blank" rel="noopener">GitHub</a> &middot; <a href="https://www.linkedin.com/in/sprchuoi" target="_blank" rel="noopener">LinkedIn</a> &middot; <a href="mailto:quangbinhlxcity@gmail.com">quangbinhlxcity@gmail.com</a> &middot; <a href="../index.html">CV</a>
+  </div>
+</footer>
+<script src="assets/blog.js" defer></script>
+</body>
+</html>
