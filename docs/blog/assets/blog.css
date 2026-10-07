@@ -111,6 +111,18 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 }
 .icon-btn:hover { border-color: var(--accent); color: var(--accent-ink); }
 
+/* Language selector. Both languages are always visible so the current one is a
+   fact on the page rather than something the reader has to infer. */
+.lang-switch {
+  display: inline-flex; align-items: center;
+  border: 1px solid var(--rule-strong); border-radius: 999px; padding: .1rem;
+  font-size: .76rem; font-weight: 600; letter-spacing: .02em;
+}
+.lang-switch > * { padding: .1rem .5rem; border-radius: 999px; line-height: 1.5; }
+.lang-switch a { color: var(--muted); }
+.lang-switch a:hover { background: var(--accent-wash); color: var(--accent-ink); text-decoration: none; }
+.lang-switch .is-current { background: var(--accent-wash); color: var(--accent-ink); }
+
 .read-progress {
   position: absolute; left: 0; bottom: -1px; height: 2px; width: 0;
   background: var(--accent); transition: width .1s linear;
@@ -382,6 +394,15 @@ mjx-container[display="true"] { margin: .35rem 0 !important; }
 .chapter.is-planned { opacity: .62; }
 .chapter.is-planned .chapter-title { color: var(--ink-soft); font-weight: 500; }
 .chapter.is-planned .chapter-idx { color: var(--rule-strong); }
+
+/* Written, but not in this language yet: marked and linked across, never
+   dimmed like the unwritten ones -- the chapter exists, this page does not. */
+.chapter.is-fallback .chapter-state.is-fallback {
+  color: var(--accent-ink); text-transform: none; letter-spacing: .02em;
+}
+.chapter.is-fallback .chapter-title::after {
+  content: " ↗"; color: var(--muted); font-weight: 400;
+}
 
 /* ---------------------------------------------------------------- footer -- */
 

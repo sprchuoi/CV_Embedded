@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BERT, BER and the FEC Contract - DSP, from First Principles to the Optical Link</title>
+<meta name="description" content="The measurement that justifies everything else: PRBS patterns, the bathtub curve, the Q-factor behind the numbers, and the pre-FEC error ratio a Reed-Solomon code is allowed to see.">
+<meta name="color-scheme" content="light dark">
+<meta property="og:type" content="article">
+<meta property="og:title" content="BERT, BER and the FEC Contract - DSP, from First Principles to the Optical Link">
+<meta property="og:description" content="The measurement that justifies everything else: PRBS patterns, the bathtub curve, the Q-factor behind the numbers, and the pre-FEC error ratio a Reed-Solomon code is allowed to see.">
+<meta property="og:locale" content="en">
+<link rel="alternate" hreflang="en" href="https://sprchuoi.github.io/CV_Embedded/blog/bert-ber-and-fec.html">
+<link rel="alternate" hreflang="vi" href="https://sprchuoi.github.io/CV_Embedded/blog/vi/index.html">
+<link rel="alternate" hreflang="x-default" href="https://sprchuoi.github.io/CV_Embedded/blog/bert-ber-and-fec.html">
+<link rel="canonical" href="https://sprchuoi.github.io/CV_Embedded/blog/bert-ber-and-fec.html">
+<link rel="icon" href="../favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link rel="stylesheet" href="assets/blog.css">
+<script>
+  window.MathJax = {
+  "tex": {
+    "inlineMath": [
+      [
+        "$",
+        "$"
+      ],
+      [
+        "\\(",
+        "\\)"
+      ]
+    ],
+    "displayMath": [
+      [
+        "$$",
+        "$$"
+      ],
+      [
+        "\\[",
+        "\\]"
+      ]
+    ],
+    "processEscapes": true,
+    "tags": "none",
+    "macros": {
+      "twopi": "2\\pi",
+      "dd": "\\mathrm{d}",
+      "E": "\\mathbb{E}",
+      "j": "\\mathrm{j}",
+      "argmin": "\\operatorname*{arg\\,min}"
+    }
+  },
+  "options": {
+    "skipHtmlTags": [
+      "script",
+      "noscript",
+      "style",
+      "textarea",
+      "pre",
+      "code"
+    ],
+    "ignoreHtmlClass": "no-mathjax"
+  },
+  "chtml": {
+    "scale": 1.02
+  }
+};
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body data-copy="Copy" data-copied="Copied"
+      data-copy-failed="Failed"
+      data-theme-dark="Switch to dark theme" data-theme-light="Switch to light theme">
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="index.html">
+      <span class="mark" aria-hidden="true">DSP</span>
+      <span>Nguyen Quang Binh</span>
+      <span class="sub">signal processing notes</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="vision.html">Vision</a>
+      <a href="index.html" aria-current="page">Curriculum</a>
+      <a href="../index.html">CV</a>
+      <a href="https://github.com/sprchuoi">GitHub</a>
+      <div class="lang-switch" role="group" aria-label="Language"><span class="is-current" lang="en" aria-current="true">EN</span><a href="vi/index.html" hreflang="vi" lang="vi" title="Tiếng Việt">VI</a></div>
+      <button class="icon-btn" type="button" data-theme-toggle aria-pressed="false"
+              title="Switch colour theme" aria-label="Switch colour theme"><i class="fa-solid fa-moon" aria-hidden="true"></i></button>
+    </nav>
+  </div>
+  <div class="read-progress" role="presentation"></div>
+</header>
+<div class="layout">
+<nav class="toc" aria-label="On this page">
+<p class="toc-title">On this page</p>
+<ol><li class="lvl-2"><a href="#the-measurement-loop">The measurement loop</a></li><li class="lvl-2"><a href="#the-pattern-is-part-of-the-result">The pattern is part of the result</a></li><li class="lvl-2"><a href="#the-bathtub-and-the-q-factor-behind-it">The bathtub, and the Q factor behind it</a></li><li class="lvl-2"><a href="#the-fec-contract">The FEC contract</a></li><li class="lvl-2"><a href="#reading-a-bert-result">Reading a BERT result</a></li><li class="lvl-2"><a href="#where-this-connects">Where this connects</a></li><li class="lvl-2"><a href="#in-the-optical-link">In the optical link</a></li></ol>
+</nav>
+<main id="main" class="prose">
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    <a href="index.html">Curriculum</a><span class="sep">/</span>IEEE Ethernet, Measured
+  </nav>
+  <header class="article-head">
+    <h1>BERT, BER and the FEC Contract</h1>
+    <p class="article-standfirst">The measurement that justifies everything else: PRBS patterns, the bathtub curve, the Q-factor behind the numbers, and the pre-FEC error ratio a Reed-Solomon code is allowed to see.</p>
+    <div class="article-meta"><span class="level-badge" data-level="Intermediate to Advanced">Intermediate to Advanced</span><span>9 min read</span><div class="taglist"><span class="tag">bert</span><span class="tag">ber</span><span class="tag">fec</span><span class="tag">bathtub</span></div></div>
+  </header>
+<p>Everything in the previous two chapters is an inference. The link budget infers an error ratio from a signal-to-noise ratio; the eye diagram infers one from a picture. The bit error ratio test is the only measurement in this part that counts actual errors, and it is the number the product is judged on. It is also the measurement most often done wrong, because the three things that define it -- the pattern, the duration, and whether FEC has already been applied -- are each easy to get wrong in a way that produces a clean, believable, meaningless result.</p>
+<p>This chapter is the measurement itself, and the contract that gives it meaning.</p>
+<h2 id="the-measurement-loop"><a class="heading-anchor" href="#the-measurement-loop" aria-hidden="true">#</a>The measurement loop</h2>
+<figure class="figure"><img src="assets/diagrams/bert-setup.svg" alt="The BERT loop: a known pattern, a shared clock, and an error detector." loading="lazy"><figcaption><span class="fig-label">Figure 1</span><span class="fig-text">The BERT loop: a known pattern, a shared clock, and an error detector.</span></figcaption></figure>
+<p>A bit error ratio test compares a received bit stream against the bit stream that was sent. That is only possible if the receiver knows the pattern, which is why BERT uses a <strong>pseudo-random bit sequence</strong>: a deterministic sequence generated by a shift register with feedback, long enough to look random to the link, and reproducible exactly at the other end.</p>
+<p>The structure is simple and the honesty is in the details:</p>
+<ul>
+<li><strong>One clock, two ends.</strong> Generator and detector share a clock, or recover the same one. Without that, you are measuring the clock.</li>
+<li><strong>The pattern must be known and matched.</strong> Generator and detector must agree on which PRBS and where the sequence starts. A detector that has not synchronised reports a 50% error ratio, which is a useful failure signature.</li>
+<li><strong>The count is of bits, not of anything else.</strong> BER is errors divided by bits examined. Bits examined is what makes the number's confidence interval, and it is the parameter most often left unreported.</li>
+</ul>
+<aside class="callout callout-key">
+  <p class="callout-title"><i class="fa-solid fa-key" aria-hidden="true"></i> A BER without a bit count is not a measurement</p>
+  <div class="callout-body">
+<p>"BER &lt; 10⁻¹²" is a claim about a confidence interval. Measured over 10¹⁰ bits it means roughly one error or fewer was seen; measured over 10¹⁵ bits it means something much stronger. Always report the bits examined, or the number cannot be interpreted.</p>
+  </div>
+</aside>
+<h2 id="the-pattern-is-part-of-the-result"><a class="heading-anchor" href="#the-pattern-is-part-of-the-result" aria-hidden="true">#</a>The pattern is part of the result</h2>
+<p>A PRBS-N is generated by an N-bit shift register, so it contains every run length up to N bits but no run longer than that. That limit is the whole reason the choice matters.</p>
+<figure class="figure"><img src="assets/diagrams/bert-prbs-patterns.svg" alt="The PRBS patterns and what each one stresses." loading="lazy"><figcaption><span class="fig-label">Figure 2</span><span class="fig-text">The PRBS patterns and what each one stresses.</span></figcaption></figure>
+<p>A long run of identical bits is the worst case for anything AC-coupled. The coupling capacitors in the signal path charge during a long run and drift during a long run of the opposite polarity, which moves the baseline underneath the signal. That is <strong>baseline wander</strong>, and a pattern that does not contain the run length cannot see it.</p>
+<div class="table-wrap"><table>
+<thead><tr><th style="text-align:left">Pattern</th><th style="text-align:left">Sequence length</th><th style="text-align:left">What it exercises</th></tr></thead>
+<tbody>
+<tr><td style="text-align:left">PRBS7</td><td style="text-align:left">127</td><td style="text-align:left">clock recovery, short-run balance</td></tr>
+<tr><td style="text-align:left">PRBS9</td><td style="text-align:left">511</td><td style="text-align:left">legacy 8B/10B compliance</td></tr>
+<tr><td style="text-align:left">PRBS13</td><td style="text-align:left">8191</td><td style="text-align:left">jitter, crosstalk (10GBASE-KR)</td></tr>
+<tr><td style="text-align:left">PRBS15</td><td style="text-align:left">32767</td><td style="text-align:left">long runs, baseline wander (1000BASE-T)</td></tr>
+<tr><td style="text-align:left">PRBS23</td><td style="text-align:left">8.4 million</td><td style="text-align:left">low-frequency content (10GBASE-KR, 25G)</td></tr>
+<tr><td style="text-align:left">PRBS31</td><td style="text-align:left">2.1 billion</td><td style="text-align:left">worst-case run length, highest confidence</td></tr>
+</tbody>
+</table></div>
+<p>The trade is time. Each extra bit of pattern doubles the sequence and doubles how long a full repetition takes, while the error ratio you are trying to resolve does not change. Proving 10⁻¹² with a PRBS7 that repeats every 127 bits is not a measurement of the link; it is a measurement of 127 bit positions, repeated.</p>
+<aside class="callout callout-warn">
+  <p class="callout-title"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> The clean result that means nothing</p>
+  <div class="callout-body">
+<p>PRBS7 on a link whose AC coupling has a corner near the data rate's fundamental will pass with a wide eye and fail in the field. The compliance pattern exists precisely to catch this class of error, and running a shorter one because it finishes faster is how a port ships broken.</p>
+  </div>
+</aside>
+<h2 id="the-bathtub-and-the-q-factor-behind-it"><a class="heading-anchor" href="#the-bathtub-and-the-q-factor-behind-it" aria-hidden="true">#</a>The bathtub, and the Q factor behind it</h2>
+<p>The previous chapter introduced the bathtub curve as an eye measurement. From the BERT side it is the same curve obtained differently: hold the sampling phase, measure the error ratio, move the phase, repeat.</p>
+<figure class="figure"><img src="assets/plots/ber-vs-snr-fec.svg" alt="BER against SNR, with the FEC thresholds drawn as the lines they are." loading="lazy"><figcaption><span class="fig-label">Figure 3</span><span class="fig-text">BER against SNR, with the FEC thresholds drawn as the lines they are.</span></figcaption></figure>
+<p>The curve is the Gaussian tail probability, and it is worth having its shape in your head without a calculator:</p>
+<div class="math-display">$$\mathrm{BER} = Q\!\left(\frac{d/2}{\sigma}\right), \qquad Q(x) = \frac{1}{\sqrt{2\pi}}\int_x^{\infty} e^{-t^2/2}\,dt$$</div>
+<p>where <span class="math">$d$</span> is the eye spacing at the slicer and <span class="math">$\sigma$</span> is the total noise. The argument of <span class="math">$Q$</span> is the distance from the decision threshold to the rail, in units of the noise standard deviation. Engineers call that ratio the <strong>Q factor</strong>, quote it in decibels as <span class="math">$20\log_{10}Q$</span>, and use it as shorthand: Q = 7 is about 10⁻¹², Q = 6 is about 10⁻⁹, Q = 4.75 is about 10⁻⁶.</p>
+<p>Three facts make that formula a design tool:</p>
+<ul>
+<li><strong>Every decibel of signal-to-noise ratio buys roughly a factor of ten in error ratio</strong> in this region. That is the single most useful scaling law in link design.</li>
+<li><strong>PAM4's penalty appears as a horizontal shift.</strong> The figure measures it: at 10⁻⁴, PAM4 needs about 8.5 dB more signal-to-noise ratio than NRZ at the same bit rate. Part of that is the third-height eye; part is that each symbol carries two bits.</li>
+<li><strong>The curve is steep, and steepness is the point.</strong> A link sitting at 10⁻¹² is one or two decibels from 10⁻⁶. That is why margin matters more than the nominal number.</li>
+</ul>
+<figure class="figure"><img src="assets/plots/bert-measurement-time.svg" alt="The Q factor behind a BER, and how long one error takes to appear." loading="lazy"><figcaption><span class="fig-label">Figure 4</span><span class="fig-text">The Q factor behind a BER, and how long one error takes to appear.</span></figcaption></figure>
+<p>The right-hand panel is the measurement cost nobody budgets for. At 10⁻¹² and 100 Gb/s, one error arrives every 100 seconds on average. At 10⁻¹⁵ -- a post-FEC target -- it arrives every 30 hours. You cannot measure that number directly in a lab slot; you measure a pre-FEC number you <em>can</em> reach, and rely on the code's known gain to get from there to the target.</p>
+<aside class="callout callout-math">
+  <p class="callout-title"><i class="fa-solid fa-square-root-variable" aria-hidden="true"></i> Why the extrapolation is legitimate</p>
+  <div class="callout-body">
+<p>The Gaussian tail is a known function. If you measure a bathtub down to 10⁻¹⁰ and the measured points lie on a Gaussian, extrapolating two decades is an interpolation of a model you have already validated. If they do not lie on a Gaussian -- a floor, a kink, a shoulder -- extrapolation is a guess, and the shape is telling you something is wrong: pattern-dependent jitter, a reflection, or a deterministic impairment that averaging will not remove.</p>
+  </div>
+</aside>
+<h2 id="the-fec-contract"><a class="heading-anchor" href="#the-fec-contract" aria-hidden="true">#</a>The FEC contract</h2>
+<p>Forward error correction changes the meaning of the error ratio, and the change is a contract with two numbers.</p>
+<figure class="figure"><img src="assets/diagrams/fec-exchange.svg" alt="The FEC exchange: pre-FEC error ratio in, post-FEC error ratio out." loading="lazy"><figcaption><span class="fig-label">Figure 5</span><span class="fig-text">The FEC exchange: pre-FEC error ratio in, post-FEC error ratio out.</span></figcaption></figure>
+<ul>
+<li><strong>Pre-FEC</strong> is what the slicer produces, before the code. This is the number the link budget and the eye diagram predict, and the number an engineer tracks as margin.</li>
+<li><strong>Post-FEC</strong> is what the MAC sees. This is the number the product is specified against.</li>
+<li><strong>Coding gain</strong> is the difference, expressed in decibels. A Reed-Solomon code of the strength used in Ethernet buys roughly 6 dB at its design point.</li>
+</ul>
+<p>The reason the pre-FEC number is the one to watch is the shape of the code's behaviour. FEC does not degrade gracefully; it works almost perfectly below a threshold and then stops working almost entirely above it.</p>
+<div class="math-display">$$\text{corrects up to } t \text{ symbol errors per } n\text{-symbol codeword} \quad\Longrightarrow\quad \text{a cliff at } \frac{t}{n}$$</div>
+<p>For the RS(544, 514) code used at 100G per lane, the code corrects up to 15 symbol errors in a 544-symbol codeword, which puts the cliff at a pre-FEC error ratio of about <strong>2.4 × 10⁻⁴</strong>. Below it, essentially every error is repaired. Above it, the codeword is uncorrectable, and the error ratio at the MAC rises by many orders of magnitude.</p>
+<aside class="callout callout-key">
+  <p class="callout-title"><i class="fa-solid fa-key" aria-hidden="true"></i> Track pre-FEC, report post-FEC</p>
+  <div class="callout-body">
+<p>A link reporting zero post-FEC errors can be at 10⁻⁶ pre-FEC with enormous margin, or at 2×10⁻⁴ pre-FEC and one temperature rise from the cliff. Both report the same post-FEC number. The pre-FEC count is the margin gauge; the post-FEC count is the pass/fail flag.</p>
+  </div>
+</aside>
+<p>The cliff is why compliance is specified the way it is: a standard names a maximum pre-FEC error ratio on a specified test channel, not a post-FEC error ratio, because the pre-FEC number is the one that leaves margin for the real world. A port that just barely passes the post-FEC test has no margin at all.</p>
+<h2 id="reading-a-bert-result"><a class="heading-anchor" href="#reading-a-bert-result" aria-hidden="true">#</a>Reading a BERT result</h2>
+<p>A BERT run is a set of numbers, and the set is what makes it interpretable. The shape of a result tells you where to look:</p>
+<ul>
+<li><strong>A wide bathtub with a high floor.</strong> Random noise dominates. The eye is open but the signal-to-noise ratio is short. Look at the link budget.</li>
+<li><strong>A narrow bathtub with a low floor.</strong> Jitter dominates. The eye is tall but not wide. Look at the transmitter's clock and the timing recovery loop.</li>
+<li><strong>A floor that does not improve with more averaging.</strong> The errors are deterministic: pattern-dependent ISI, a reflection, or a bit that is genuinely always wrong. More time will not help.</li>
+<li><strong>A cliff-shaped result right below the codeword threshold.</strong> The FEC is doing its job, but the margin is gone.</li>
+<li><strong>A 50% error ratio.</strong> The detector is not synchronised, or the pattern does not match. This is not a link failure.</li>
+</ul>
+<aside class="callout callout-try">
+  <p class="callout-title"><i class="fa-solid fa-flask" aria-hidden="true"></i> Three numbers to write down every time</p>
+  <div class="callout-body">
+<p>Bits examined, errors counted, and the pattern used. Every other number in the report -- pre-FEC BER, post-FEC BER, margin in decibels -- is derived from those three plus the code's specification. A report missing any of them is not reproducible.</p>
+  </div>
+</aside>
+<h2 id="where-this-connects"><a class="heading-anchor" href="#where-this-connects" aria-hidden="true">#</a>Where this connects</h2>
+<ul>
+<li>BERT is the only direct measurement of the error ratio; everything else in this part is an inference from the eye or the budget.</li>
+<li>The Q factor connects the error ratio to the signal-to-noise ratio from the link-budget chapter, and the Gaussian tail is why one decibel buys a decade.</li>
+<li>Pre-FEC error ratio is the margin gauge; the FEC cliff is at roughly 2.4 × 10⁻⁴ for the code used at 100G per lane.</li>
+<li>The bathtub is the eye diagram's horizontal slice, so the two chapters measure the same thing in different domains.</li>
+<li>The pattern belongs to the transmitter and the channel, which is why the next chapter looks at the spectrum those two produce.</li>
+</ul>
+<h2 id="in-the-optical-link"><a class="heading-anchor" href="#in-the-optical-link" aria-hidden="true">#</a>In the optical link</h2>
+<p><strong>The vocabulary is identical and the numbers are different.</strong> A coherent optical link is specified by its pre-FEC error ratio on a back-to-back reference and by its OSNR penalty at that error ratio. The codes are stronger -- oFEC and its relatives reach further into the tail than RS(544, 514) -- and the thresholds are quoted the same way, as a maximum pre-FEC ratio the decoder is contracted to repair.</p>
+<p><strong>Shot noise and thermal noise replace ISI as the floor.</strong> Where a copper lane's bathtub floor is set by equaliser noise gain and residual ISI, an optical receiver's is set by the photodiode's shot noise, the transimpedance amplifier, and the local oscillator's relative intensity noise. The bathtub shape is the same; the diagnosis is different.</p>
+<p><strong>Q is quoted directly in optics.</strong> Optical engineers talk about a Q of 7 or 8 for a 10⁻¹² target, exactly as this chapter defines it, and the OSNR requirement follows from Q through the receiver's noise bandwidth. That is why the two fields can share a compliance discussion without translation.</p>
+<p><strong>And the cliff matters more, not less.</strong> Optical links run closer to their coding threshold than copper ones, because every decibel of OSNR is expensive over 1000 km. The pre-FEC margin is the number the whole system is designed around, and <a href="chromatic-dispersion-and-the-fde.html">Chromatic Dispersion and the Frequency-Domain Equaliser</a> exists to buy some of it back after the fibre has spent it.</p>
+<nav class="pager" aria-label="Chapter navigation"><a class="prev" href="reading-an-eye-diagram.html"><span class="dir">&larr; Previous</span><span class="ttl">Reading an Eye Diagram</span></a><a class="next" href="fft-and-dft-in-ethernet-compliance.html"><span class="dir">Next &rarr;</span><span class="ttl">The FFT and DFT in Ethernet Compliance</span></a></nav>
+</main>
+</div>
+<footer class="site-footer">
+  <div class="inner">
+    <span>&copy; Nguyen Quang Binh &middot; Embedded Software Engineer - Optical DSP</span>
+    <span class="spacer"></span>
+    <a href="https://github.com/sprchuoi" target="_blank" rel="noopener">GitHub</a> &middot; <a href="https://www.linkedin.com/in/sprchuoi" target="_blank" rel="noopener">LinkedIn</a> &middot; <a href="mailto:quangbinhlxcity@gmail.com">quangbinhlxcity@gmail.com</a> &middot; <a href="../index.html">CV</a>
+  </div>
+</footer>
+<script src="assets/blog.js" defer></script>
+</body>
+</html>

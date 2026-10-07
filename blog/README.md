@@ -8,14 +8,17 @@ the CV, at `docs/blog/`.
 blog/
   curriculum.json   the full roadmap: parts, chapters, ordering, summaries
   posts/            one Markdown file per chapter -- prose only, no metadata
+  pages/            standalone prose: the index framing and the Vision page
   assets/           blog.css and blog.js, copied verbatim into docs/blog/assets/
+  vi/               the same three things again, in Vietnamese
 tool/
   build_blog.py         render the site (standard library only)
   build_blog_assets.py  regenerate the figures (needs numpy/matplotlib/scipy)
   blog/
+    i18n.py       the chrome strings per language, and the list of languages
     markdown.py   the Markdown subset the articles are written in
     site.py       curriculum loading, page assembly, link checking, the build
-    theme.py      the HTML shell: head, header, footer, MathJax config
+    theme.py      the HTML shell: head, header, footer, language selector
     art/svg.py    an SVG builder for hand-authored diagrams
     art/plotstyle.py  shared matplotlib styling, so plots match the diagrams
     art/diagrams_*.py hand-authored block diagrams, per chapter
@@ -150,6 +153,53 @@ it must also stay legible when the reader switches the page to dark mode.
 Subscripts and superscripts in SVG labels use `~x~` and `^x^`: `f~s~/2` renders
 as *f*<sub>s</sub>/2, `z^-1^` as *z*<sup>−1</sup>. Unicode is not an option —
 there is no subscript `s` or `c` in every font.
+
+## Languages
+
+The blog is published in English and Vietnamese. English is the default and
+keeps the root of `docs/blog/`; every other language is a subdirectory named for
+it, so `docs/blog/vi/the-fft.html` mirrors `docs/blog/the-fft.html`. Adding a
+language never moves an existing URL.
+
+A language is three things and no code:
+
+1. An entry in `i18n.CATALOGUE` (chrome strings: nav labels, "On this page",
+   "Planned", the figure label) plus its code in `i18n.LANGS`.
+2. `blog/<lang>/curriculum.json` -- the same `parts`, `id`s, article `slug`s and
+   page `slug`s as the English file, in the same order, with translated titles,
+   summaries and blurbs.
+3. `blog/<lang>/posts/<slug>.md` and `blog/<lang>/pages/<slug>.md`, translated
+   from the English prose, for as many chapters as are ready.
+
+Then `python3 tool/build_blog.py` publishes every language in `i18n.LANGS`. A
+declared language with no curriculum is a build error rather than a silent
+skip -- a monolingual site published without saying so is the one outcome worse
+than failing. `theme.py` already takes a `depth`, so a subtree needs no path
+logic: at depth 1 the same templates emit `../assets/blog.css` and
+`../../index.html`, and the build prepends `../` to figure sources so the
+translated prose can say `assets/diagrams/x.svg` exactly as the English does.
+
+Four rules keep the two trees honest:
+
+- **The plan may not drift.** `check_parity` fails the build, naming the slugs,
+  if a language's `curriculum.json` declares a different set of parts, chapters
+  or pages from English. New chapter in English means an entry in every
+  language -- the *prose* may lag as far behind as it likes.
+- **Written and untranslated is not the same as unwritten.** A chapter with an
+  English post and no Vietnamese one is marked "English only" in the Vietnamese
+  roadmap and links to the English page. It is never rendered as "Planned",
+  which would be a lie, and never hidden, which would be a dead end.
+- **Figures are shared.** The SVGs are language-neutral and live in one
+  `docs/blog/assets/` tree; labels inside them stay English, as do technical
+  terms in the prose.
+- **Chrome is not prose.** No user-visible literal belongs in `theme.py` or
+  `site.py`; it goes in `i18n.py`. `blog.js` reads its few strings
+  (`Copy`, the theme toggle) from `data-` attributes on `<body>`, so the script
+  carries no language at all.
+
+Each page carries `<html lang>`, `hreflang` alternates and a `<link
+rel="canonical">` when `curriculum.json` declares a `site_url`; without one the
+alternates are emitted relative, which readers follow but crawlers will not.
 
 ## Running the tests
 

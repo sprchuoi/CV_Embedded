@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The SerDes in an Optical Module - DSP, from First Principles to the Optical Link</title>
+<meta name="description" content="The two electrical edges of a module, retimed versus gearbox architectures, and why an optical DSP&#x27;s first design decision is how many serial lanes it faces.">
+<meta name="color-scheme" content="light dark">
+<meta property="og:type" content="article">
+<meta property="og:title" content="The SerDes in an Optical Module - DSP, from First Principles to the Optical Link">
+<meta property="og:description" content="The two electrical edges of a module, retimed versus gearbox architectures, and why an optical DSP&#x27;s first design decision is how many serial lanes it faces.">
+<meta property="og:locale" content="en">
+<link rel="alternate" hreflang="en" href="https://sprchuoi.github.io/CV_Embedded/blog/serdes-in-an-optical-module.html">
+<link rel="alternate" hreflang="vi" href="https://sprchuoi.github.io/CV_Embedded/blog/vi/index.html">
+<link rel="alternate" hreflang="x-default" href="https://sprchuoi.github.io/CV_Embedded/blog/serdes-in-an-optical-module.html">
+<link rel="canonical" href="https://sprchuoi.github.io/CV_Embedded/blog/serdes-in-an-optical-module.html">
+<link rel="icon" href="../favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link rel="stylesheet" href="assets/blog.css">
+<script>
+  window.MathJax = {
+  "tex": {
+    "inlineMath": [
+      [
+        "$",
+        "$"
+      ],
+      [
+        "\\(",
+        "\\)"
+      ]
+    ],
+    "displayMath": [
+      [
+        "$$",
+        "$$"
+      ],
+      [
+        "\\[",
+        "\\]"
+      ]
+    ],
+    "processEscapes": true,
+    "tags": "none",
+    "macros": {
+      "twopi": "2\\pi",
+      "dd": "\\mathrm{d}",
+      "E": "\\mathbb{E}",
+      "j": "\\mathrm{j}",
+      "argmin": "\\operatorname*{arg\\,min}"
+    }
+  },
+  "options": {
+    "skipHtmlTags": [
+      "script",
+      "noscript",
+      "style",
+      "textarea",
+      "pre",
+      "code"
+    ],
+    "ignoreHtmlClass": "no-mathjax"
+  },
+  "chtml": {
+    "scale": 1.02
+  }
+};
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body data-copy="Copy" data-copied="Copied"
+      data-copy-failed="Failed"
+      data-theme-dark="Switch to dark theme" data-theme-light="Switch to light theme">
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="index.html">
+      <span class="mark" aria-hidden="true">DSP</span>
+      <span>Nguyen Quang Binh</span>
+      <span class="sub">signal processing notes</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="vision.html">Vision</a>
+      <a href="index.html" aria-current="page">Curriculum</a>
+      <a href="../index.html">CV</a>
+      <a href="https://github.com/sprchuoi">GitHub</a>
+      <div class="lang-switch" role="group" aria-label="Language"><span class="is-current" lang="en" aria-current="true">EN</span><a href="vi/index.html" hreflang="vi" lang="vi" title="Tiếng Việt">VI</a></div>
+      <button class="icon-btn" type="button" data-theme-toggle aria-pressed="false"
+              title="Switch colour theme" aria-label="Switch colour theme"><i class="fa-solid fa-moon" aria-hidden="true"></i></button>
+    </nav>
+  </div>
+  <div class="read-progress" role="presentation"></div>
+</header>
+<div class="layout">
+<nav class="toc" aria-label="On this page">
+<p class="toc-title">On this page</p>
+<ol><li class="lvl-2"><a href="#two-edges-one-module">Two edges, one module</a></li><li class="lvl-2"><a href="#why-the-host-edge-is-the-hard-one">Why the host edge is the hard one</a></li><li class="lvl-2"><a href="#the-lane-arithmetic">The lane arithmetic</a></li><li class="lvl-2"><a href="#the-power-budget-is-the-real-constraint">The power budget is the real constraint</a></li><li class="lvl-2"><a href="#where-this-connects">Where this connects</a></li><li class="lvl-2"><a href="#in-the-optical-link">In the optical link</a></li></ol>
+</nav>
+<main id="main" class="prose">
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    <a href="index.html">Curriculum</a><span class="sep">/</span>SerDes for Optical Modules
+  </nav>
+  <header class="article-head">
+    <h1>The SerDes in an Optical Module</h1>
+    <p class="article-standfirst">The two electrical edges of a module, retimed versus gearbox architectures, and why an optical DSP&#x27;s first design decision is how many serial lanes it faces.</p>
+    <div class="article-meta"><span class="level-badge" data-level="Specialist">Specialist</span><span>6 min read</span><div class="taglist"><span class="tag">serdes</span><span class="tag">optical-module</span><span class="tag">architecture</span><span class="tag">oif</span></div></div>
+  </header>
+<p>Everything in the optical part of this course describes what a coherent DSP does to a signal it already has. This part is about how it gets the signal: through serial lanes, at 50 or 100 gigabits per second each, across a connector, a cage and tens of millimetres of printed circuit board. A great many of an optical module's hard problems live on those lanes rather than in the equaliser, and this part is about them.</p>
+<p>The reason is structural. A module has two electrical edges and both must be satisfied at once, with different channels, different specifications and often different lane counts. The middle of the module -- the DSP that converts one into the other -- is where the design decisions are made, and the first of them is how much of that middle exists at all.</p>
+<h2 id="two-edges-one-module"><a class="heading-anchor" href="#two-edges-one-module" aria-hidden="true">#</a>Two edges, one module</h2>
+<figure class="figure"><img src="assets/diagrams/module-data-path.svg" alt="The two electrical edges of a module: a host channel and a line-side attachment." loading="lazy"><figcaption><span class="fig-label">Figure 1</span><span class="fig-text">The two electrical edges of a module: a host channel and a line-side attachment.</span></figcaption></figure>
+<p>The <strong>host edge</strong> is where the module plugs into a switch or a router. The signal has come from the host's own SerDes across a connector, through a cage, along PCB traces and into the module. That path is specified by an interface agreement, and it is the harder of the two edges in every respect except length.</p>
+<p>The <strong>line edge</strong> is where the module's own output reaches the optics: an electro-absorption modulator, a Mach-Zehnder modulator, or a directly modulated laser, reached through a few millimetres of flex or a direct die-to-photonics attachment. It is short, and it is entirely the module vendor's problem.</p>
+<p>In between sits the module's own silicon, and what it contains is the defining architectural choice:</p>
+<ul>
+<li><strong>A retimed module</strong> recovers the data from the host edge, retimes it, and transmits it on the line edge. The two edges are electrically independent, and impairments on one do not reach the other. This costs the most power and adds latency.</li>
+<li><strong>A gearbox module</strong> converts lane count and rate but does not regenerate timing. Cheaper, and enough when the host edge is clean.</li>
+<li><strong>A direct-drive module</strong> does neither: the host's signal is shaped and handed to the optics. Least power, least margin, and only viable at short reach.</li>
+</ul>
+<figure class="figure"><img src="assets/diagrams/retiming-modes.svg" alt="Three ways to build the middle of a module: retimed, gearbox and direct drive." loading="lazy"><figcaption><span class="fig-label">Figure 2</span><span class="fig-text">Three ways to build the middle of a module: retimed, gearbox and direct drive.</span></figcaption></figure>
+<p>The figure makes the trade visible: each architecture is a different set of blocks between the same two edges, and the blocks are what cost power.</p>
+<h2 id="why-the-host-edge-is-the-hard-one"><a class="heading-anchor" href="#why-the-host-edge-is-the-hard-one" aria-hidden="true">#</a>Why the host edge is the hard one</h2>
+<figure class="figure"><img src="assets/plots/host-lane-response.svg" alt="Host-edge channel loss at each interface generation, and the loss each one accepts." loading="lazy"><figcaption><span class="fig-label">Figure 3</span><span class="fig-text">Host-edge channel loss at each interface generation, and the loss each one accepts.</span></figcaption></figure>
+<p>The host edge has become harder with every generation, and it is worth seeing why. A 25G NRZ lane has a band edge at 12.5 GHz and is allowed about 26 dB of loss there. A 100G PAM4 lane has its band edge at 26.6 GHz -- more than twice the frequency -- and is allowed roughly the same loss.</p>
+<p>Loss in a PCB rises roughly with the square root of frequency, so moving the band edge up by a factor of two costs about 3 dB, and the loss budget did not grow to accommodate it. What absorbed the difference was equalisation, and the equalisation is in the DSP.</p>
+<aside class="callout callout-key">
+  <p class="callout-title"><i class="fa-solid fa-key" aria-hidden="true"></i> The interface, not the optics, often sets the module's power</p>
+  <div class="callout-body">
+<p>A coherent DSP's line-side algorithms are heavy, but they run at a rate the optics dictates. The host edge is where the lane count, the equaliser depth and the FEC schedule are decided, and those decisions dominate the power number before the DSP is designed.</p>
+  </div>
+</aside>
+<h2 id="the-lane-arithmetic"><a class="heading-anchor" href="#the-lane-arithmetic" aria-hidden="true">#</a>The lane arithmetic</h2>
+<p>Every module design begins with a count, and the count is usually not the same on both sides.</p>
+<figure class="figure"><img src="assets/diagrams/module-interfaces.svg" alt="The lane arithmetic: what the host offers, what has to change, what the line wants." loading="lazy"><figcaption><span class="fig-label">Figure 4</span><span class="fig-text">The lane arithmetic: what the host offers, what has to change, what the line wants.</span></figcaption></figure>
+<p>A 400G module is commonly eight host lanes of 50G, or four of 100G, or (for a shorter reach) eight electrical lanes feeding a single 400G optical signal. An 800G module is eight lanes at 100G. The optics side may want a different split again -- one 800G wavelength, or two 400G -- and every mismatch has to be resolved in the middle.</p>
+<p>The arithmetic itself is simple, and doing it first is what avoids a redesign:</p>
+<div class="math-display">$$\text{raw line rate} = (\text{lanes}) \times (\text{baud rate}) \times (\text{bits per symbol})$$</div>
+<p>An 800G module built as eight lanes of 106.25 GBd PAM4 carries <span class="math">$8 \times 106.25 \times 2 \approx 1700$</span> Gbit/s of raw capacity, against 800 Gbit/s of payload. The difference is framing overhead, forward error correction, and the coding that makes the line code DC-balanced -- roughly a factor of two, which is the honest price of a modern high-speed link.</p>
+<aside class="callout callout-note">
+  <p class="callout-title"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> Why the factor of two is not waste</p>
+  <div class="callout-body">
+<p>The overhead buys the error correction that makes PAM4 viable at all. Without it, a 53 GBd PAM4 lane would have to run at a pre-FEC error ratio of 10⁻¹⁵, which no copper channel at 26 GHz delivers. With it, the lane only has to reach about 2.4 × 10⁻⁴ at the decoder, which is achievable --- and that is the last chapter of this part.</p>
+  </div>
+</aside>
+<h2 id="the-power-budget-is-the-real-constraint"><a class="heading-anchor" href="#the-power-budget-is-the-real-constraint" aria-hidden="true">#</a>The power budget is the real constraint</h2>
+<figure class="figure"><img src="assets/plots/module-power.svg" alt="Power per lane, and the cost of retiming versus gearbox." loading="lazy"><figcaption><span class="fig-label">Figure 5</span><span class="fig-text">Power per lane, and the cost of retiming versus gearbox.</span></figcaption></figure>
+<p>Every block in the middle of the module costs power, and the cost is not linear in rate. The curves in the figure are representative rather than measured -- the annotation says so -- but their shape is the industry's lived experience:</p>
+<ul>
+<li><strong>The SerDes lane itself</strong> scales roughly with rate, because it is analogue and its bandwidth must follow the baud rate.</li>
+<li><strong>Full retiming and FEC</strong> is sub-linear in rate, because the datapath is digital and shrinks with process.</li>
+<li><strong>A gearbox</strong> is cheaper still, because it converts lanes without regenerating them.</li>
+</ul>
+<p>A pluggable module has a hard power ceiling set by the cage's thermal design -- commonly a few watts to a few tens of watts, depending on the form factor. That ceiling is what decides retimed versus gearbox, long before any algorithm is chosen, and it is why the same optical reach can be implemented two ways at two different module classes.</p>
+<h2 id="where-this-connects"><a class="heading-anchor" href="#where-this-connects" aria-hidden="true">#</a>Where this connects</h2>
+<ul>
+<li>A module has two electrical edges with different specifications, and the architecture in between is its first design decision.</li>
+<li>Host-edge loss has grown with the band edge while the loss budget has not, so equalisation absorbed the difference.</li>
+<li>The lane arithmetic -- lanes, baud rate, bits per symbol -- decides the SerDes count and the achievable payload.</li>
+<li>Power is the constraint that decides how much of the module is retimed, and it is set by the form factor rather than by the algorithms.</li>
+<li>The next chapter takes one lane apart: what is actually inside a 100G serial link.</li>
+</ul>
+<h2 id="in-the-optical-link"><a class="heading-anchor" href="#in-the-optical-link" aria-hidden="true">#</a>In the optical link</h2>
+<p><strong>The DSP in the middle of a retimed module is the coherent DSP this course has been building.</strong> Its line-side blocks are exactly the ones in <a href="coherent-optical-dsp-pipeline.html">The Coherent Optical Receiver: A DSP Pipeline Tour</a>: the 90-degree hybrid, the balanced detectors, the ADC array, dispersion compensation, polarisation demultiplexing, carrier recovery, and the FEC. The host edge is this part's subject; the line edge is the optical part's.</p>
+<p><strong>The two edges fail differently, and diagnosis follows the edge.</strong> A host-edge problem shows up as a lane that will not train, an equaliser that will not converge, or a pre-FEC error ratio that depends on the host card. A line-edge problem shows up in the constellation -- closure in amplitude or phase that has nothing to do with the electrical channel. Separating them is the first step in every module bring-up, and the retimed architecture is what makes the separation possible.</p>
+<p><strong>And the arithmetic is the same arithmetic.</strong> An 800G coherent module's raw line rate, its FEC overhead and its pre-FEC target are computed exactly as this chapter computes them for a copper lane. What changes at the line edge is that the channel is a fibre rather than a trace, so the impairments have different names and the equaliser has different work to do. The budget structure does not change at all.</p>
+<nav class="pager" aria-label="Chapter navigation"><a class="prev" href="chromatic-dispersion-and-the-fde.html"><span class="dir">&larr; Previous</span><span class="ttl">Chromatic Dispersion and the Frequency-Domain Equaliser</span></a><a class="next" href="serdes-anatomy.html"><span class="dir">Next &rarr;</span><span class="ttl">The Anatomy of a 100G Lane</span></a></nav>
+</main>
+</div>
+<footer class="site-footer">
+  <div class="inner">
+    <span>&copy; Nguyen Quang Binh &middot; Embedded Software Engineer - Optical DSP</span>
+    <span class="spacer"></span>
+    <a href="https://github.com/sprchuoi" target="_blank" rel="noopener">GitHub</a> &middot; <a href="https://www.linkedin.com/in/sprchuoi" target="_blank" rel="noopener">LinkedIn</a> &middot; <a href="mailto:quangbinhlxcity@gmail.com">quangbinhlxcity@gmail.com</a> &middot; <a href="../index.html">CV</a>
+  </div>
+</footer>
+<script src="assets/blog.js" defer></script>
+</body>
+</html>

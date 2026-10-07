@@ -9,6 +9,11 @@
 <meta property="og:type" content="article">
 <meta property="og:title" content="The Coherent Optical Receiver: A DSP Pipeline Tour - DSP, from First Principles to the Optical Link">
 <meta property="og:description" content="From the 90-degree hybrid to decoded bits, block by block, with the sample-rate and resolution budget for each stage.">
+<meta property="og:locale" content="en">
+<link rel="alternate" hreflang="en" href="https://sprchuoi.github.io/CV_Embedded/blog/coherent-optical-dsp-pipeline.html">
+<link rel="alternate" hreflang="vi" href="https://sprchuoi.github.io/CV_Embedded/blog/vi/index.html">
+<link rel="alternate" hreflang="x-default" href="https://sprchuoi.github.io/CV_Embedded/blog/coherent-optical-dsp-pipeline.html">
+<link rel="canonical" href="https://sprchuoi.github.io/CV_Embedded/blog/coherent-optical-dsp-pipeline.html">
 <link rel="icon" href="../favicon.ico">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -66,7 +71,9 @@
 </script>
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
-<body>
+<body data-copy="Copy" data-copied="Copied"
+      data-copy-failed="Failed"
+      data-theme-dark="Switch to dark theme" data-theme-light="Switch to light theme">
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
   <div class="inner">
@@ -80,8 +87,9 @@
       <a href="index.html" aria-current="page">Curriculum</a>
       <a href="../index.html">CV</a>
       <a href="https://github.com/sprchuoi">GitHub</a>
+      <div class="lang-switch" role="group" aria-label="Language"><span class="is-current" lang="en" aria-current="true">EN</span><a href="vi/index.html" hreflang="vi" lang="vi" title="Tiếng Việt">VI</a></div>
       <button class="icon-btn" type="button" data-theme-toggle aria-pressed="false"
-              title="Switch theme" aria-label="Switch colour theme"><i class="fa-solid fa-moon" aria-hidden="true"></i></button>
+              title="Switch colour theme" aria-label="Switch colour theme"><i class="fa-solid fa-moon" aria-hidden="true"></i></button>
     </nav>
   </div>
   <div class="read-progress" role="presentation"></div>
@@ -227,7 +235,7 @@
 <p><strong>The same arithmetic in a PAM4 part.</strong> The blocks I work on in the IM-DD and active-electrical-cable world are this arithmetic with the constraints reversed. An FFE is one branch of the butterfly with the feedback removed, so it pipelines freely and can afford ten to fifteen taps. A DFE puts a decision inside the loop, and a decision cannot be pipelined: the first feedback tap must close inside one symbol, which is why shipping DFEs run one or two taps at 100+ GBd while the FFE in front of them runs ten. The FFT is the same FFT, and the PLL is the same loop filter whether it tracks a carrier or a sampling clock. PAM3 sits between NRZ and PAM4: its three levels are 1.5× further apart at the same peak swing, worth 3.5 dB of SNR, for 1.585 bits per symbol instead of 2.</p>
   </div>
 </aside>
-<nav class="pager" aria-label="Chapter navigation"><a class="prev" href="fir-filter-design.html"><span class="dir">&larr; Previous</span><span class="ttl">FIR Filter Design</span></a><a class="next" href="chromatic-dispersion-and-the-fde.html"><span class="dir">Next &rarr;</span><span class="ttl">Chromatic Dispersion and the Frequency-Domain Equaliser</span></a></nav>
+<nav class="pager" aria-label="Chapter navigation"><a class="prev" href="ethernet-compliance-test-in-practice.html"><span class="dir">&larr; Previous</span><span class="ttl">Compliance Test in Practice</span></a><a class="next" href="chromatic-dispersion-and-the-fde.html"><span class="dir">Next &rarr;</span><span class="ttl">Chromatic Dispersion and the Frequency-Domain Equaliser</span></a></nav>
 </main>
 </div>
 <footer class="site-footer">

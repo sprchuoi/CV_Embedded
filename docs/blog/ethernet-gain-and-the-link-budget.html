@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gain, Loss and the Ethernet Link Budget - DSP, from First Principles to the Optical Link</title>
+<meta name="description" content="What gain means once the channel is a 100-metre cable: insertion loss in dB against frequency, the Nyquist frequency that decides what the equaliser must supply, and the margin arithmetic a link is signed off on.">
+<meta name="color-scheme" content="light dark">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Gain, Loss and the Ethernet Link Budget - DSP, from First Principles to the Optical Link">
+<meta property="og:description" content="What gain means once the channel is a 100-metre cable: insertion loss in dB against frequency, the Nyquist frequency that decides what the equaliser must supply, and the margin arithmetic a link is signed off on.">
+<meta property="og:locale" content="en">
+<link rel="alternate" hreflang="en" href="https://sprchuoi.github.io/CV_Embedded/blog/ethernet-gain-and-the-link-budget.html">
+<link rel="alternate" hreflang="vi" href="https://sprchuoi.github.io/CV_Embedded/blog/vi/index.html">
+<link rel="alternate" hreflang="x-default" href="https://sprchuoi.github.io/CV_Embedded/blog/ethernet-gain-and-the-link-budget.html">
+<link rel="canonical" href="https://sprchuoi.github.io/CV_Embedded/blog/ethernet-gain-and-the-link-budget.html">
+<link rel="icon" href="../favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link rel="stylesheet" href="assets/blog.css">
+<script>
+  window.MathJax = {
+  "tex": {
+    "inlineMath": [
+      [
+        "$",
+        "$"
+      ],
+      [
+        "\\(",
+        "\\)"
+      ]
+    ],
+    "displayMath": [
+      [
+        "$$",
+        "$$"
+      ],
+      [
+        "\\[",
+        "\\]"
+      ]
+    ],
+    "processEscapes": true,
+    "tags": "none",
+    "macros": {
+      "twopi": "2\\pi",
+      "dd": "\\mathrm{d}",
+      "E": "\\mathbb{E}",
+      "j": "\\mathrm{j}",
+      "argmin": "\\operatorname*{arg\\,min}"
+    }
+  },
+  "options": {
+    "skipHtmlTags": [
+      "script",
+      "noscript",
+      "style",
+      "textarea",
+      "pre",
+      "code"
+    ],
+    "ignoreHtmlClass": "no-mathjax"
+  },
+  "chtml": {
+    "scale": 1.02
+  }
+};
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body data-copy="Copy" data-copied="Copied"
+      data-copy-failed="Failed"
+      data-theme-dark="Switch to dark theme" data-theme-light="Switch to light theme">
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="index.html">
+      <span class="mark" aria-hidden="true">DSP</span>
+      <span>Nguyen Quang Binh</span>
+      <span class="sub">signal processing notes</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="vision.html">Vision</a>
+      <a href="index.html" aria-current="page">Curriculum</a>
+      <a href="../index.html">CV</a>
+      <a href="https://github.com/sprchuoi">GitHub</a>
+      <div class="lang-switch" role="group" aria-label="Language"><span class="is-current" lang="en" aria-current="true">EN</span><a href="vi/index.html" hreflang="vi" lang="vi" title="Tiếng Việt">VI</a></div>
+      <button class="icon-btn" type="button" data-theme-toggle aria-pressed="false"
+              title="Switch colour theme" aria-label="Switch colour theme"><i class="fa-solid fa-moon" aria-hidden="true"></i></button>
+    </nav>
+  </div>
+  <div class="read-progress" role="presentation"></div>
+</header>
+<div class="layout">
+<nav class="toc" aria-label="On this page">
+<p class="toc-title">On this page</p>
+<ol><li class="lvl-2"><a href="#two-words-that-mean-something-specific">Two words that mean something specific</a></li><li class="lvl-2"><a href="#the-nyquist-frequency-decides-the-problem">The Nyquist frequency decides the problem</a></li><li class="lvl-2"><a href="#the-channel-as-a-curve">The channel, as a curve</a></li><li class="lvl-2"><a href="#work-the-budget-once">Work the budget once</a></li><li class="lvl-2"><a href="#gain-in-the-receiver-before-the-equaliser">Gain in the receiver, before the equaliser</a></li><li class="lvl-2"><a href="#where-this-connects">Where this connects</a></li><li class="lvl-2"><a href="#in-the-optical-link">In the optical link</a></li></ol>
+</nav>
+<main id="main" class="prose">
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    <a href="index.html">Curriculum</a><span class="sep">/</span>IEEE Ethernet, Measured
+  </nav>
+  <header class="article-head">
+    <h1>Gain, Loss and the Ethernet Link Budget</h1>
+    <p class="article-standfirst">What gain means once the channel is a 100-metre cable: insertion loss in dB against frequency, the Nyquist frequency that decides what the equaliser must supply, and the margin arithmetic a link is signed off on.</p>
+    <div class="article-meta"><span class="level-badge" data-level="Intermediate to Advanced">Intermediate to Advanced</span><span>9 min read</span><div class="taglist"><span class="tag">gain</span><span class="tag">link-budget</span><span class="tag">insertion-loss</span><span class="tag">nyquist</span></div></div>
+  </header>
+<p>In the optical parts of this course, "gain" means an amplifier, and the link budget is a column of decibels: launch power, span loss, amplifier gain, noise figure, OSNR. Ethernet has no amplifiers. A copper lane's entire budget is subtraction -- the transmitter launches a level, the channel removes most of it, and a digital filter buys some of it back. Understanding which part is which, and what the buying back costs, is the whole of this chapter.</p>
+<p>The vocabulary is the one from <a href="decibels-and-dynamic-range.html">Decibels and Dynamic Range</a>, applied to a channel measured in frequency rather than a chain measured in stages. If decibel arithmetic is not yet automatic, that chapter is the prerequisite; here it becomes a design tool.</p>
+<h2 id="two-words-that-mean-something-specific"><a class="heading-anchor" href="#two-words-that-mean-something-specific" aria-hidden="true">#</a>Two words that mean something specific</h2>
+<p><strong>Insertion loss</strong> is what the channel does. It is the ratio of the power delivered to a matched load with the channel in place to the power delivered without it, quoted in decibels, and -- this is the part that matters -- it is a function of frequency. A cable is a low-pass filter with a corner far below its data rate, so its loss is small at DC and enormous at the top of the band the link uses.</p>
+<p><strong>Gain</strong> is what the receiver does about it. An equaliser is a filter whose magnitude response is roughly the inverse of the channel's over the band that matters. In decibels, the arithmetic is a subtraction, which is why the two words belong in one chapter.</p>
+<figure class="figure"><img src="assets/diagrams/equaliser-inverts-channel.svg" alt="The channel and the equaliser as mirror images about 0 dB." loading="lazy"><figcaption><span class="fig-label">Figure 1</span><span class="fig-text">The channel and the equaliser as mirror images about 0 dB.</span></figcaption></figure>
+<p>Three consequences fall straight out of that picture, and all three are counter-intuitive the first time:</p>
+<ul>
+<li><strong>The equaliser is not chosen, it is determined.</strong> Once you know the channel and the band, its magnitude response is fixed. What an engineer chooses is the <em>structure</em> -- how many taps, what spacing, what adaptation -- not the target.</li>
+<li><strong>Every decibel of boost is a decibel of added noise.</strong> A passive channel attenuates signal and noise together; the equaliser amplifies both. The signal-to-noise ratio at the slicer is therefore worse than at the receiver's input, and it is worse by roughly the amount of loss that was inverted above the noise corner.</li>
+<li><strong>The boost is only needed where the signal is.</strong> Loss at 400 MHz matters because the signal has energy there. That is what the Nyquist frequency decides.</li>
+</ul>
+<h2 id="the-nyquist-frequency-decides-the-problem"><a class="heading-anchor" href="#the-nyquist-frequency-decides-the-problem" aria-hidden="true">#</a>The Nyquist frequency decides the problem</h2>
+<p>A link at <em>R</em> baud has useful signal content up to about <em>R</em>/2, and that is the highest frequency the transmitter is required to produce and the channel is required to pass. Everything above it is filtered away, and the loss at <em>R</em>/2 is the single number the equaliser has to centre its response on.</p>
+<div class="math-display">$$\text{required equaliser gain at } f_{\mathrm{Nyq}} \approx L(f_{\mathrm{Nyq}}) \quad\text{in dB}$$</div>
+<p>That is why Ethernet loss is always quoted at a frequency and never on its own. A figure without a frequency attached is not a specification.</p>
+<div class="table-wrap"><table>
+<thead><tr><th style="text-align:left">Standard</th><th style="text-align:left">Nyquist frequency</th><th style="text-align:left">Allowed insertion loss there</th></tr></thead>
+<tbody>
+<tr><td style="text-align:left">100BASE-TX</td><td style="text-align:left">62.5 MHz</td><td style="text-align:left">~12 dB</td></tr>
+<tr><td style="text-align:left">1000BASE-T</td><td style="text-align:left">125 MHz</td><td style="text-align:left">~24.5 dB</td></tr>
+<tr><td style="text-align:left">10GBASE-T</td><td style="text-align:left">400 MHz</td><td style="text-align:left">~45 dB</td></tr>
+<tr><td style="text-align:left">10GBASE-KR</td><td style="text-align:left">5.16 GHz</td><td style="text-align:left">~22 dB</td></tr>
+<tr><td style="text-align:left">25G per lane</td><td style="text-align:left">12.9 GHz</td><td style="text-align:left">~26 dB</td></tr>
+</tbody>
+</table></div>
+<p>The pattern is worth staring at. Twisted-pair Ethernet trades frequency for loss: it stays under 500 MHz and pays in decibels, because a cable's loss grows with frequency and 100 m of it is a great deal of cable. Backplane lanes go the other way -- a metre of PCB has less absolute loss at low frequency, but its loss rises far more steeply, so the same 22 to 26 dB is spent over 5 to 13 GHz instead of over 125 to 400 MHz.</p>
+<aside class="callout callout-key">
+  <p class="callout-title"><i class="fa-solid fa-key" aria-hidden="true"></i> A loss figure is meaningless without its frequency</p>
+  <div class="callout-body">
+<p>"45 dB of channel loss" is not a specification. "45 dB at 400 MHz" is. Every mask in 802.3 is a curve, and a single number is always a point sampled from it.</p>
+  </div>
+</aside>
+<figure class="figure"><img src="assets/diagrams/ethernet-loss-standards.svg" alt="Insertion loss at each standard&#x27;s Nyquist frequency, and the frequency it is quoted at." loading="lazy"><figcaption><span class="fig-label">Figure 2</span><span class="fig-text">Insertion loss at each standard's Nyquist frequency, and the frequency it is quoted at.</span></figcaption></figure>
+<p>The bars are the loss each lane must equalise, and the right-hand column is the reason they are not comparable to each other. Forty-five decibels spread over 400 MHz is a very different problem from twenty-two decibels spread over 5.16 GHz, even though the first number is larger: what the receiver has to do is follow the <em>slope</em> of the loss, and the slope is set by the ratio of the band to the corner frequency.</p>
+<h2 id="the-channel-as-a-curve"><a class="heading-anchor" href="#the-channel-as-a-curve" aria-hidden="true">#</a>The channel, as a curve</h2>
+<figure class="figure"><img src="assets/plots/ethernet-channel-loss.svg" alt="Computed insertion loss of a 100 m cat6a channel against each standard&#x27;s limit." loading="lazy"><figcaption><span class="fig-label">Figure 3</span><span class="fig-text">Computed insertion loss of a 100 m cat6a channel against each standard's limit.</span></figcaption></figure>
+<p>The figure computes the shape a twisted pair actually has: loss proportional to the square root of frequency, because current crowds toward the conductor's surface as frequency rises, plus a small linear term for the dielectric. It is normalised to 20 dB at 100 MHz, which is what cat6a is specified to, and the other numbers are then read off the curve rather than assumed.</p>
+<p>Two things to notice:</p>
+<ul>
+<li><strong>The 10GBASE-T marker sits almost exactly on the curve.</strong> The standard's 45 dB at 400 MHz was not chosen for convenience; it is what a compliant cable delivers, which means a compliant link has approximately no margin at the top of its band by design. The margin is created later, in the receiver.</li>
+<li><strong>The curve is not a straight line on a linear axis.</strong> Loss grows faster at first and then more slowly, because the square-root term saturates. On a log-frequency axis it approaches a straight line of slope 1/2 -- the signature of the skin effect, and the reason a cable's bandwidth is quoted as a frequency rather than a loss.</li>
+</ul>
+<figure class="figure"><img src="assets/plots/nyquist-loss-margin.svg" alt="Insertion loss at Nyquist per standard, and the noise gain of inverting it." loading="lazy"><figcaption><span class="fig-label">Figure 4</span><span class="fig-text">Insertion loss at Nyquist per standard, and the noise gain of inverting it.</span></figcaption></figure>
+<p>The left panel of that figure is the same table as a picture. The right panel is the part that decides whether a link works: as the loss to be inverted grows, the noise gain grows with it. The curve is a model rather than a measurement -- the annotation says so -- but its shape is the honest one. An equaliser that inverts more channel must amplify more noise, and there is a point beyond which spending more taps makes the link worse rather than better.</p>
+<h2 id="work-the-budget-once"><a class="heading-anchor" href="#work-the-budget-once" aria-hidden="true">#</a>Work the budget once</h2>
+<p>Take a 10GBASE-T lane and add it up. Every one of these numbers is a decibel and every one of them is a subtraction.</p>
+<figure class="figure"><img src="assets/diagrams/ethernet-loss-budget.svg" alt="The loss stack from driver to slicer, with the equaliser&#x27;s gain as the one addition." loading="lazy"><figcaption><span class="fig-label">Figure 5</span><span class="fig-text">The loss stack from driver to slicer, with the equaliser's gain as the one addition.</span></figcaption></figure>
+<ul>
+<li><strong>Launch:</strong> the driver delivers a defined differential amplitude.</li>
+<li><strong>Media:</strong> 45 dB at 400 MHz, per the mask.</li>
+<li><strong>Connectors and reflections:</strong> a few decibels more, frequency-dependent, and specified separately as return loss.</li>
+<li><strong>Crosstalk:</strong> the three neighbouring pairs transmit at the same time; alien and near-end crosstalk add a noise term rather than a loss term, but they land in the same budget.</li>
+<li><strong>Equaliser gain:</strong> buys the level back at Nyquist -- at the price of the noise gain on the right-hand panel.</li>
+<li><strong>At the slicer:</strong> whatever signal-to-noise ratio survives, which is the number that gets compared against the FEC's requirement.</li>
+</ul>
+<p>The shape of that budget is worth remembering because optical link budgets have the same shape with different labels: a launched quantity, a series of frequency-dependent losses, one or two gains, and a required signal-to-noise ratio at the decision point. What changes between copper and fibre is which terms dominate.</p>
+<aside class="callout callout-warn">
+  <p class="callout-title"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> The mistake that survives review</p>
+  <div class="callout-body">
+<p>Adding the equaliser's gain as though it were free. "+45 dB of equaliser gain" sounds like a link with margin; it is a link whose noise floor has been raised by tens of decibels. Always write the noise gain next to the signal gain, or the budget is fiction.</p>
+  </div>
+</aside>
+<h2 id="gain-in-the-receiver-before-the-equaliser"><a class="heading-anchor" href="#gain-in-the-receiver-before-the-equaliser" aria-hidden="true">#</a>Gain in the receiver, before the equaliser</h2>
+<p>There is a second gain in a real link, and it is analogue: the AGC in front of the ADC. Its job is to place the received signal inside the converter's full scale, and it is the same problem as in <a href="quantization-and-enob.html">Quantization, SNR and ENOB</a> and <a href="decibels-and-dynamic-range.html">Decibels and Dynamic Range</a> -- a ceiling set by clipping, a floor set by quantisation, and a signal that must sit between them.</p>
+<p>Three facts connect the equaliser to the converter, and they are the reason the two are designed together:</p>
+<ul>
+<li><strong>The equaliser's boost happens after the ADC.</strong> Dynamic range given away to a poorly placed AGC cannot be recovered by any filter, because the information is gone.</li>
+<li><strong>A peaky equaliser raises the peak-to-average ratio.</strong> The AGC must back off to avoid clipping those peaks, which costs signal-to-noise ratio everywhere else.</li>
+<li><strong>More equaliser taps mean more arithmetic, and the arithmetic has a word length.</strong> Fixed-point equalisation is a design in its own right, and fixed-point arithmetic and Q-formats are where that is worked out.</li>
+</ul>
+<p>This is why the practical question is never "how much gain?" but "how much gain, in what bandwidth, at what resolution, and what does it cost in noise?" The next chapter is the picture that answers it in one glance.</p>
+<h2 id="where-this-connects"><a class="heading-anchor" href="#where-this-connects" aria-hidden="true">#</a>Where this connects</h2>
+<ul>
+<li>The gain the equaliser supplies is the mirror of the channel loss at Nyquist, computed rather than chosen.</li>
+<li>Loss rises with frequency; that is why baud rate has a ceiling, and why PAM4 plus more lanes beat one faster lane.</li>
+<li>Every decibel of inverted loss above the noise corner costs a decibel of signal-to-noise ratio. That cost is the subject of the next chapter, on reading an eye diagram.</li>
+<li>The signal-to-noise ratio that survives the budget is what the BERT chapter converts into an error ratio.</li>
+<li>The channel curve itself is measured in the frequency domain, and the DFT chapter is how that measurement is made.</li>
+</ul>
+<h2 id="in-the-optical-link"><a class="heading-anchor" href="#in-the-optical-link" aria-hidden="true">#</a>In the optical link</h2>
+<p><strong>The optical span budget is the same arithmetic with a different dominant term.</strong> Launch power, span loss (0.2 dB/km at 1550 nm, so 20 dB per 100 km), amplifier gain, and an OSNR requirement at the receiver. Frequency dependence is nearly absent at the operating wavelength and becomes a dispersion problem instead -- the loss is flat, and the phase is not.</p>
+<p><strong>Amplifiers change the sign of the noise calculus.</strong> An EDFA supplies gain without inverting a loss, so a 20 dB span loss followed by 20 dB of amplifier gain costs only the amplifier's noise figure, not 20 dB of noise gain. That single difference is why optical links cross oceans and copper links stop at 100 metres.</p>
+<p><strong>What transfers is the discipline.</strong> In both cases: the signal-to-noise ratio at the decision point is the currency, every element on the path is a term in decibels, and the receiver's own noise is always referred to its input before the budget is added up. <a href="chromatic-dispersion-and-the-fde.html">Chromatic Dispersion and the Frequency-Domain Equaliser</a> is this chapter's mirror image in fibre, where the equaliser inverts a phase curve instead of a magnitude one.</p>
+<p><strong>And the ceiling is the same shape.</strong> The equaliser can only invert what the receiver still has dynamic range to represent. In a coherent receiver that limit is the ADC's ENOB; in a copper lane it is the same ENOB at a lower baud rate. The number is different, the failure mode is identical: a boost that lifts the noise floor past the signal.</p>
+<nav class="pager" aria-label="Chapter navigation"><a class="prev" href="ethernet-generations-and-the-data-processing-view.html"><span class="dir">&larr; Previous</span><span class="ttl">Six Generations of Ethernet, and the Data-Processing View</span></a><a class="next" href="reading-an-eye-diagram.html"><span class="dir">Next &rarr;</span><span class="ttl">Reading an Eye Diagram</span></a></nav>
+</main>
+</div>
+<footer class="site-footer">
+  <div class="inner">
+    <span>&copy; Nguyen Quang Binh &middot; Embedded Software Engineer - Optical DSP</span>
+    <span class="spacer"></span>
+    <a href="https://github.com/sprchuoi" target="_blank" rel="noopener">GitHub</a> &middot; <a href="https://www.linkedin.com/in/sprchuoi" target="_blank" rel="noopener">LinkedIn</a> &middot; <a href="mailto:quangbinhlxcity@gmail.com">quangbinhlxcity@gmail.com</a> &middot; <a href="../index.html">CV</a>
+  </div>
+</footer>
+<script src="assets/blog.js" defer></script>
+</body>
+</html>

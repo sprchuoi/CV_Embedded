@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DSP, từ nguyên lý đầu tiên đến tuyến quang</title>
+<meta name="description" content="Khóa học xử lý tín hiệu số bắt đầu bằng hình vẽ. Mọi ý tưởng đều được vẽ trước khi được chứng minh, và mỗi chương đều kết thúc ở đúng nơi nó được dùng: bên trong một modem quang coherent.">
+<meta name="color-scheme" content="light dark">
+<meta property="og:type" content="article">
+<meta property="og:title" content="DSP, từ nguyên lý đầu tiên đến tuyến quang">
+<meta property="og:description" content="Khóa học xử lý tín hiệu số bắt đầu bằng hình vẽ. Mọi ý tưởng đều được vẽ trước khi được chứng minh, và mỗi chương đều kết thúc ở đúng nơi nó được dùng: bên trong một modem quang coherent.">
+<meta property="og:locale" content="vi">
+<link rel="alternate" hreflang="vi" href="https://sprchuoi.github.io/CV_Embedded/blog/vi/index.html">
+<link rel="alternate" hreflang="en" href="https://sprchuoi.github.io/CV_Embedded/blog/index.html">
+<link rel="alternate" hreflang="x-default" href="https://sprchuoi.github.io/CV_Embedded/blog/index.html">
+<link rel="canonical" href="https://sprchuoi.github.io/CV_Embedded/blog/vi/index.html">
+<link rel="icon" href="../../favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link rel="stylesheet" href="../assets/blog.css">
+<script>
+  window.MathJax = {
+  "tex": {
+    "inlineMath": [
+      [
+        "$",
+        "$"
+      ],
+      [
+        "\\(",
+        "\\)"
+      ]
+    ],
+    "displayMath": [
+      [
+        "$$",
+        "$$"
+      ],
+      [
+        "\\[",
+        "\\]"
+      ]
+    ],
+    "processEscapes": true,
+    "tags": "none",
+    "macros": {
+      "twopi": "2\\pi",
+      "dd": "\\mathrm{d}",
+      "E": "\\mathbb{E}",
+      "j": "\\mathrm{j}",
+      "argmin": "\\operatorname*{arg\\,min}"
+    }
+  },
+  "options": {
+    "skipHtmlTags": [
+      "script",
+      "noscript",
+      "style",
+      "textarea",
+      "pre",
+      "code"
+    ],
+    "ignoreHtmlClass": "no-mathjax"
+  },
+  "chtml": {
+    "scale": 1.02
+  }
+};
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body data-copy="Sao chép" data-copied="Đã chép"
+      data-copy-failed="Lỗi"
+      data-theme-dark="Chuyển sang nền tối" data-theme-light="Chuyển sang nền sáng">
+<a class="skip-link" href="#main">Bỏ qua nội dung</a>
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="../index.html">
+      <span class="mark" aria-hidden="true">DSP</span>
+      <span>Nguyen Quang Binh</span>
+      <span class="sub">ghi chú xử lý tín hiệu</span>
+    </a>
+    <nav class="site-nav" aria-label="Chính">
+      
+      <a href="../index.html" aria-current="page">Chương trình</a>
+      <a href="../../index.html">CV</a>
+      <a href="https://github.com/sprchuoi">GitHub</a>
+      <div class="lang-switch" role="group" aria-label="Ngôn ngữ"><span class="is-current" lang="vi" aria-current="true">VI</span><a href="../index.html" hreflang="en" lang="en" title="English">EN</a></div>
+      <button class="icon-btn" type="button" data-theme-toggle aria-pressed="false"
+              title="Đổi giao diện" aria-label="Đổi giao diện"><i class="fa-solid fa-moon" aria-hidden="true"></i></button>
+    </nav>
+  </div>
+  <div class="read-progress" role="presentation"></div>
+</header>
+<div class="layout layout-single">
+<main id="main">
+  <div class="hero">
+    <h1>DSP, từ nguyên lý đầu tiên đến tuyến quang</h1>
+    <p>Khóa học xử lý tín hiệu số bắt đầu bằng hình vẽ. Mọi ý tưởng đều được vẽ trước khi được chứng minh, và mỗi chương đều kết thúc ở đúng nơi nó được dùng: bên trong một modem quang coherent.</p>
+    <div class="hero-stats">
+      <span><b>10</b>phần</span>
+      <span><b>48</b>chương dự kiến</span>
+      <span><b>1</b>đã đăng</span>
+      <span><b>5</b>hình vẽ</span>
+    </div>
+  </div>
+
+  <section class="framing" aria-label="Lĩnh vực này">
+<p>Trang này là một khóa học về xử lý tín hiệu số, được viết bởi một người làm firmware cho các sản phẩm <strong>optical DSP</strong> — những con chip biến ánh sáng trong sợi quang thành bit mà một mạng có thể định tuyến.</p>
+<p>Phần lớn tài liệu dạy DSP bắt đầu bằng phép biến đổi rồi mới tới ứng dụng, nếu có tới được. Khóa này đi theo chiều ngược lại. Mỗi chương bắt đầu bằng một hình vẽ, chỉ suy diễn đúng những gì hình vẽ đó đòi hỏi, rồi kết thúc ở cùng một nơi: bên trong một bộ thu phải theo kịp một tuyến quang 64 GBd.</p>
+<h2 id="lĩnh-vực-này-thực-sự-là-gì"><a class="heading-anchor" href="#lĩnh-vực-này-thực-sự-là-gì" aria-hidden="true">#</a>Lĩnh vực này thực sự là gì</h2>
+<p>Một tuyến quang mang dữ liệu bằng cách điều chế ánh sáng. Ở đầu bên kia, một photodiode biến ánh sáng đó trở lại thành dòng điện, một ADC biến dòng điện thành các con số, và kể từ khoảnh khắc đó tín hiệu <strong>chỉ còn là một dãy số</strong> — và mọi khiếm khuyết còn lại đều phải được gỡ bỏ bằng phép tính.</p>
+<p>Phép tính đó chính là lĩnh vực này. Tán sắc màu làm nhòe một xung qua hàng chục chu kỳ ký hiệu, nên nó bị đảo ngược bằng một bộ cân bằng miền tần số dựng trên FFT. Phân cực trôi và trộn hai luồng thu được, nên một bộ bướm thích nghi mù gỡ rối chúng. Laser có độ rộng vạch, nên chòm sao quay và một bộ bám pha sóng mang đi theo nó. Sợi quang là phi tuyến, nên méo phụ thuộc vào chính công suất của tín hiệu.</p>
+<p>Lý do đây là một góc kỹ thuật đáng làm là vì <strong>phép tính không miễn phí</strong>. Một tuyến 64 GBd cho bạn 15.6 ps mỗi ký hiệu. Mỗi tap của bộ cân bằng tốn những phép nhân thật ở 128 GSa/s, mỗi tầng FFT thêm vào tốn công suất, và mỗi khối đệm tốn độ trễ mà giao thức nhìn thấy được. Tính đúng đắn là điều kiện tối thiểu; câu hỏi thiết kế luôn là thuật toán đúng nào thì vừa.</p>
+<h2 id="khóa-học-này-được-xếp-như-thế-nào"><a class="heading-anchor" href="#khóa-học-này-được-xếp-như-thế-nào" aria-hidden="true">#</a>Khóa học này được xếp như thế nào</h2>
+<p>Nó được chia thành tám phần, và thứ tự là có chủ đích:</p>
+<ul>
+<li><strong>Nhập môn</strong> — tín hiệu là gì, lấy mẫu mất thông tin ra sao, lượng tử hóa tốn kém thế nào, và kỹ sư đếm bằng decibel như thế nào.</li>
+<li><strong>Trung cấp</strong> — miền tần số, thiết kế bộ lọc và xử lý đa tốc độ: những công cụ mà mọi chương sau đều giả định là đã có.</li>
+<li><strong>Nâng cao</strong> — ước lượng, thích nghi và DSP truyền thông: phải làm gì khi kênh truyền chưa biết và đang trôi.</li>
+<li><strong>Chuyên sâu</strong> — chính tuyến quang, và cách làm cho bất kỳ phần nào ở trên vừa vào silicon đúng tốc độ và trong ngân sách công suất.</li>
+</ul>
+<p>Các mạch kiến thức này tích lũy dần. Một chương về biến đổi Fourier nhanh không phải là phần đọc thêm cho chương tán sắc — nó chính là thứ khiến chương đó trở nên khả thi về chi phí.</p>
+<h2 id="dành-cho-ai"><a class="heading-anchor" href="#dành-cho-ai" aria-hidden="true">#</a>Dành cho ai</h2>
+<p>Những kỹ sư nhúng và firmware cần nửa xử lý tín hiệu trong hệ thống của mình thôi là một hộp đen. Những người chuyển sang quang, RF hoặc truyền nối tiếp tốc độ cao từ nền tảng phần mềm. Và bất kỳ ai từng đọc một cuốn sách giáo khoa DSP, hiểu nó ngay lúc đó, rồi một tháng sau không dựng lại được gì — đó chính là kiểu thất bại mà khóa học này được xây dựng riêng để tránh, bằng cách vẽ trước và suy diễn sau.</p>
+</section>
+
+  <section class="start-here"><h2>Bắt đầu từ đây</h2><div class="feature-grid"><a class="feature" href="what-is-a-signal.html"><span class="level-badge" data-level="Nhập môn">Nhập môn</span><h3>Tín hiệu thực sự là gì</h3><p>Thời gian liên tục so với thời gian rời rạc, miền xác định và miền giá trị của một tín hiệu, cùng mô hình tư duy khiến mọi chương sau trở nên hiển nhiên.</p></a></div></section>
+
+  <section aria-label="Toàn bộ chương trình">
+    <section class="part" id="part-foundations">
+  <div class="part-head">
+    <span class="part-num">Phần 01</span>
+    <h2>Tín hiệu, lấy mẫu và hệ thống số</h2>
+    <span class="level-badge" data-level="Nhập môn">Nhập môn</span>
+  </div>
+  <p class="part-blurb">Trước mọi phép biến đổi, trước mọi bộ lọc, luôn có một đại lượng vật lý và một quyết định về tần suất quan sát nó. Gần như mọi lỗi trong một chuỗi DSP thực tế đều là một quyết định từ phần này, được đưa ra một cách tồi.</p>
+  <ol class="chapter-list">
+<li class="chapter"><a class="chapter-link" href="what-is-a-signal.html"><span class="chapter-idx">01</span><span class="chapter-body"><span class="chapter-title">Tín hiệu thực sự là gì</span><span class="chapter-sum">Thời gian liên tục so với thời gian rời rạc, miền xác định và miền giá trị của một tín hiệu, cùng mô hình tư duy khiến mọi chương sau trở nên hiển nhiên.</span></span><span class="chapter-state">16 phút</span></a></li>
+<li class="chapter is-fallback"><a class="chapter-link" href="../sampling-and-aliasing.html"><span class="chapter-idx">02</span><span class="chapter-body"><span class="chapter-title">Lấy mẫu và chồng phổ</span><span class="chapter-sum">Định lý Nyquist-Shannon được suy ra từ một hình vẽ, vì sao một alias không thể phân biệt với một tông thật, và bộ lọc chống chồng phổ cứu vãn tình thế ra sao.</span></span><span class="chapter-state is-fallback">Bản tiếng Anh</span></a></li>
+<li class="chapter is-fallback"><a class="chapter-link" href="../quantization-and-enob.html"><span class="chapter-idx">03</span><span class="chapter-body"><span class="chapter-title">Lượng tử hóa, SNR và ENOB</span><span class="chapter-sum">Một ADC 12 bit lý tưởng không cho bạn 12 bit. Công thức 6.02N + 1.76 đến từ đâu, và cái gì thực sự ăn mất nó.</span></span><span class="chapter-state is-fallback">Bản tiếng Anh</span></a></li>
+<li class="chapter is-fallback"><a class="chapter-link" href="../decibels-and-dynamic-range.html"><span class="chapter-idx">04</span><span class="chapter-body"><span class="chapter-title">Decibel và dải động</span><span class="chapter-sum">Vì sao kỹ sư nghĩ bằng log, các quy tắc 3 dB và 6 dB bạn sẽ dùng hằng tuần, và cách phân biệt dBm, dBW với dBFS.</span></span><span class="chapter-state is-fallback">Bản tiếng Anh</span></a></li>
+  </ol>
+</section> <section class="part" id="part-frequency-domain">
+  <div class="part-head">
+    <span class="part-num">Phần 02</span>
+    <h2>Miền tần số</h2>
+    <span class="level-badge" data-level="Nhập môn đến trung cấp">Nhập môn đến trung cấp</span>
+  </div>
+  <p class="part-blurb">Biến đổi Fourier không phải một mẹo. Nó là phát biểu rằng một tín hiệu có thể được dựng từ các hình sin, cùng bộ máy để làm phép ghi sổ đó đủ nhanh cho thời gian thực.</p>
+  <ol class="chapter-list">
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">05</span><span class="chapter-body"><span class="chapter-title">Từ chuỗi Fourier đến biến đổi Fourier</span><span class="chapter-sum">Các hài, cái bẫy tuần hoàn, và việc cho chu kỳ tiến tới vô cùng biến một tổng thành một tích phân như thế nào.</span></span><span class="chapter-state">Dự kiến</span></div></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">06</span><span class="chapter-body"><span class="chapter-title">DFT, không có phép thuật</span><span class="chapter-sum">DFT thực sự tính cái gì, vì sao nó tuần hoàn ở cả hai miền, và cách đọc một chỉ số bin thành tần số theo hertz.</span></span><span class="chapter-state">Dự kiến</span></div></li>
+<li class="chapter is-fallback"><a class="chapter-link" href="../the-fft.html"><span class="chapter-idx">07</span><span class="chapter-body"><span class="chapter-title">FFT: nó đã nhanh lên như thế nào</span><span class="chapter-sum">Phân rã radix-2, con bướm FFT, và phép đảo bit mà ai cũng từng làm sai một lần. Kèm bảng chi phí giải thích vì sao cả 5G lẫn 800G đều sống nhờ FFT.</span></span><span class="chapter-state is-fallback">Bản tiếng Anh</span></a></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">08</span><span class="chapter-body"><span class="chapter-title">Cửa sổ, rò phổ và độ phân giải</span><span class="chapter-sum">Vì sao một hình sin thuần để lại một vệt loang, vì sao cửa sổ chữ nhật đôi khi mới đúng, và cách chọn cửa sổ theo độ dốc búp phụ thay vì theo mê tín.</span></span><span class="chapter-state">Dự kiến</span></div></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">09</span><span class="chapter-body"><span class="chapter-title">Biến đổi z và đường tròn đơn vị</span><span class="chapter-sum">DFT chính là biến đổi z được lấy mẫu trên một đường tròn. Một hình vẽ này thống nhất bộ lọc, tính ổn định và đáp ứng tần số.</span></span><span class="chapter-state">Dự kiến</span></div></li>
+  </ol>
+</section> <section class="part" id="part-filters">
+  <div class="part-head">
+    <span class="part-num">Phần 03</span>
+    <h2>Hệ thống LTI và thiết kế bộ lọc</h2>
+    <span class="level-badge" data-level="Trung cấp">Trung cấp</span>
+  </div>
+  <p class="part-blurb">Hệ thống tuyến tính bất biến theo thời gian là lớp hệ thống duy nhất ta có thể giải trọn vẹn trên giấy, và đó chính xác là lý do gần như mọi bộ thu thực tế đều được thiết kế để nằm trong lớp đó.</p>
+  <ol class="chapter-list">
+<li class="chapter is-fallback"><a class="chapter-link" href="../convolution-and-lti.html"><span class="chapter-idx">10</span><span class="chapter-body"><span class="chapter-title">Tích chập, và vì sao mọi khối DSP đều là một phép tích chập</span><span class="chapter-sum">Lật, dịch, nhân, cộng - rồi chính phép toán đó dưới dạng tích đa thức, và dưới dạng ma trận. Ba cách nhìn một ý tưởng.</span></span><span class="chapter-state is-fallback">Bản tiếng Anh</span></a></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">11</span><span class="chapter-body"><span class="chapter-title">Điểm cực, điểm không và tính ổn định</span><span class="chapter-sum">Đọc một bộ lọc từ giản đồ cực-không, miền hội tụ, và điều kiện chính xác phân biệt một bộ lọc với một bộ dao động.</span></span><span class="chapter-state">Dự kiến</span></div></li>
+<li class="chapter is-fallback"><a class="chapter-link" href="../fir-filter-design.html"><span class="chapter-idx">12</span><span class="chapter-body"><span class="chapter-title">Thiết kế bộ lọc FIR</span><span class="chapter-sum">Cửa sổ-sinc, bình phương tối thiểu và Parks-McClellan, cùng điều kiện pha tuyến tính khiến FIR là lựa chọn mặc định trong phần cứng.</span></span><span class="chapter-state is-fallback">Bản tiếng Anh</span></a></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">13</span><span class="chapter-body"><span class="chapter-title">Thiết kế bộ lọc IIR</span><span class="chapter-sum">Biến đổi song tuyến, tiền biến dạng tần số, và đánh đổi giữa Butterworth, Chebyshev và Bessel về độ sắc, độ gợn và pha.</span></span><span class="chapter-state">Dự kiến</span></div></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">14</span><span class="chapter-body"><span class="chapter-title">Pha, trễ nhóm và vì sao chúng làm bạn tốn kém</span><span class="chapter-sum">Hai bộ lọc có thể cùng đáp ứng biên độ mà hành xử hoàn toàn khác nhau. Trễ nhóm, méo pha và cân bằng all-pass.</span></span><span class="chapter-state">Dự kiến</span></div></li>
+  </ol>
+</section> <section class="part" id="part-multirate">
+  <div class="part-head">
+    <span class="part-num">Phần 04</span>
+    <h2>DSP đa tốc độ</h2>
+    <span class="level-badge" data-level="Trung cấp đến nâng cao">Trung cấp đến nâng cao</span>
+  </div>
+  <p class="part-blurb">Khoản tiết kiệm hiệu năng lớn nhất trong bất kỳ hệ thống thực tế nào: đừng xử lý những mẫu mà bạn sắp vứt đi.</p>
+  <ol class="chapter-list">
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">15</span><span class="chapter-body"><span class="chapter-title">Decimation và nội suy</span><span class="chapter-sum">Đổi tốc độ theo cách ngây thơ, vì sao nó gây chồng phổ, và các bộ lọc chống tạo ảnh cùng chống chồng phổ làm nó trở nên đúng.</span></span><span class="chapter-state">Dự kiến</span></div></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">16</span><span class="chapter-body"><span class="chapter-title">Phân rã polyphase và lấy mẫu lại tùy ý</span><span class="chapter-sum">Đồng nhất thức noble, vì sao một bộ lọc polyphase tốn đúng bằng một pha của nó, và cách lấy mẫu lại theo bất kỳ tỉ số hữu tỉ nào.</span></span><span class="chapter-state">Dự kiến</span></div></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">17</span><span class="chapter-body"><span class="chapter-title">Bộ lọc CIC và half-band</span><span class="chapter-sum">Decimation không cần bộ nhân cho tầng đầu, và thủ thuật đối xứng giảm một nửa chi phí cho mỗi hệ số hai.</span></span><span class="chapter-state">Dự kiến</span></div></li>
+  </ol>
+</section> <section class="part" id="part-statistical">
+  <div class="part-head">
+    <span class="part-num">Phần 05</span>
+    <h2>DSP thống kê và thích nghi</h2>
+    <span class="level-badge" data-level="Nâng cao">Nâng cao</span>
+  </div>
+  <p class="part-blurb">Tín hiệu thật là ngẫu nhiên, kênh truyền là chưa biết, và nó trôi theo nhiệt độ. Đây là nơi DSP không còn là một bộ lọc mà trở thành một bộ ước lượng.</p>
+  <ol class="chapter-list">
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">18</span><span class="chapter-body"><span class="chapter-title">Tín hiệu ngẫu nhiên, tự tương quan và PSD</span><span class="chapter-sum">Vì sao một tín hiệu ngẫu nhiên không có biến đổi Fourier mà vẫn có một phổ hoàn toàn xác định, và cách ước lượng nó một cách trung thực.</span></span><span class="chapter-state">Dự kiến</span></div></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">19</span><span class="chapter-body"><span class="chapter-title">Lọc matched và bộ lọc Wiener</span><span class="chapter-sum">Tối đa hóa SNR so với tối thiểu hóa MSE - hai tiêu chí tối ưu khác nhau, hai bộ lọc khác nhau, và khi nào mỗi cái là lựa chọn đúng.</span></span><span class="chapter-state">Dự kiến</span></div></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">20</span><span class="chapter-body"><span class="chapter-title">LMS, RLS và cân bằng thích nghi</span><span class="chapter-sum">Hình dung về hướng giảm dốc nhất, hội tụ so với sai lệch dư, và vì sao biến thể sign-sign LMS mới là cái được đưa vào silicon.</span></span><span class="chapter-state">Dự kiến</span></div></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">21</span><span class="chapter-body"><span class="chapter-title">Lọc Kalman cho bám và khôi phục</span><span class="chapter-sum">Ước lượng Bayes đệ quy trong năm phương trình, và cách cùng cấu trúc đó tái xuất như một vòng bám sóng mang.</span></span><span class="chapter-state">Dự kiến</span></div></li>
+  </ol>
+</section> <section class="part" id="part-comms">
+  <div class="part-head">
+    <span class="part-num">Phần 06</span>
+    <h2>DSP truyền thông</h2>
+    <span class="level-badge" data-level="Nâng cao">Nâng cao</span>
+  </div>
+  <p class="part-blurb">Toàn bộ những gì đã học, nhắm vào một mục tiêu: từ một dạng sóng tương tự đầy nhiễu và méo, quyết định xem ký hiệu nào trong một tập hữu hạn đã được phát, và làm điều đó ở hàng trăm gigabaud.</p>
+  <ol class="chapter-list">
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">22</span><span class="chapter-body"><span class="chapter-title">Tạo dạng xung và tiêu chuẩn Nyquist</span><span class="chapter-sum">ISI bằng không tại các thời điểm lấy mẫu, họ raised-cosine, và vì sao root-raised-cosine được chia đôi giữa máy phát và máy thu.</span></span><span class="chapter-state">Dự kiến</span></div></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">23</span><span class="chapter-body"><span class="chapter-title">Giản đồ mắt, ISI và kênh truyền</span><span class="chapter-sum">Đọc sức khỏe của một tuyến từ một hình vẽ, và quan hệ giữa độ đóng của mắt, BER và bộ cân bằng bạn cần.</span></span><span class="chapter-state">Dự kiến</span></div></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">24</span><span class="chapter-body"><span class="chapter-title">Chòm sao PAM và QAM</span><span class="chapter-sum">Ánh xạ bit sang biên độ, mã Gray, và khoảng cách SNR giữa PAM4 với PAM3 trên cùng một kênh.</span></span><span class="chapter-state">Dự kiến</span></div></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">25</span><span class="chapter-body"><span class="chapter-title">Khôi phục định thời</span><span class="chapter-sum">Bộ dò Gardner và Mueller-Muller, vì sao một vòng bám theo baud rate là chưa đủ, và sai số định thời biến thành một tap FFE như thế nào.</span></span><span class="chapter-state">Dự kiến</span></div></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">26</span><span class="chapter-body"><span class="chapter-title">Khôi phục sóng mang và thiết kế PLL</span><span class="chapter-sum">Bộ dò pha, bộ lọc vòng và đánh đổi giữa khóa và bắt pha, kèm các phương trình vòng bậc hai mà bạn thực sự cần.</span></span><span class="chapter-state">Dự kiến</span></div></li>
+  </ol>
+</section> <section class="part" id="part-ieee-ethernet">
+  <div class="part-head">
+    <span class="part-num">Phần 07</span>
+    <h2>IEEE Ethernet, đo lường thực tế</h2>
+    <span class="level-badge" data-level="Trung cấp đến nâng cao">Trung cấp đến nâng cao</span>
+  </div>
+  <p class="part-blurb">Ethernet là tập hợp lớn nhất đang được triển khai của bài toán toàn vẹn tín hiệu: một tổ chức tiêu chuẩn đưa cho bạn một kênh truyền, một ngân sách suy hao, một mặt nạ và một tỷ số lỗi tối đa, và mọi ý tưởng DSP trong khóa học này đều phải xuất hiện trên một báo cáo tuân thủ. Phần này đưa lý thuyết ra khỏi vở và lên bàn đo, theo đúng thứ tự một kỹ sư gặp nó.</p>
+  <ol class="chapter-list">
+<li class="chapter is-fallback"><a class="chapter-link" href="../ethernet-generations-and-the-data-processing-view.html"><span class="chapter-idx">27</span><span class="chapter-body"><span class="chapter-title">Sáu thế hệ Ethernet, và góc nhìn xử lý dữ liệu</span><span class="chapter-sum">Từ bus đồng trục chia sẻ với dò xung đột đến 800G trên tám làn: lớp vật lý đã thêm gì mỗi lần kênh truyền hết biên dự trữ, và bốn bước mà mọi thế hệ Ethernet thực sự thực hiện.</span></span><span class="chapter-state is-fallback">Bản tiếng Anh</span></a></li>
+<li class="chapter is-fallback"><a class="chapter-link" href="../ethernet-gain-and-the-link-budget.html"><span class="chapter-idx">28</span><span class="chapter-body"><span class="chapter-title">Gain, suy hao và ngân sách tuyến Ethernet</span><span class="chapter-sum">Gain nghĩa là gì khi kênh truyền là một sợi cáp 100 mét: suy hao chèn theo dB trên tần số, tần số Nyquist quyết định bộ cân bằng phải cấp bao nhiêu, và phép tính biên dự trữ để nghiệm thu một tuyến.</span></span><span class="chapter-state is-fallback">Bản tiếng Anh</span></a></li>
+<li class="chapter is-fallback"><a class="chapter-link" href="../reading-an-eye-diagram.html"><span class="chapter-idx">29</span><span class="chapter-body"><span class="chapter-title">Đọc giản đồ mắt</span><span class="chapter-sum">Vệt lưu ảnh được dựng thế nào, chiều cao và chiều rộng mắt thực sự đo cái gì, vì sao NRZ có một mắt và PAM4 có ba, và cách đọc phép thử mặt nạ mà không cần học thuộc.</span></span><span class="chapter-state is-fallback">Bản tiếng Anh</span></a></li>
+<li class="chapter is-fallback"><a class="chapter-link" href="../bert-ber-and-fec.html"><span class="chapter-idx">30</span><span class="chapter-body"><span class="chapter-title">BERT, BER và hợp đồng FEC</span><span class="chapter-sum">Phép đo biện minh cho mọi thứ khác: các mẫu PRBS, đường cong đáy bồn, hệ số Q đằng sau những con số, và tỷ số lỗi trước FEC mà một mã Reed-Solomon được phép thấy.</span></span><span class="chapter-state is-fallback">Bản tiếng Anh</span></a></li>
+<li class="chapter is-fallback"><a class="chapter-link" href="../fft-and-dft-in-ethernet-compliance.html"><span class="chapter-idx">31</span><span class="chapter-body"><span class="chapter-title">FFT và DFT trong tuân thủ Ethernet</span><span class="chapter-sum">DFT không phải một chương bạn bỏ lại phía sau, nó là dụng cụ đo: từ chỉ số bin sang hertz, mặt nạ phổ phát, đáp ứng bộ cân bằng, và tham số S kéo ngược về miền thời gian.</span></span><span class="chapter-state is-fallback">Bản tiếng Anh</span></a></li>
+<li class="chapter is-fallback"><a class="chapter-link" href="../ethernet-compliance-test-in-practice.html"><span class="chapter-idx">32</span><span class="chapter-body"><span class="chapter-title">Thử tuân thủ trong thực tế</span><span class="chapter-sum">Quy trình chín bước đầy đủ cho một cổng 1000BASE-T và 10GBASE-KR, bốn cách để có kết quả sai bằng một thiết bị đúng, và bảng từ triệu chứng đến nguyên nhân khi mắt không mở ra.</span></span><span class="chapter-state is-fallback">Bản tiếng Anh</span></a></li>
+  </ol>
+</section> <section class="part" id="part-optical">
+  <div class="part-head">
+    <span class="part-num">Phần 08</span>
+    <h2>DSP quang</h2>
+    <span class="level-badge" data-level="Chuyên sâu">Chuyên sâu</span>
+  </div>
+  <p class="part-blurb">Phần ứng dụng. Các tuyến quang coherent và IM-DD đặt mọi chương trước đó nối tiếp nhau, ở 100+ GBd, trong số chấm cố định, trên một con chip không được vượt ngân sách công suất. Đây là phần tôi làm việc.</p>
+  <ol class="chapter-list">
+<li class="chapter is-fallback"><a class="chapter-link" href="../coherent-optical-dsp-pipeline.html"><span class="chapter-idx">33</span><span class="chapter-body"><span class="chapter-title">Bộ thu quang coherent: tham quan một chuỗi DSP</span><span class="chapter-sum">Từ hybrid 90 độ đến các bit đã giải mã, từng khối một, kèm ngân sách tốc độ lấy mẫu và độ phân giải cho mỗi tầng.</span></span><span class="chapter-state is-fallback">Bản tiếng Anh</span></a></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">34</span><span class="chapter-body"><span class="chapter-title">Hybrid 90 độ và mất cân bằng I/Q</span><span class="chapter-sum">Quang học tạo ra một tín hiệu baseband phức như thế nào, và một sai số vuông pha 1% biến thành một ảnh gây mất 30 dB dự trữ ra sao.</span></span><span class="chapter-state">Dự kiến</span></div></li>
+<li class="chapter is-fallback"><a class="chapter-link" href="../chromatic-dispersion-and-the-fde.html"><span class="chapter-idx">35</span><span class="chapter-body"><span class="chapter-title">Tán sắc màu và bộ cân bằng miền tần số</span><span class="chapter-sum">Tán sắc như một đường cong pha all-pass, vì sao cân bằng miền thời gian thua overlap-save FFT, và phép tính kích thước khối quyết định điều đó.</span></span><span class="chapter-state is-fallback">Bản tiếng Anh</span></a></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">36</span><span class="chapter-body"><span class="chapter-title">Tách kênh phân cực bằng CMA</span><span class="chapter-sum">Hai tín hiệu đến đã bị trộn bởi một ma trận unitary 2x2 chưa biết. Thuật toán mô-đun không đổi gỡ rối chúng một cách mù.</span></span><span class="chapter-state">Dự kiến</span></div></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">37</span><span class="chapter-body"><span class="chapter-title">Ước lượng pha sóng mang</span><span class="chapter-sum">Độ rộng vạch laser biến một chòm sao thành một vòng. Viterbi-Viterbi, tìm pha mù, và đánh đổi độ dài khối giữa nhiễu và bám pha.</span></span><span class="chapter-state">Dự kiến</span></div></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">38</span><span class="chapter-body"><span class="chapter-title">Phi tuyến sợi quang và lan truyền ngược số</span><span class="chapter-sum">Hiệu ứng Kerr, phương pháp split-step, và bức tường độ phức tạp tàn nhẫn khiến phần lớn việc bù phi tuyến không thể vào sản phẩm.</span></span><span class="chapter-state">Dự kiến</span></div></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">39</span><span class="chapter-body"><span class="chapter-title">DSP PAM4 cho IM-DD và cáp điện tích cực</span><span class="chapter-sum">Chuỗi tầm ngắn: FFE, DFE, MLSE và PLL cho PAM4 100G mỗi lane trên cáp đồng và trên quang tách sóng trực tiếp.</span></span><span class="chapter-state">Dự kiến</span></div></li>
+  </ol>
+</section> <section class="part" id="part-serdes">
+  <div class="part-head">
+    <span class="part-num">Phần 09</span>
+    <h2>SerDes cho module quang</h2>
+    <span class="level-badge" data-level="Chuyên sâu">Chuyên sâu</span>
+  </div>
+  <p class="part-blurb">Một DSP coherent không bao giờ chạm trực tiếp vào sợi quang. Nó được tiếp cận qua các làn nối tiếp 100 gigabit -- phía host và phía line -- và rất nhiều bài toán khó của một module quang nằm trên những làn đó chứ không nằm trong bộ cân bằng. Phần này nói về giao diện điện giữa DSP và phần quang: kênh truyền, cân bằng, khôi phục xung nhịp, jitter, và ngân sách lỗi ràng buộc tất cả.</p>
+  <ol class="chapter-list">
+<li class="chapter is-fallback"><a class="chapter-link" href="../serdes-in-an-optical-module.html"><span class="chapter-idx">40</span><span class="chapter-body"><span class="chapter-title">SerDes trong một module quang</span><span class="chapter-sum">Hai biên điện của một module, kiến trúc retimed so với gearbox, và vì sao quyết định thiết kế đầu tiên của một optical DSP là nó đối diện bao nhiêu làn nối tiếp.</span></span><span class="chapter-state is-fallback">Bản tiếng Anh</span></a></li>
+<li class="chapter is-fallback"><a class="chapter-link" href="../serdes-anatomy.html"><span class="chapter-idx">41</span><span class="chapter-body"><span class="chapter-title">Giải phẫu một làn 100G</span><span class="chapter-sum">Từ bộ chuyển nối tiếp đến driver ở phía phát, từ CTLE đến slicer ở phía thu, và bốn bước xử lý của phần Ethernet tái xuất ở quy mô chip.</span></span><span class="chapter-state is-fallback">Bản tiếng Anh</span></a></li>
+<li class="chapter is-fallback"><a class="chapter-link" href="../serdes-channels-and-the-link-budget.html"><span class="chapter-idx">42</span><span class="chapter-body"><span class="chapter-title">Kênh SerDes và ngân sách tuyến</span><span class="chapter-sum">Suy hao chèn và xuyên âm ở 26 GHz, mật độ làn quyết định mức giao thoa như thế nào, và phép tính biên hoạt động của kênh thay cho một ngân sách phỏng đoán.</span></span><span class="chapter-state is-fallback">Bản tiếng Anh</span></a></li>
+<li class="chapter is-fallback"><a class="chapter-link" href="../serdes-equalisation.html"><span class="chapter-idx">43</span><span class="chapter-body"><span class="chapter-title">Cân bằng trong SerDes</span><span class="chapter-sum">CTLE, FFE phía phát, FFE và DFE phía thu, mỗi thứ tốn gì, và vì sao một tuyến thực tế dùng cả bốn cùng lúc thay vì chọn một.</span></span><span class="chapter-state is-fallback">Bản tiếng Anh</span></a></li>
+<li class="chapter is-fallback"><a class="chapter-link" href="../serdes-clock-recovery-and-jitter.html"><span class="chapter-idx">44</span><span class="chapter-body"><span class="chapter-title">Khôi phục xung nhịp và jitter</span><span class="chapter-sum">Vòng CDR, các bộ dò pha, và việc phân tách jitter thành phần ngẫu nhiên và phần tất định -- phép đo quyết định còn lại bao nhiêu mắt.</span></span><span class="chapter-state is-fallback">Bản tiếng Anh</span></a></li>
+<li class="chapter is-fallback"><a class="chapter-link" href="../serdes-fec-and-error-budget.html"><span class="chapter-idx">45</span><span class="chapter-body"><span class="chapter-title">FEC, lỗi chùm và ngân sách lỗi đầu-cuối</span><span class="chapter-sum">Lỗi đến đầu SerDes như thế nào, vì sao lan truyền lỗi của DFE làm chúng thành từng chùm, và cách xen kẽ cùng việc chọn mã lập ngân sách cho toàn tuyến của một module.</span></span><span class="chapter-state is-fallback">Bản tiếng Anh</span></a></li>
+  </ol>
+</section> <section class="part" id="part-implementation">
+  <div class="part-head">
+    <span class="part-num">Phần 10</span>
+    <h2>Đưa vào thực tế</h2>
+    <span class="level-badge" data-level="Chuyên sâu">Chuyên sâu</span>
+  </div>
+  <p class="part-blurb">Một thuật toán không thể hiện thực đúng tốc độ và trong ngân sách công suất thì không phải là thuật toán, nó là một bài báo. Số chấm cố định, kiến trúc silicon và ranh giới với học máy.</p>
+  <ol class="chapter-list">
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">46</span><span class="chapter-body"><span class="chapter-title">DSP chấm cố định, định dạng Q và CORDIC</span><span class="chapter-sum">Chọn một định dạng Q, dự đoán tràn số trước khi phòng thí nghiệm phát hiện ra, và tính sin, cos cùng biên độ mà không cần bộ nhân.</span></span><span class="chapter-state">Dự kiến</span></div></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">47</span><span class="chapter-body"><span class="chapter-title">Kiến trúc phần cứng cho FFT</span><span class="chapter-sum">FFT dựa trên bộ nhớ, pipelined và song song, bài toán lưu hệ số twiddle, và cách block floating point lấy lại dải động.</span></span><span class="chapter-state">Dự kiến</span></div></li>
+<li class="chapter is-planned"><div class="chapter-plain"><span class="chapter-idx">48</span><span class="chapter-body"><span class="chapter-title">Cân bằng bằng mạng nơ-ron và ranh giới ML/DSP</span><span class="chapter-sum">Nơi một mạng nhỏ thực sự thắng được DFE, cách nó được lượng tử hóa xuống cùng một datapath, và nơi nó không đáng khoản chi phí bỏ ra.</span></span><span class="chapter-state">Dự kiến</span></div></li>
+  </ol>
+</section>
+  </section>
+</main>
+</div>
+<footer class="site-footer">
+  <div class="inner">
+    <span>&copy; Nguyen Quang Binh &middot; Kỹ sư phần mềm nhúng - Optical DSP</span>
+    <span class="spacer"></span>
+    <a href="https://github.com/sprchuoi" target="_blank" rel="noopener">GitHub</a> &middot; <a href="https://www.linkedin.com/in/sprchuoi" target="_blank" rel="noopener">LinkedIn</a> &middot; <a href="mailto:quangbinhlxcity@gmail.com">quangbinhlxcity@gmail.com</a> &middot; <a href="../../index.html">CV</a>
+  </div>
+</footer>
+<script src="../assets/blog.js" defer></script>
+</body>
+</html>

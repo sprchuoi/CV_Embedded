@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SerDes Channels and the Link Budget - DSP, from First Principles to the Optical Link</title>
+<meta name="description" content="Insertion loss and crosstalk at 26 GHz, how lane density sets the interference, and the channel operating margin arithmetic that replaces a hand-waved budget.">
+<meta name="color-scheme" content="light dark">
+<meta property="og:type" content="article">
+<meta property="og:title" content="SerDes Channels and the Link Budget - DSP, from First Principles to the Optical Link">
+<meta property="og:description" content="Insertion loss and crosstalk at 26 GHz, how lane density sets the interference, and the channel operating margin arithmetic that replaces a hand-waved budget.">
+<meta property="og:locale" content="en">
+<link rel="alternate" hreflang="en" href="https://sprchuoi.github.io/CV_Embedded/blog/serdes-channels-and-the-link-budget.html">
+<link rel="alternate" hreflang="vi" href="https://sprchuoi.github.io/CV_Embedded/blog/vi/index.html">
+<link rel="alternate" hreflang="x-default" href="https://sprchuoi.github.io/CV_Embedded/blog/serdes-channels-and-the-link-budget.html">
+<link rel="canonical" href="https://sprchuoi.github.io/CV_Embedded/blog/serdes-channels-and-the-link-budget.html">
+<link rel="icon" href="../favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link rel="stylesheet" href="assets/blog.css">
+<script>
+  window.MathJax = {
+  "tex": {
+    "inlineMath": [
+      [
+        "$",
+        "$"
+      ],
+      [
+        "\\(",
+        "\\)"
+      ]
+    ],
+    "displayMath": [
+      [
+        "$$",
+        "$$"
+      ],
+      [
+        "\\[",
+        "\\]"
+      ]
+    ],
+    "processEscapes": true,
+    "tags": "none",
+    "macros": {
+      "twopi": "2\\pi",
+      "dd": "\\mathrm{d}",
+      "E": "\\mathbb{E}",
+      "j": "\\mathrm{j}",
+      "argmin": "\\operatorname*{arg\\,min}"
+    }
+  },
+  "options": {
+    "skipHtmlTags": [
+      "script",
+      "noscript",
+      "style",
+      "textarea",
+      "pre",
+      "code"
+    ],
+    "ignoreHtmlClass": "no-mathjax"
+  },
+  "chtml": {
+    "scale": 1.02
+  }
+};
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body data-copy="Copy" data-copied="Copied"
+      data-copy-failed="Failed"
+      data-theme-dark="Switch to dark theme" data-theme-light="Switch to light theme">
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="index.html">
+      <span class="mark" aria-hidden="true">DSP</span>
+      <span>Nguyen Quang Binh</span>
+      <span class="sub">signal processing notes</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="vision.html">Vision</a>
+      <a href="index.html" aria-current="page">Curriculum</a>
+      <a href="../index.html">CV</a>
+      <a href="https://github.com/sprchuoi">GitHub</a>
+      <div class="lang-switch" role="group" aria-label="Language"><span class="is-current" lang="en" aria-current="true">EN</span><a href="vi/index.html" hreflang="vi" lang="vi" title="Tiếng Việt">VI</a></div>
+      <button class="icon-btn" type="button" data-theme-toggle aria-pressed="false"
+              title="Switch colour theme" aria-label="Switch colour theme"><i class="fa-solid fa-moon" aria-hidden="true"></i></button>
+    </nav>
+  </div>
+  <div class="read-progress" role="presentation"></div>
+</header>
+<div class="layout">
+<nav class="toc" aria-label="On this page">
+<p class="toc-title">On this page</p>
+<ol><li class="lvl-2"><a href="#the-channel-at-26-ghz">The channel at 26 GHz</a></li><li class="lvl-2"><a href="#loss-is-only-half-the-problem">Loss is only half the problem</a></li><li class="lvl-2"><a href="#the-budget">The budget</a></li><li class="lvl-2"><a href="#channel-operating-margin">Channel operating margin</a></li><li class="lvl-2"><a href="#working-the-arithmetic">Working the arithmetic</a></li><li class="lvl-2"><a href="#where-this-connects">Where this connects</a></li><li class="lvl-2"><a href="#in-the-optical-link">In the optical link</a></li></ol>
+</nav>
+<main id="main" class="prose">
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    <a href="index.html">Curriculum</a><span class="sep">/</span>SerDes for Optical Modules
+  </nav>
+  <header class="article-head">
+    <h1>SerDes Channels and the Link Budget</h1>
+    <p class="article-standfirst">Insertion loss and crosstalk at 26 GHz, how lane density sets the interference, and the channel operating margin arithmetic that replaces a hand-waved budget.</p>
+    <div class="article-meta"><span class="level-badge" data-level="Specialist">Specialist</span><span>8 min read</span><div class="taglist"><span class="tag">channel</span><span class="tag">insertion-loss</span><span class="tag">crosstalk</span><span class="tag">com</span></div></div>
+  </header>
+<p>The previous chapter ended with a receiver that has four equalisers and a slicer. Whether that receiver works is decided by a budget, and the budget at SerDes rates has a different shape from the one in the Ethernet part. There, loss dominated and crosstalk was a term. Here they are comparable, and at the highest rates crosstalk is the term that fails first.</p>
+<p>This chapter is the arithmetic that decides whether a lane closes, and the two quantities that dominate it.</p>
+<h2 id="the-channel-at-26-ghz"><a class="heading-anchor" href="#the-channel-at-26-ghz" aria-hidden="true">#</a>The channel at 26 GHz</h2>
+<figure class="figure"><img src="assets/plots/serdes-channel-loss.svg" alt="SerDes channel loss against the interface masks, with the two PAM4 band edges marked." loading="lazy"><figcaption><span class="fig-label">Figure 1</span><span class="fig-text">SerDes channel loss against the interface masks, with the two PAM4 band edges marked.</span></figcaption></figure>
+<p>The shape is the same square-root-of-frequency roll-off as a twisted pair, moved up by a factor of fifty. What changes is that the reach is short and the band edge is high, so the loss is dominated by the dielectric and by the connector rather than by the length.</p>
+<p>The interface specifications are drawn as curves rather than points because that is what they are. Each one constrains loss as a function of frequency across a stated band, and the two vertical lines are the band edges that matter for the two signalling rates in common use:</p>
+<ul>
+<li><strong>28 GBd PAM4</strong> has its Nyquist frequency at 14 GHz.</li>
+<li><strong>53 GBd PAM4</strong> has its Nyquist frequency at 26.6 GHz.</li>
+</ul>
+<p>Going from the first to the second nearly doubles the frequency, and therefore costs roughly 3 dB more loss for the same channel. The interface specifications for 100G-per-lane links accommodate this by shortening the reach they guarantee, not by allowing more loss.</p>
+<aside class="callout callout-key">
+  <p class="callout-title"><i class="fa-solid fa-key" aria-hidden="true"></i> The mask is a curve, and the band edge is a design input</p>
+  <div class="callout-body">
+<p>"26 dB of loss" is not a specification any more than it was in the Ethernet part. "26 dB at 12.5 GHz" is. And the band edge follows from the baud rate and the modulation: a 53 GBd PAM4 lane lives or dies at 26.6 GHz, and no amount of care at 5 GHz changes that.</p>
+  </div>
+</aside>
+<h2 id="loss-is-only-half-the-problem"><a class="heading-anchor" href="#loss-is-only-half-the-problem" aria-hidden="true">#</a>Loss is only half the problem</h2>
+<p>At these frequencies, adjacent lanes couple into each other through the traces, the package vias and the connector pins, and the coupling rises with frequency because the coupling impedance falls.</p>
+<figure class="figure"><img src="assets/plots/lane-crosstalk-scaling.svg" alt="Why lane density sets the noise floor: coupling against pitch, and the cost of each aggressor." loading="lazy"><figcaption><span class="fig-label">Figure 2</span><span class="fig-text">Why lane density sets the noise floor: coupling against pitch, and the cost of each aggressor.</span></figcaption></figure>
+<p>Two facts from the figure dominate the design:</p>
+<ul>
+<li><strong>Coupling falls with the square of the spacing.</strong> Halving the pitch between differential pairs roughly quadruples the coupled power -- 6 dB -- which at these margins is the difference between passing and failing.</li>
+<li><strong>Aggressors add in power.</strong> Two uncorrelated interferers cost 3 dB, four cost 6 dB. A lane in the middle of an eight-lane bundle has two immediate neighbours and several distant ones, and the distant ones are not negligible.</li>
+</ul>
+<figure class="figure"><img src="assets/diagrams/crosstalk-environment.svg" alt="Why lane density is a signal-integrity decision: a package cross-section at two pitches." loading="lazy"><figcaption><span class="fig-label">Figure 3</span><span class="fig-text">Why lane density is a signal-integrity decision: a package cross-section at two pitches.</span></figcaption></figure>
+<p>This is why high-density modules spend on ground vias, on differential routing discipline and on shielding, and why a layout that "works" at 25G may fail at 100G without a single component changing. Crosstalk has become the first-order effect; loss is the one the mask constrains.</p>
+<p>The right-hand panel above is the other half of the argument. Two uncorrelated aggressors cost 3 dB; four cost 6 dB; and a lane in the middle of an eight-lane bundle has two immediate neighbours plus several distant ones. Designing a package is therefore choosing how many aggressors each victim will have, and that choice is made in the layout long before anyone measures a budget.</p>
+<p>The right-hand panel above is the other half of the argument. Two uncorrelated aggressors cost 3 dB; four cost 6 dB; and a lane in the middle of an eight-lane bundle has two immediate neighbours plus several distant ones. Designing a package is therefore choosing how many aggressors each victim will have, and that choice is made in the layout long before anyone measures a budget.</p>
+<h2 id="the-budget"><a class="heading-anchor" href="#the-budget" aria-hidden="true">#</a>The budget</h2>
+<p>With loss and crosstalk both on the table, the lane's budget is best seen as two columns.</p>
+<figure class="figure"><img src="assets/diagrams/serdes-link-budget.svg" alt="A serial lane&#x27;s budget: signal terms above, noise terms below." loading="lazy"><figcaption><span class="fig-label">Figure 4</span><span class="fig-text">A serial lane's budget: signal terms above, noise terms below.</span></figcaption></figure>
+<p><strong>The signal column</strong> is the launched swing, reduced by the channel's loss at Nyquist, by the connector and package, and by the transmit FFE's own de-emphasis, then restored -- partly -- by the receive equaliser's gain.</p>
+<p><strong>The noise column</strong> is everything that competes with it: the receiver's own noise referred to the slicer, crosstalk from every neighbouring aggressor, reflections from imperfect return loss, jitter converted into an amplitude penalty, and the equaliser's own noise enhancement.</p>
+<p>Separating them is what makes the budget actionable. The signal column is set by the transmitter, the channel and the equaliser depths. The noise column is set by the receiver, the layout and the reference clock. Those are usually different teams, and a budget that adds them into one number cannot tell you whose problem a shortfall is.</p>
+<aside class="callout callout-warn">
+  <p class="callout-title"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> The equaliser's gain is not free, again</p>
+  <div class="callout-body">
+<p>This is the Ethernet part's warning at a higher frequency. An equaliser that supplies 15 dB of boost at 26 GHz raises the noise floor at 26 GHz by a comparable amount. Writing "+15 dB of equaliser gain" without writing the noise next to it produces a budget that predicts a link which does not exist.</p>
+  </div>
+</aside>
+<h2 id="channel-operating-margin"><a class="heading-anchor" href="#channel-operating-margin" aria-hidden="true">#</a>Channel operating margin</h2>
+<p>The industry's answer to "is this channel good enough?" is a single number, computed identically by everyone who has to agree: <strong>channel operating margin</strong>, or COM.</p>
+<figure class="figure"><img src="assets/diagrams/com-decomposition.svg" alt="What channel operating margin is made of, and the thresholds it is judged against." loading="lazy"><figcaption><span class="fig-label">Figure 5</span><span class="fig-text">What channel operating margin is made of, and the thresholds it is judged against.</span></figcaption></figure>
+<p>COM is the ratio of available signal to total noise at the slicer, after a <em>reference</em> equaliser specified by the standard, minus the signal-to-noise ratio the target error ratio requires. Its units are decibels, and its pass threshold is around 3 dB.</p>
+<p>Three properties make it useful:</p>
+<ul>
+<li><strong>It is computed, not measured.</strong> COM comes from a channel's S-parameters and a specified transmitter and receiver model. Two vendors can compute the same number from the same board file without meeting.</li>
+<li><strong>It isolates the channel from the silicon.</strong> The reference receiver is fixed by the standard, so a COM failure is a channel or layout problem, not an equaliser problem. That is what makes it a shared language between the board team and the chip team.</li>
+<li><strong>It includes crosstalk by construction.</strong> The aggressor lanes are part of the computation, which is why COM tracks lane density rather than ignoring it.</li>
+</ul>
+<aside class="callout callout-note">
+  <p class="callout-title"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> Why 3 dB and not 0 dB</p>
+  <div class="callout-body">
+<p>A channel at COM = 0 dB passes with a reference receiver under nominal conditions. Real parts vary, temperature varies, supply varies, and boards age. The 3 dB is the industry's collective estimate of how much margin is needed for those variations. A link that passes at 3.1 dB is compliant and fragile.</p>
+  </div>
+</aside>
+<h2 id="working-the-arithmetic"><a class="heading-anchor" href="#working-the-arithmetic" aria-hidden="true">#</a>Working the arithmetic</h2>
+<p>Take a 53 GBd PAM4 lane on a 100G-per-lane interface and add it up.</p>
+<ul>
+<li><strong>Signal at the slicer</strong> after the reference equaliser: whatever survives the channel. Suppose the channel is at the mask limit, so 15 dB of loss at 26.6 GHz, and the equaliser supplies it.</li>
+<li><strong>Noise</strong>: the receiver's own contribution, plus crosstalk from two neighbours at roughly -25 dB each, plus the equaliser's noise enhancement, plus the jitter penalty.</li>
+<li><strong>COM</strong> is the difference, in decibels, between the resulting signal-to-noise ratio and what the target error ratio needs.</li>
+</ul>
+<p>The interesting number is not the COM itself but its <strong>decomposition</strong>: whether the shortfall, if there is one, comes from the loss term, the crosstalk term, or the receiver's noise. Those point at three different fixes, and the decomposition is what tells you which.</p>
+<h2 id="where-this-connects"><a class="heading-anchor" href="#where-this-connects" aria-hidden="true">#</a>Where this connects</h2>
+<ul>
+<li>Loss and crosstalk are comparable at SerDes frequencies, and crosstalk grows with lane density rather than with reach.</li>
+<li>The band edge follows from baud rate and modulation; a 53 GBd PAM4 lane's problem is at 26.6 GHz.</li>
+<li>The budget separates signal from noise because they are fixed by different parts of the design.</li>
+<li>COM compresses the whole channel into one decibel figure against a fixed reference receiver, which is what makes it a shared language.</li>
+<li>What the budget predicts is an error ratio, and the last chapter of this part is about how the FEC turns it into a passing link.</li>
+</ul>
+<h2 id="in-the-optical-link"><a class="heading-anchor" href="#in-the-optical-link" aria-hidden="true">#</a>In the optical link</h2>
+<p><strong>The channel is a fibre, and its "loss" is nearly flat.</strong> A coherent link's dominant impairments are not frequency-dependent attenuation but dispersion, polarisation rotation and nonlinearity -- so its budget looks nothing like the waterfall here. What transfers is the discipline: signal terms and noise terms kept separate, each referred to the decision point, and margin tracked rather than assumed.</p>
+<p><strong>Crosstalk has an optical analogue, and it is worse.</strong> In a coherent system the neighbouring wavelength is separated by a filter rather than by a ground via, and the residual leakage lands in the same electrical band as the signal. That is why coherent receivers are specified with an adjacent-channel penalty, and why the optical filter shape is a budget term in its own right.</p>
+<p><strong>And COM's role is played by OSNR.</strong> An optical link is signed off on the optical signal-to-noise ratio at a stated pre-FEC error ratio, computed against a reference receiver and a reference channel. The number is different, the method is identical: fix the receiver model, compute one figure of merit, and agree on a threshold with margin in it.</p>
+<nav class="pager" aria-label="Chapter navigation"><a class="prev" href="serdes-anatomy.html"><span class="dir">&larr; Previous</span><span class="ttl">The Anatomy of a 100G Lane</span></a><a class="next" href="serdes-equalisation.html"><span class="dir">Next &rarr;</span><span class="ttl">SerDes Equalisation</span></a></nav>
+</main>
+</div>
+<footer class="site-footer">
+  <div class="inner">
+    <span>&copy; Nguyen Quang Binh &middot; Embedded Software Engineer - Optical DSP</span>
+    <span class="spacer"></span>
+    <a href="https://github.com/sprchuoi" target="_blank" rel="noopener">GitHub</a> &middot; <a href="https://www.linkedin.com/in/sprchuoi" target="_blank" rel="noopener">LinkedIn</a> &middot; <a href="mailto:quangbinhlxcity@gmail.com">quangbinhlxcity@gmail.com</a> &middot; <a href="../index.html">CV</a>
+  </div>
+</footer>
+<script src="assets/blog.js" defer></script>
+</body>
+</html>
