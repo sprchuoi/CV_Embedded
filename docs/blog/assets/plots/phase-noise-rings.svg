@@ -99,7 +99,7 @@ L 169.35132 110.079251
 L 169.679812 108.005231 
 L 169.789711 105.908235 
 L 169.789711 105.908235 
-" clip-path="url(#p42d525467b)" style="fill: none; stroke-dasharray: 2.7,2.7; stroke-dashoffset: 0; stroke: #cfd8d4; stroke-width: 0.9"/>
+" clip-path="url(#p1)" style="fill: none; stroke-dasharray: 2.7,2.7; stroke-dashoffset: 0; stroke: #cfd8d4; stroke-width: 0.9"/>
    </g>
    <g id="line2d_2">
     <path d="M 194.587059 105.908235 
@@ -184,7 +184,7 @@ L 194.034772 112.925701
 L 194.448774 109.427818 
 L 194.587059 105.908235 
 L 194.587059 105.908235 
-" clip-path="url(#p42d525467b)" style="fill: none; stroke-dasharray: 2.7,2.7; stroke-dashoffset: 0; stroke: #cfd8d4; stroke-width: 0.9"/>
+" clip-path="url(#p1)" style="fill: none; stroke-dasharray: 2.7,2.7; stroke-dashoffset: 0; stroke: #cfd8d4; stroke-width: 0.9"/>
    </g>
    <g id="line2d_3">
     <path d="M 209.912663 105.908235 
@@ -309,7 +309,7 @@ L 209.582966 112.199221
 L 209.830182 109.058045 
 L 209.912663 105.908235 
 L 209.912663 105.908235 
-" clip-path="url(#p42d525467b)" style="fill: none; stroke-dasharray: 2.7,2.7; stroke-dashoffset: 0; stroke: #cfd8d4; stroke-width: 0.9"/>
+" clip-path="url(#p1)" style="fill: none; stroke-dasharray: 2.7,2.7; stroke-dashoffset: 0; stroke: #cfd8d4; stroke-width: 0.9"/>
    </g>
    <g id="matplotlib.axis_1">
     <g id="text_1">
@@ -1465,7 +1465,7 @@ L 330.843084 110.079251
 L 331.171577 108.005231 
 L 331.281476 105.908235 
 L 331.281476 105.908235 
-" clip-path="url(#p118387fb87)" style="fill: none; stroke-dasharray: 2.7,2.7; stroke-dashoffset: 0; stroke: #cfd8d4; stroke-width: 0.9"/>
+" clip-path="url(#p2)" style="fill: none; stroke-dasharray: 2.7,2.7; stroke-dashoffset: 0; stroke: #cfd8d4; stroke-width: 0.9"/>
    </g>
    <g id="line2d_5">
     <path d="M 356.078824 105.908235 
@@ -1550,7 +1550,7 @@ L 355.526537 112.925701
 L 355.940539 109.427818 
 L 356.078824 105.908235 
 L 356.078824 105.908235 
-" clip-path="url(#p118387fb87)" style="fill: none; stroke-dasharray: 2.7,2.7; stroke-dashoffset: 0; stroke: #cfd8d4; stroke-width: 0.9"/>
+" clip-path="url(#p2)" style="fill: none; stroke-dasharray: 2.7,2.7; stroke-dashoffset: 0; stroke: #cfd8d4; stroke-width: 0.9"/>
    </g>
    <g id="line2d_6">
     <path d="M 371.404427 105.908235 
@@ -1675,7 +1675,7 @@ L 371.074731 112.199221
 L 371.321947 109.058045 
 L 371.404427 105.908235 
 L 371.404427 105.908235 
-" clip-path="url(#p118387fb87)" style="fill: none; stroke-dasharray: 2.7,2.7; stroke-dashoffset: 0; stroke: #cfd8d4; stroke-width: 0.9"/>
+" clip-path="url(#p2)" style="fill: none; stroke-dasharray: 2.7,2.7; stroke-dashoffset: 0; stroke: #cfd8d4; stroke-width: 0.9"/>
    </g>
    <g id="matplotlib.axis_3">
     <g id="text_6">
@@ -2036,7 +2036,7 @@ L 492.334849 110.079251
 L 492.663342 108.005231 
 L 492.77324 105.908235 
 L 492.77324 105.908235 
-" clip-path="url(#pceee05f60c)" style="fill: none; stroke-dasharray: 2.7,2.7; stroke-dashoffset: 0; stroke: #cfd8d4; stroke-width: 0.9"/>
+" clip-path="url(#p3)" style="fill: none; stroke-dasharray: 2.7,2.7; stroke-dashoffset: 0; stroke: #cfd8d4; stroke-width: 0.9"/>
    </g>
    <g id="line2d_8">
     <path d="M 517.570588 105.908235 
@@ -2121,7 +2121,7 @@ L 517.018302 112.925701
 L 517.432303 109.427818 
 L 517.570588 105.908235 
 L 517.570588 105.908235 
-" clip-path="url(#pceee05f60c)" style="fill: none; stroke-dasharray: 2.7,2.7; stroke-dashoffset: 0; stroke: #cfd8d4; stroke-width: 0.9"/>
+" clip-path="url(#p3)" style="fill: none; stroke-dasharray: 2.7,2.7; stroke-dashoffset: 0; stroke: #cfd8d4; stroke-width: 0.9"/>
    </g>
    <g id="line2d_9">
     <path d="M 532.896192 105.908235 
@@ -2246,7 +2246,7 @@ L 532.566495 112.199221
 L 532.813711 109.058045 
 L 532.896192 105.908235 
 L 532.896192 105.908235 
-" clip-path="url(#pceee05f60c)" style="fill: none; stroke-dasharray: 2.7,2.7; stroke-dashoffset: 0; stroke: #cfd8d4; stroke-width: 0.9"/>
+" clip-path="url(#p3)" style="fill: none; stroke-dasharray: 2.7,2.7; stroke-dashoffset: 0; stroke: #cfd8d4; stroke-width: 0.9"/>
    </g>
    <g id="matplotlib.axis_5">
     <g id="text_10">
@@ -3777,13 +3777,13 @@ z
   </g>
  </g>
  <defs>
-  <clipPath id="p42d525467b">
+  <clipPath id="p1">
    <rect x="82.44" y="38.62" width="134.576471" height="134.576471"/>
   </clipPath>
-  <clipPath id="p118387fb87">
+  <clipPath id="p2">
    <rect x="243.931765" y="38.62" width="134.576471" height="134.576471"/>
   </clipPath>
-  <clipPath id="pceee05f60c">
+  <clipPath id="p3">
    <rect x="405.423529" y="38.62" width="134.576471" height="134.576471"/>
   </clipPath>
  </defs>

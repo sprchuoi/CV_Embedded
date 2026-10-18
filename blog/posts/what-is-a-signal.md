@@ -202,5 +202,5 @@ Quantisation is a staircase applied to the range.
 They are coupled, and that is what makes the domain hard.
 The equaliser that undoes dispersion also rotates the constellation it adapts on.
 The phase estimator wants a constellation that is not dispersing.
-Untangling the two is chapters 29 to 32.
+Untangling the two is chapters 35 and 37.
 :::

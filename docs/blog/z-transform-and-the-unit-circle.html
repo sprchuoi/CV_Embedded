@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The z-Transform and the Unit Circle - DSP, from First Principles to the Optical Link</title>
+<meta name="description" content="The DFT is the z-transform sampled on a circle. This one picture unifies filters, stability and the frequency response.">
+<meta name="color-scheme" content="light dark">
+<meta property="og:type" content="article">
+<meta property="og:title" content="The z-Transform and the Unit Circle - DSP, from First Principles to the Optical Link">
+<meta property="og:description" content="The DFT is the z-transform sampled on a circle. This one picture unifies filters, stability and the frequency response.">
+<meta property="og:locale" content="en">
+<link rel="alternate" hreflang="en" href="https://sprchuoi.github.io/CV_Embedded/blog/z-transform-and-the-unit-circle.html">
+<link rel="alternate" hreflang="vi" href="https://sprchuoi.github.io/CV_Embedded/blog/vi/index.html">
+<link rel="alternate" hreflang="x-default" href="https://sprchuoi.github.io/CV_Embedded/blog/z-transform-and-the-unit-circle.html">
+<link rel="canonical" href="https://sprchuoi.github.io/CV_Embedded/blog/z-transform-and-the-unit-circle.html">
+<link rel="icon" href="../favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link rel="stylesheet" href="assets/blog.css">
+<script>
+  window.MathJax = {
+  "tex": {
+    "inlineMath": [
+      [
+        "$",
+        "$"
+      ],
+      [
+        "\\(",
+        "\\)"
+      ]
+    ],
+    "displayMath": [
+      [
+        "$$",
+        "$$"
+      ],
+      [
+        "\\[",
+        "\\]"
+      ]
+    ],
+    "processEscapes": true,
+    "tags": "none",
+    "macros": {
+      "twopi": "2\\pi",
+      "dd": "\\mathrm{d}",
+      "E": "\\mathbb{E}",
+      "j": "\\mathrm{j}",
+      "argmin": "\\operatorname*{arg\\,min}"
+    }
+  },
+  "options": {
+    "skipHtmlTags": [
+      "script",
+      "noscript",
+      "style",
+      "textarea",
+      "pre",
+      "code"
+    ],
+    "ignoreHtmlClass": "no-mathjax"
+  },
+  "chtml": {
+    "scale": 1.02
+  }
+};
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body data-copy="Copy" data-copied="Copied"
+      data-copy-failed="Failed"
+      data-theme-dark="Switch to dark theme" data-theme-light="Switch to light theme">
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="index.html">
+      <span class="mark" aria-hidden="true">DSP</span>
+      <span>Nguyen Quang Binh</span>
+      <span class="sub">signal processing notes</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="vision.html">Vision</a>
+      <a href="index.html" aria-current="page">Curriculum</a>
+      <a href="../index.html">CV</a>
+      <a href="https://github.com/sprchuoi">GitHub</a>
+      <div class="lang-switch" role="group" aria-label="Language"><span class="is-current" lang="en" aria-current="true">EN</span><a href="vi/index.html" hreflang="vi" lang="vi" title="Tiếng Việt">VI</a></div>
+      <button class="icon-btn" type="button" data-theme-toggle aria-pressed="false"
+              title="Switch colour theme" aria-label="Switch colour theme"><i class="fa-solid fa-moon" aria-hidden="true"></i></button>
+    </nav>
+  </div>
+  <div class="read-progress" role="presentation"></div>
+</header>
+<div class="layout">
+<nav class="toc" aria-label="On this page">
+<p class="toc-title">On this page</p>
+<ol><li class="lvl-2"><a href="#a-delay-is-a-multiplication">A delay is a multiplication</a></li><li class="lvl-2"><a href="#z-lives-in-a-plane-and-the-circle-is-frequency">z lives in a plane, and the circle is frequency</a></li><li class="lvl-2"><a href="#the-dft-is-that-circle-sampled">The DFT is that circle, sampled</a></li><li class="lvl-2"><a href="#poles-and-zeros-are-geometry">Poles and zeros are geometry</a></li><li class="lvl-2"><a href="#stability-is-a-side-of-the-circle">Stability is a side of the circle</a></li><li class="lvl-2"><a href="#one-picture-three-answers">One picture, three answers</a></li><li class="lvl-2"><a href="#what-to-carry-forward">What to carry forward</a></li></ol>
+</nav>
+<main id="main" class="prose">
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    <a href="index.html">Curriculum</a><span class="sep">/</span>The Frequency Domain
+  </nav>
+  <header class="article-head">
+    <h1>The z-Transform and the Unit Circle</h1>
+    <p class="article-standfirst">The DFT is the z-transform sampled on a circle. This one picture unifies filters, stability and the frequency response.</p>
+    <div class="article-meta"><span class="level-badge" data-level="Beginner to Intermediate">Beginner to Intermediate</span><span>14 min read</span><div class="taglist"><span class="tag">z-transform</span></div></div>
+  </header>
+<p>The DFT of chapter 6 is a bank of N probes, and every probe is a complex exponential that turns a whole number of times across the record. Chapter 8 spent its length on what the record's edges do to those probes. Neither chapter asked the question that turns the transform from a measurement into an object: what if the probe is not restricted to the unit circle? The sum does not care. Replace <span class="math">$e^{-j2\pi k/N}$</span> with a free complex number <span class="math">$z$</span> and the same accumulation becomes a function of <span class="math">$z$</span> — the <strong>z-transform</strong>.</p>
+<p>The detour is the point. Moving the probe off the circle turns a recursion into algebra: one sample of delay becomes a multiplication by <span class="math">$z^{-1}$</span>, a difference equation becomes a ratio of two polynomials, and the ratio can be evaluated anywhere in the plane. Put the point back on the circle and it is the frequency response; put it inside, on or outside and it is the stability test; evaluate it at N equally spaced points and it is chapter 6. <strong>One picture answers all three</strong>, which is what the frequency-domain part has been building towards.</p>
+<p>One system is enough: <span class="math">$y[n] = x[n] - 0.9\,y[n-1]$</span>. This chapter does not design a filter, does not assume convolution, and does not do the region-of-convergence formalism — the next two parts of the course do those. It hands you the plane, the circle, and the two rules for reading them.</p>
+<h2 id="a-delay-is-a-multiplication"><a class="heading-anchor" href="#a-delay-is-a-multiplication" aria-hidden="true">#</a>A delay is a multiplication</h2>
+<p>The z-transform of a sequence is</p>
+<div class="math-display">$$X(z) = \sum_{n} x[n]\,z^{-n}$$</div>
+<p>with <span class="math">$z$</span> complex. For a record of <span class="math">$N$</span> samples it is a polynomial of degree <span class="math">$N-1$</span> and nothing more: no integral, no limit, no approximation. Chapter 6's sum is this expression with <span class="math">$z$</span> pinned to <span class="math">$e^{j2\pi k/N}$</span>, and the pinning is the only thing that made it look like a measurement.</p>
+<p>One property does the work. Delay the sequence one sample and</p>
+<div class="math-display">$$Y(z) = \sum_n x[n-1]\,z^{-n} = z^{-1}\sum_m x[m]\,z^{-m} = z^{-1}X(z)$$</div>
+<p>so <strong><span class="math">$z^{-1}$</span> is one sample of delay</strong>: a register in a datapath, a multiply in the algebra.</p>
+<figure class="figure"><img src="assets/plots/zt-delay-operator.svg" alt="Four samples and the same four one place later. The coefficients of $X(z)$ become the coefficients of $z^{-1}X(z)$ in order, and the difference equation becomes the ratio $H(z) = 1/(1 + 0.9z^{-1})$: pole at −0.900, zero at 0.000. The response, run from the recursion, is 1.000, −0.900, 0.810, −0.729, 0.656, −0.590 and matches $(-0.9)^n$ to $1.1\times10^{-16}$." loading="lazy"><figcaption><span class="fig-label">Figure 1</span><span class="fig-text">Four samples and the same four one place later. The coefficients of <span class="math">$X(z)$</span> become the coefficients of <span class="math">$z^{-1}X(z)$</span> in order, and the difference equation becomes the ratio <span class="math">$H(z) = 1/(1 + 0.9z^{-1})$</span>: pole at −0.900, zero at 0.000. The response, run from the recursion, is 1.000, −0.900, 0.810, −0.729, 0.656, −0.590 and matches <span class="math">$(-0.9)^n$</span> to <span class="math">$1.1\times10^{-16}$</span>.</span></figcaption></figure>
+<p>The figure's record is four numbers, <span class="math">$1.0$</span>, <span class="math">$-0.5$</span>, <span class="math">$0.75$</span>, <span class="math">$0.25$</span>, and <span class="math">$X(z) = 1.000 - 0.500z^{-1} + 0.750z^{-2} + 0.250z^{-3}$</span>. Delay it and the polynomial becomes <span class="math">$z^{-1}X(z) = 0.000 + 1.000z^{-1} - 0.500z^{-2} + 0.750z^{-3} + 0.250z^{-4}$</span>: the same coefficients one place right, an extra zero at the front. Nothing was transformed. The polynomial <strong>is</strong> the sequence, written in the form that makes delay a multiply.</p>
+<p>Which makes a difference equation algebra:</p>
+<div class="math-display">$$y[n] = x[n] - 0.9\,y[n-1] \;\Longrightarrow\; Y(z) = X(z) - 0.9\,z^{-1}Y(z) \;\Longrightarrow\; H(z) = \frac{Y}{X} = \frac{1}{1 + 0.9\,z^{-1}} = \frac{z}{z + 0.9}$$</div>
+<p>A recursion has become a division. It was not solved; it was renamed, and the new name is an object that can be evaluated, factored and drawn.</p>
+<p>The roots of the numerator are the <strong>zeros</strong>, where the output dies; the roots of the denominator are the <strong>poles</strong>, where the ratio blows up. Written as <span class="math">$z/(z+0.9)$</span>, the system has a zero at <span class="math">$0$</span> and a pole at <span class="math">$-0.9$</span>. Note the sign, because this is where readers trip: the coefficient is <span class="math">$-0.9$</span> and the pole is at <span class="math">$-0.9$</span>, since <span class="math">$z + 0.9$</span> vanishes there.</p>
+<aside class="callout callout-key">
+  <p class="callout-title"><i class="fa-solid fa-key" aria-hidden="true"></i> One rule, one division</p>
+  <div class="callout-body">
+<p><span class="math">$z^{-1}$</span> is a delay, so every difference equation is a ratio of polynomials. The ratio is the system: solve for <span class="math">$Y/X$</span> once and you never have to run the recursion to know what the system is.</p>
+  </div>
+</aside>
+<h2 id="z-lives-in-a-plane-and-the-circle-is-frequency"><a class="heading-anchor" href="#z-lives-in-a-plane-and-the-circle-is-frequency" aria-hidden="true">#</a>z lives in a plane, and the circle is frequency</h2>
+<p><span class="math">$z$</span> is complex, so the transform's argument lives in a plane. Write <span class="math">$z = re^{j\omega}$</span>: the radius is a growth rate per sample, the angle a frequency per sample. The transform's sum converges in some region of that plane and not in the rest — the stability section is about where — but the algebra of <span class="math">$H(z)$</span> is defined wherever the denominator is not zero.</p>
+<p>Put the point on the circle, <span class="math">$z = e^{j\omega}$</span>, so <span class="math">$z^{-n} = e^{-j\omega n}$</span> and</p>
+<div class="math-display">$$X(e^{j\omega}) = \sum_n x[n]\,e^{-j\omega n}$$</div>
+<p>which is the discrete-time Fourier transform, and what it measures is the <strong>frequency response</strong>. Walking the circle is sweeping frequency. One turn is <span class="math">$\omega = 2\pi$</span>, and <span class="math">$\omega$</span> is radians per sample, so one turn is <span class="math">$f_s$</span> hertz: <span class="math">$\omega = 2\pi f/f_s$</span>. That is chapter 6's frequency axis bent into a circle, and bin <span class="math">$k$</span> of an <span class="math">$N$</span>-point DFT is the point at angle <span class="math">$2\pi k/N$</span>, which is <span class="math">$k\,f_s/N$</span> hertz.</p>
+<figure class="figure"><img src="assets/plots/zt-plane-and-circle.svg" alt="The plane with one pole at −0.900 and one zero at the origin, eight points on the unit circle, and the same eight gains as stems. The pole is 1.900 away at $z=1$ and 0.100 away at $z=-1$, so the gain is 0.5263 at DC and 10.000 at Nyquist. The eight gains are 0.526, 0.570, 0.743, 1.364, 10.000 and back down; the mirror $|Hk| = |H{8-k}|$ holds to $4.4\times10^{-16}$ because the response is real." loading="lazy"><figcaption><span class="fig-label">Figure 2</span><span class="fig-text">The plane with one pole at −0.900 and one zero at the origin, eight points on the unit circle, and the same eight gains as stems. The pole is 1.900 away at <span class="math">$z=1$</span> and 0.100 away at <span class="math">$z=-1$</span>, so the gain is 0.5263 at DC and 10.000 at Nyquist. The eight gains are 0.526, 0.570, 0.743, 1.364, 10.000 and back down; the mirror <span class="math">$|H_k| = |H_{8-k}|$</span> holds to <span class="math">$4.4\times10^{-16}$</span> because the response is real.</span></figcaption></figure>
+<p>The figure is the chapter in one panel. The pole sits at <span class="math">$-0.9$</span> and the zero at the origin, and the circle is the frequency axis. Two distances carry the response: at <span class="math">$z=1$</span>, DC, the pole is <span class="math">$1.900$</span> away; at <span class="math">$z=-1$</span>, Nyquist, it is <span class="math">$0.100$</span> away. The zero at the origin is one unit from every point on the circle, so the gain is <span class="math">$1/d_{\text{pole}}$</span> — <span class="math">$0.5263$</span> at DC and <span class="math">$10.000$</span> at Nyquist.</p>
+<p>The eight points are chapter 6's bins <span class="math">$0, 8, 16, \dots, 56$</span> — <span class="math">$0$</span>, <span class="math">$1000$</span>, <span class="math">$2000$</span>, <span class="math">$3000$</span>, <span class="math">$4000$</span> Hz and back down at <span class="math">$f_s = 8$</span> kHz — drawn sparse because eight is legible where sixty-four is a smear. The point at <span class="math">$\omega = \pi/4$</span> is 1 kHz, bin 8 of sixty-four, where the gain is <span class="math">$0.5695$</span>. The values mirror about Nyquist because a real impulse response puts equal magnitudes at <span class="math">$\omega$</span> and <span class="math">$-\omega$</span>: chapter 6's conjugate symmetry, seen on the circle.</p>
+<aside class="callout callout-note">
+  <p class="callout-title"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> <span class="math">$z$</span> is not a frequency</p>
+  <div class="callout-body">
+<p>The angle of <span class="math">$z$</span> is a frequency. The radius is a growth rate, and only on the circle does it equal one.</p>
+  </div>
+</aside>
+<h2 id="the-dft-is-that-circle-sampled"><a class="heading-anchor" href="#the-dft-is-that-circle-sampled" aria-hidden="true">#</a>The DFT is that circle, sampled</h2>
+<p>The claim is one substitution. For a record of <span class="math">$N$</span> samples,</p>
+<div class="math-display">$$X\!\left(e^{j2\pi k/N}\right) = \sum_{n=0}^{N-1} x[n]\,e^{-j2\pi kn/N} = X[k]$$</div>
+<p>which is chapter 6's definition, character for character. <strong>The DFT is the z-transform evaluated at <span class="math">$N$</span> equally spaced points on the unit circle.</strong> Bin <span class="math">$k$</span> is the point at angle <span class="math">$2\pi k/N$</span>; the bin spacing <span class="math">$f_s/N$</span> is the angle spacing <span class="math">$2\pi/N$</span> measured in hertz.</p>
+<figure class="figure"><img src="assets/plots/zt-dft-is-sampled.svg" alt="One turn of the circle from 0 to $fs$, with chapter 6&#x27;s 64 bins on it. The bins are 125 Hz apart; bin 8 is 1 kHz, $\pi/4$, with gain 0.5695; bin 32 is Nyquist at 10.000; and at 8 kHz the curve is back to 0.526, with $|H(f) - H(f+fs)| = 1.0\times10^{-13}$ over 4,001 points. Below, the DFT of a truncated impulse response converges to those samples: 4.305 at $L=8$, 0.343 at 32, 0.0118 at 64, $1.39\times10^{-5}$ at 128, $1.93\times10^{-11}$ at 256 — 0.915 dB per sample." loading="lazy"><figcaption><span class="fig-label">Figure 3</span><span class="fig-text">One turn of the circle from 0 to <span class="math">$f_s$</span>, with chapter 6's 64 bins on it. The bins are 125 Hz apart; bin 8 is 1 kHz, <span class="math">$\pi/4$</span>, with gain 0.5695; bin 32 is Nyquist at 10.000; and at 8 kHz the curve is back to 0.526, with <span class="math">$|H(f) - H(f+f_s)| = 1.0\times10^{-13}$</span> over 4,001 points. Below, the DFT of a truncated impulse response converges to those samples: 4.305 at <span class="math">$L=8$</span>, 0.343 at 32, 0.0118 at 64, <span class="math">$1.39\times10^{-5}$</span> at 128, <span class="math">$1.93\times10^{-11}$</span> at 256 — 0.915 dB per sample.</span></figcaption></figure>
+<p>The figure walks one turn. The curve is <span class="math">$|H(e^{j\omega})|$</span>; the dots are chapter 6's sixty-four bins, 125 Hz apart, bin 8 at 1 kHz with <span class="math">$0.5695$</span>, bin 32 at Nyquist with <span class="math">$10.000$</span>. At 8 kHz the curve is back at <span class="math">$0.526$</span>, its DC value, and <span class="math">$|H(f) - H(f+f_s)|$</span> over 4,001 points is <span class="math">$1.0\times10^{-13}$</span> — round-off, not structure.</p>
+<p><strong>The circle closes, and that is why the spectrum repeats.</strong> <span class="math">$\omega$</span> and <span class="math">$\omega + 2\pi$</span> are the same complex number, so the transform cannot tell them apart, and <span class="math">$f$</span> and <span class="math">$f + f_s$</span> are the same point on the circle. Chapter 6 found this in the DFT's arithmetic: the probes have period <span class="math">$N$</span>, so the sum repeats. Here it is a property of the domain — there is one period because the circle has one turn. The periodicity is what happens when a frequency axis is a closed curve.</p>
+<p>The qualification is in the lower panel. For a <strong>record</strong> the identity is exact. For a <strong>system with a pole</strong>, <span class="math">$H(z)$</span> is an infinite series, so the DFT of a truncated impulse response is the z-transform of the truncation, not <span class="math">$H$</span>. Measured: the first 8 samples are off by <span class="math">$4.305$</span>, 32 samples by <span class="math">$0.343$</span>, 64 by <span class="math">$0.0118$</span>, 128 by <span class="math">$1.39\times10^{-5}$</span>, 256 by <span class="math">$1.93\times10^{-11}$</span>. The error falls on a straight line in dB, <span class="math">$0.915$</span> dB per sample — the pole's radius. A record's DFT is exact; a pole's is a limit, approached at the speed the pole allows.</p>
+<aside class="callout callout-warn">
+  <p class="callout-title"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> A truncated DFT is not the response</p>
+  <div class="callout-body">
+<p>The DFT of the first <span class="math">$L$</span> samples of an impulse response is the z-transform of that truncation. It converges at the pole radius — fast inside the circle, not at all outside — and at 8 samples it is not close.</p>
+  </div>
+</aside>
+<h2 id="poles-and-zeros-are-geometry"><a class="heading-anchor" href="#poles-and-zeros-are-geometry" aria-hidden="true">#</a>Poles and zeros are geometry</h2>
+<p>Factor the ratio. Any rational transfer function is</p>
+<div class="math-display">$$H(z) = b_0\,\frac{\prod_i (z - z_i)}{\prod_j (z - p_j)}$$</div>
+<p>and on the circle each factor is a distance:</p>
+<div class="math-display">$$\left|H(e^{j\omega})\right| = |b_0|\,\frac{\prod_i \left|e^{j\omega} - z_i\right|}{\prod_j \left|e^{j\omega} - p_j\right|}$$</div>
+<p><strong>The magnitude response is the product of the distances to the zeros over the product of the distances to the poles</strong> — two measurements with a ruler, no trigonometry.</p>
+<p>The chapter's system needs a zero before the rule has anything to bite on. Add one by differencing the input:</p>
+<div class="math-display">$$y[n] = x[n] - x[n-1] - 0.9\,y[n-1] \;\Longrightarrow\; H(z) = \frac{1 - z^{-1}}{1 + 0.9\,z^{-1}} = \frac{z - 1}{z + 0.9}$$</div>
+<p>The pole has not moved; the zero is now on the circle at <span class="math">$z = +1$</span>, which is DC. A blocking filter, and the geometry says so before any arithmetic.</p>
+<figure class="figure"><img src="assets/plots/zt-walk-the-circle.svg" alt="The same pole with a zero added at $z=+1$. At $\omega=\pi/2$ the two chords are 1.41421 and 1.34536 long and their ratio is 1.05118, which the direct evaluation confirms. At $\omega=\pi$ the ratio is 2.000/0.100 = 20.000, or +26.02 dB; at DC it is 0.000/1.900 = 0.000, an exact null. Over 4,001 points the largest difference between the ratio of distances and the direct evaluation is $2.8\times10^{-14}$." loading="lazy"><figcaption><span class="fig-label">Figure 4</span><span class="fig-text">The same pole with a zero added at <span class="math">$z=+1$</span>. At <span class="math">$\omega=\pi/2$</span> the two chords are 1.41421 and 1.34536 long and their ratio is 1.05118, which the direct evaluation confirms. At <span class="math">$\omega=\pi$</span> the ratio is 2.000/0.100 = 20.000, or +26.02 dB; at DC it is 0.000/1.900 = 0.000, an exact null. Over 4,001 points the largest difference between the ratio of distances and the direct evaluation is <span class="math">$2.8\times10^{-14}$</span>.</span></figcaption></figure>
+<p>The figure computes both sides. At <span class="math">$\omega = \pi/2$</span> the distance to the zero is <span class="math">$1.41421$</span>, to the pole <span class="math">$1.34536$</span>, and the ratio is <span class="math">$1.05118$</span>; the direct evaluation gives <span class="math">$1.05118$</span>. At Nyquist the distances are <span class="math">$2.000$</span> and <span class="math">$0.100$</span> and the ratio is <span class="math">$20.000$</span>, <span class="math">$+26.02$</span> dB. At DC the point is on the zero, the distance is zero, and the gain is <span class="math">$0.000$</span> — an exact null. The largest disagreement over the half-circle is <span class="math">$2.8\times10^{-14}$</span>.</p>
+<p>Read the picture as a vocabulary, without designing anything. <strong>A zero on the circle is a null</strong>; move it off and the null becomes a dip whose depth is set by its distance. <strong>A pole near the circle is a peak</strong>; the closer it gets the taller and narrower, with height roughly <span class="math">$1/d$</span>. That is why a pole-zero plot is the fastest way to see what a filter does.</p>
+<aside class="callout callout-key">
+  <p class="callout-title"><i class="fa-solid fa-key" aria-hidden="true"></i> Distance, not trigonometry</p>
+  <div class="callout-body">
+<p><span class="math">$|H|$</span> is the product of the distances to the zeros over the product of the distances to the poles. A zero on the circle is an exact null, a nearby pole is a tall peak, and the ratio is the gain.</p>
+  </div>
+</aside>
+<h2 id="stability-is-a-side-of-the-circle"><a class="heading-anchor" href="#stability-is-a-side-of-the-circle" aria-hidden="true">#</a>Stability is a side of the circle</h2>
+<p>The system is a recursion, and a recursion is a question about the future: if the input stops, does the output stop? Put one unit impulse in and run it. For a pole at <span class="math">$z = -r$</span> the response is <span class="math">$h[n] = (-r)^n$</span>, and everything depends on where the pole is.</p>
+<figure class="figure"><img src="assets/plots/zt-pole-radius.svg" alt="One pole at three radii. With $r=0.9$ the response is 1.000, −0.900, 0.810, … and is 0.0148 at sample 40; with $r=1.0$ it alternates ±1 forever and is still 1.0000; with $r=1.1$ it reaches 45.259. In dB the three are straight lines of −0.915, 0.000 and +0.828 per sample. The same 10,000 samples separate them completely: $0.9999^{10000} = 0.368$ against $1.0001^{10000} = 2.718$." loading="lazy"><figcaption><span class="fig-label">Figure 5</span><span class="fig-text">One pole at three radii. With <span class="math">$r=0.9$</span> the response is 1.000, −0.900, 0.810, … and is 0.0148 at sample 40; with <span class="math">$r=1.0$</span> it alternates ±1 forever and is still 1.0000; with <span class="math">$r=1.1$</span> it reaches 45.259. In dB the three are straight lines of −0.915, 0.000 and +0.828 per sample. The same 10,000 samples separate them completely: <span class="math">$0.9999^{10000} = 0.368$</span> against <span class="math">$1.0001^{10000} = 2.718$</span>.</span></figcaption></figure>
+<p>Three radii. At <span class="math">$r = 0.9$</span> the response alternates and decays — <span class="math">$1.000$</span>, <span class="math">$-0.900$</span>, <span class="math">$0.810$</span>, and <span class="math">$0.0148$</span> at sample 40. At <span class="math">$r = 1.0$</span> it alternates <span class="math">$\pm1$</span> forever and is still <span class="math">$1.0000$</span>. At <span class="math">$r = 1.1$</span> it grows to <span class="math">$45.259$</span>. The lower panel makes the radius a slope, because <span class="math">$20\log_{10}|h[n]|$</span> is a line with gradient <span class="math">$20\log_{10} r$</span>: <span class="math">$-0.915$</span> dB per sample, exactly <span class="math">$0.000$</span>, and <span class="math">$+0.828$</span>. <strong>The radius is the decay per sample, and the sign of that rate is the side of the circle.</strong></p>
+<p>Why the circle? Because the transform's sum, <span class="math">$\sum h[n]z^{-n} = \sum (r/z)^n$</span>, is geometric and converges exactly when <span class="math">$|r/z| < 1$</span>; on the circle that is <span class="math">$|r| < 1$</span>. The boundary is the radius at which the series that defines the transform stops converging. And it is sharp in the long run and soft in the short one: over ten thousand samples <span class="math">$0.9999^{10000} = 0.368$</span> and <span class="math">$1.0001^{10000} = 2.718$</span>, and over a hundred the two are indistinguishable. That is why a stability bug survives a short test.</p>
+<p>The line under the figure is the trap. Evaluate the formula on the circle at Nyquist: <span class="math">$1/|1 - r|$</span> is <span class="math">$10.000$</span> for <span class="math">$r = 0.9$</span>, undefined for <span class="math">$r = 1.0$</span>, and <span class="math">$10.000$</span> for <span class="math">$r = 1.1$</span>. <strong>The same number twice, and only one is a frequency response.</strong> For <span class="math">$r = 1.1$</span> the sequence behind it diverges, so that value is a property of a formula, not a gain of a system. The impulse response decides. Written properly, that distinction is the region of convergence, and the only part of it this chapter needs is that the region is decided by the pole's radius.</p>
+<aside class="callout callout-warn">
+  <p class="callout-title"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> The formula on the circle is not the response</p>
+  <div class="callout-body">
+<p>For a pole outside the circle the rational expression still evaluates, and the number is meaningless as a gain. Check the radius first: <span class="math">$0.9$</span> and <span class="math">$1.1$</span> both give <span class="math">$10.000$</span> at Nyquist, and only the first is a filter.</p>
+  </div>
+</aside>
+<p>A pole exactly on the circle is neither: the response neither decays nor grows, and the system is an oscillator rather than a filter. At <span class="math">$r = 1.0$</span> the impulse response is <span class="math">$\pm1$</span> forever, a Nyquist tone that never stops. That is the boundary — a third kind of answer, not a rounding of the other two.</p>
+<h2 id="one-picture-three-answers"><a class="heading-anchor" href="#one-picture-three-answers" aria-hidden="true">#</a>One picture, three answers</h2>
+<p>Assemble it: a plane, a circle, a rational function with poles and zeros marked. Three questions answered by position.</p>
+<ul>
+<li><strong>What does it do to each frequency?</strong> Walk the circle; the gain is the product of distances to the zeros over the product to the poles — <span class="math">$0.5263$</span> at DC, <span class="math">$0.5695$</span> at 1 kHz, <span class="math">$10.000$</span> at Nyquist, and <span class="math">$0.000$</span> at DC once the zero is placed there.</li>
+<li><strong>Will it settle?</strong> Look at the side of the circle the poles are on. <span class="math">$0.9$</span> is <span class="math">$0.0148$</span> after forty samples; <span class="math">$1.1$</span> is <span class="math">$45.259$</span>; <span class="math">$1.0$</span> is neither.</li>
+<li><strong>Why does the DFT repeat?</strong> Because the circle is closed: 64 points, 125 Hz apart, bin 8 at 1 kHz, and <span class="math">$f$</span> and <span class="math">$f + f_s$</span> are the same point.</li>
+</ul>
+<p>The fourth reading is the one that matters in optical DSP: <strong>phase</strong>. The geometry gives the phase as a sum of angles — each zero adds the angle of the vector to it, each pole subtracts one. More useful is what magnitude cannot see.</p>
+<figure class="figure"><img src="assets/plots/zt-zero-phase.svg" alt="Two zeros at reciprocal radii, 0.500 and 2.000. Their magnitude responses are the same curve scaled by exactly 2 — the ratio deviates from 1 by at most $6.7\times10^{-16}$ — while their phases at $\pi/2$ are 0.4636 and 1.1071 rad. The all-pass built from a pole at 0.600 and a zero at 1.667 has unit magnitude at every frequency, $|H|-1$ never exceeding $5.6\times10^{-16}$, and a phase of −2.6516 rad at $\pi/2$." loading="lazy"><figcaption><span class="fig-label">Figure 6</span><span class="fig-text">Two zeros at reciprocal radii, 0.500 and 2.000. Their magnitude responses are the same curve scaled by exactly 2 — the ratio deviates from 1 by at most <span class="math">$6.7\times10^{-16}$</span> — while their phases at <span class="math">$\pi/2$</span> are 0.4636 and 1.1071 rad. The all-pass built from a pole at 0.600 and a zero at 1.667 has unit magnitude at every frequency, <span class="math">$|H|-1$</span> never exceeding <span class="math">$5.6\times10^{-16}$</span>, and a phase of −2.6516 rad at <span class="math">$\pi/2$</span>.</span></figcaption></figure>
+<p>The figure makes the point twice. Zeros at <span class="math">$0.5$</span> and <span class="math">$2$</span> give magnitude responses that differ by exactly the constant <span class="math">$2$</span> — measured, the ratio deviates from 1 by <span class="math">$6.7\times10^{-16}$</span> — and phases that differ: <span class="math">$0.4636$</span> rad inside, <span class="math">$1.1071$</span> rad outside, both at <span class="math">$\pi/2$</span>. <strong>Magnitude cannot tell which side of the circle a zero is on; phase can.</strong> That is why a magnitude specification is half a specification, and why "minimum phase" is a statement about zeros rather than about shape.</p>
+<p>Now put a pole and a zero on the same radius, mirrored through the circle: pole <span class="math">$0.600$</span>, zero <span class="math">$1.667 = 1/0.600$</span>. Every point on the circle is equidistant from the pair in the right ratio, so <span class="math">$|H| = 1$</span> at every frequency — measured, <span class="math">$|H| - 1$</span> never exceeds <span class="math">$5.6\times10^{-16}$</span> — and the whole response is phase, <span class="math">$-2.6516$</span> rad at <span class="math">$\pi/2$</span>. That is an <strong>all-pass</strong>, the shape of every filter asked to fix a phase and forbidden to touch a magnitude.</p>
+<p>Which is the bridge onward. Chapter 10 shows that <span class="math">$H(z)$</span> is the transform of the impulse response, so the product of polynomials here is a convolution of sequences there: one multiply per tap in time is one factor in <span class="math">$z$</span>. And the picture is what a filter designer draws — magnitude as distance, phase as angle, stability as a side.</p>
+<h2 id="what-to-carry-forward"><a class="heading-anchor" href="#what-to-carry-forward" aria-hidden="true">#</a>What to carry forward</h2>
+<ul>
+<li><strong><span class="math">$z^{-1}$</span> is one sample of delay.</strong> <span class="math">$y[n] = x[n] - 0.9y[n-1]$</span> becomes <span class="math">$H(z) = 1/(1 + 0.9z^{-1}) = z/(z + 0.9)$</span>, pole at <span class="math">$-0.900$</span>, zero at <span class="math">$0.000$</span>, and the recursion's response <span class="math">$1.000$</span>, <span class="math">$-0.900$</span>, <span class="math">$0.810$</span>, <span class="math">$-0.729$</span> matches <span class="math">$(-0.9)^n$</span> to <span class="math">$1.1\times10^{-16}$</span>.</li>
+<li><strong>The DFT is the z-transform on the circle.</strong> <span class="math">$X[k] = X(z)$</span> at <span class="math">$z = e^{j2\pi k/N}$</span>: 64 bins, 125 Hz apart, bin 8 at 1 kHz with gain <span class="math">$0.5695$</span>, bin 32 at Nyquist with <span class="math">$10.000$</span>.</li>
+<li><strong>The magnitude is a ratio of distances.</strong> <span class="math">$1.41421/1.34536 = 1.05118$</span> at <span class="math">$\pi/2$</span>, <span class="math">$20.000$</span> (<span class="math">$+26.02$</span> dB) at <span class="math">$\pi$</span>, <span class="math">$0.000$</span> at DC — matching the direct evaluation to <span class="math">$2.8\times10^{-14}$</span>.</li>
+<li><strong>Stability is the side of the circle.</strong> <span class="math">$r = 0.9$</span> is <span class="math">$0.0148$</span> after 40 samples at <span class="math">$-0.915$</span> dB per sample; <span class="math">$r = 1.0$</span> is <span class="math">$1.0000$</span>, flat; <span class="math">$r = 1.1$</span> is <span class="math">$45.259$</span> at <span class="math">$+0.828$</span> dB per sample.</li>
+<li><strong>The formula on the circle is not the response.</strong> <span class="math">$r = 0.9$</span> and <span class="math">$r = 1.1$</span> both give <span class="math">$10.000$</span> at Nyquist, and only the first came from a sequence that converges.</li>
+<li><strong>Magnitude cannot place a zero.</strong> Zeros at <span class="math">$0.5$</span> and <span class="math">$2$</span> give the same magnitude curve to <span class="math">$6.7\times10^{-16}$</span> and phases of <span class="math">$0.4636$</span> and <span class="math">$1.1071$</span> rad at <span class="math">$\pi/2$</span>.</li>
+<li><strong>An all-pass is a pole and zero mirrored in the circle.</strong> Pole <span class="math">$0.6$</span>, zero <span class="math">$1.667$</span>: <span class="math">$|H| = 1$</span> to <span class="math">$5.6\times10^{-16}$</span> at every frequency, and all the work is phase, <span class="math">$-2.6516$</span> rad at <span class="math">$\pi/2$</span>.</li>
+</ul>
+<aside class="callout callout-try">
+  <p class="callout-title"><i class="fa-solid fa-flask" aria-hidden="true"></i> An impulse, a sine, and a ruler on the decay</p>
+  <div class="callout-body">
+<p>The claim to test is the fifth section's: the pole's radius is the decay per sample, and the gain at a frequency is set by the pole's distance. Twenty minutes, a spreadsheet or Python.</p>
+<ol>
+<li><strong>Run the impulse.</strong> Column A holds <code>0</code> to <code>63</code>; column B is the input, <code>1</code> in the first row and <code>0</code> below. Column C is the output: <code>=B2</code> in the first row, <code>=B3-0.9*C2</code> below it, filled down.</li>
+<li><strong>Read the radius.</strong> The output starts <span class="math">$1.000$</span>, <span class="math">$-0.900$</span>, <span class="math">$0.810$</span>, <span class="math">$-0.729$</span>. Divide each sample by the one before: the answer is <span class="math">$-0.900$</span> every time, and its magnitude is the radius. That is the number the chapter has been calling <span class="math">$r$</span>, read off a column.</li>
+<li><strong>Read the settling.</strong> The decay is <span class="math">$-0.915$</span> dB per sample, so forty samples is <span class="math">$0.9^{40} = 0.0148$</span>. Find the first row where <span class="math">$|y|$</span> falls below 0.1 and check it against <span class="math">$0.9^n$</span>.</li>
+<li><strong>Run a sine, and read the gain.</strong> Replace column B with <code>=COS(2*PI()*32*A2/64)</code> — one cycle every two samples, the Nyquist tone, which is <span class="math">$\pm1$</span> alternating. Let the transient die: the output settles to a peak of <span class="math">$10.000$</span>, the reciprocal of the pole's <span class="math">$0.100$</span> distance from <span class="math">$z=-1$</span>. Change 32 to 8, a 1 kHz tone at 8 kHz, and the settled peak is <span class="math">$0.5695$</span>.</li>
+<li><strong>Break it on purpose.</strong> Change <code>0.9</code> to <code>1.1</code> and the same three lines reach <span class="math">$45.259$</span> by sample 40; change it to <code>1.0</code> and the output alternates <span class="math">$\pm1$</span> forever. One coefficient, three sides of the circle.</li>
+</ol>
+<pre><code class="language-python">import numpy as np
+n = np.arange(64)
+x = np.zeros(64); x[0] = 1.0          # impulse; for Nyquist try np.cos(np.pi * n)
+y = np.zeros(64)
+for k in range(1, 64):
+    y[k] = x[k] - 0.9 * y[k - 1]
+print(y[:6], abs(y[40]))              # 1.000 -0.900 0.810 ... 0.0148</code></pre>
+  </div>
+</aside>
+<aside class="callout callout-optical">
+  <p class="callout-title"><i class="fa-solid fa-tower-broadcast" aria-hidden="true"></i> The equaliser is a phase curve on this circle</p>
+  <div class="callout-body">
+<p><strong>A dispersion equaliser is a filter whose phase inverts the channel's, and its z-plane is this chapter's.</strong> A 64 GBd coherent receiver works on 512-point blocks at two samples per symbol, a 128 GSa/s stream (<a href="coherent-optical-dsp-pipeline.html">The Coherent Optical Receiver: A DSP Pipeline Tour</a>). Those 512 bins are 512 points on the unit circle — the sampling figure's footnote does the division: 250 MHz per bin, and the 32 GHz band edge is bin 128. The coefficient applied at each bin is <span class="math">$H^{*}[k]$</span>, one complex multiply, and its magnitude is exactly one: the <a href="chromatic-dispersion-and-the-fde.html">dispersion chapter</a> computes 43.8 rad of quadratic phase across the band and no gain anywhere. That is the all-pass of the last figure sampled 512 times: unit distance at every bin and all of the work in the angle. The continuous object behind it is the mirror pair — every pole matched by a zero reflected in the circle — and the equaliser only ever stores its values at the 512 bin frequencies.</p>
+<p><strong>What the picture says about the design.</strong> The phase is held in 6 bits, 5.625° per step, which measures −31.1 dB of coefficient EVM and 0.33 dB of link penalty at 100 km. Because every coefficient has unit magnitude there is no pole outside the circle to worry about: the equaliser cannot ring, and the stability question that dominates an IIR design never arises. The design conversation is phase resolution, block length and latency, not poles.</p>
+<p><strong>And the contrast that makes the geometry useful.</strong> A receive FFE in a SerDes is a polynomial in <span class="math">$z^{-1}$</span> with real taps and no feedback, so all of its poles sit at the origin — unconditionally stable whatever the taps, which is why a 20-tap equaliser can be adapted every symbol (<a href="serdes-equalisation.html">SerDes Equalisation</a>). The FDE is the other extreme: a rational function whose poles are mirrored outside the circle, unit magnitude by construction. Both are readable on the same plane, and neither is at risk of instability. What is at risk is the number — a coefficient word too narrow to hold the phase, or a block too short to hold the 223 samples of dispersion memory — and both failures arrive as noise and residual EVM, not as a filter that blows up.</p>
+  </div>
+</aside>
+<nav class="pager" aria-label="Chapter navigation"><a class="prev" href="windows-and-spectral-leakage.html"><span class="dir">&larr; Previous</span><span class="ttl">Windows, Leakage and Resolution</span></a><a class="next" href="convolution-and-lti.html"><span class="dir">Next &rarr;</span><span class="ttl">Convolution, and Why Every DSP Block Is One</span></a></nav>
+</main>
+</div>
+<footer class="site-footer">
+  <div class="inner">
+    <span>&copy; Nguyen Quang Binh &middot; Embedded Software Engineer - Optical DSP</span>
+    <span class="spacer"></span>
+    <a href="https://github.com/sprchuoi" target="_blank" rel="noopener">GitHub</a> &middot; <a href="https://www.linkedin.com/in/sprchuoi" target="_blank" rel="noopener">LinkedIn</a> &middot; <a href="mailto:quangbinhlxcity@gmail.com">quangbinhlxcity@gmail.com</a> &middot; <a href="../index.html">CV</a>
+  </div>
+</footer>
+<script src="assets/blog.js" defer></script>
+</body>
+</html>

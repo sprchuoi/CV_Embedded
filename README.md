@@ -15,6 +15,17 @@ processing, from sampling to the coherent optical link — generated into
 [`blog/README.md`](blog/README.md); it has its own source, its own build and its
 own tests.
 
+A chapter of that course is written by a **team of roles**, not in one pass: the
+`course-team` skill in [`.dsh/skills/course-team/`](.dsh/skills/course-team/)
+runs a brief, a draft, a transfer pass, two cold-read comprehension transcripts,
+a QA pass and a gate. `tool/check_page_contract.py` is what enforces the result
+and is the fastest way to see where the course stands:
+
+```sh
+python3 tool/check_page_contract.py --report    # every chapter, its findings, the debt
+python3 tool/check_page_contract.py --crossrefs # resolve every "chapter N" reference
+```
+
 Both PDFs are published to the [`latest` release](../../releases/tag/latest) and the webpage and
 blog are deployed to GitHub Pages by [`.github/workflows/python-app.yml`](.github/workflows/python-app.yml).
 

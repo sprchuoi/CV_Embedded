@@ -25,6 +25,11 @@ on:
     branches: [main]
     paths:
       - "docs/**"
+      # blog/** is listed here as well as on push: a branch that only adds a
+      # chapter used to run no check at all before it was merged, which is
+      # exactly the change the page contract exists to gate.
+      - "blog/**"
+      - ".dsh/skills/course-team/**"
       - "build_cv.sh"
       - "build_sidebar_cv.sh"
       - "tool/**"
@@ -117,6 +122,31 @@ jobs:
 
       - name: Run the unit tests
         run: python3 -m unittest discover -s tool/tests -t . -v
+
+  # ---------------------------------------------------------------- pedagogy --
+  # The page contract: the blog's own rules about what a chapter must contain,
+  # plus the brief and the comprehension evidence behind a new one. Owned by the
+  # course-team skill (see .dsh/skills/course-team/).
+  #
+  # Deliberately its own job and NOT a dependency of deploy-pages, for the same
+  # reason the figures job is not: a content finding must never be able to take
+  # the published site down. It fails the pull request, which is where a page is
+  # reviewed. tool/blog/contract.py explains the legacy ratchet that lets the
+  # chapters written before the contract keep passing.
+  pedagogy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Check the page contract
+        run: python3 tool/check_page_contract.py --report
 
   # ---------------------------------------------------------------- figures --
   # Regenerates every figure from its script and fails if the committed SVG no
