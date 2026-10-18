@@ -148,7 +148,12 @@ build_environment/.venv/bin/python -m pip install numpy matplotlib scipy
 
 The generated SVGs are **committed**. The site build never runs a figure
 script, so a matplotlib or scipy problem cannot take the published site down —
-and CI checks that the committed SVGs still match a fresh build.
+and CI checks that the committed SVGs still match a fresh build. That check is a
+byte comparison, so a figure has to render identically on the runner and on this
+machine; `tool/blog/art/__init__.py::normalise_ids` is what makes that true. It
+rewrites the ids matplotlib derives from a geometry hash (`p3ea2d041b1`) to a
+sequence (`p1`), because the hash input changes between Python builds while the
+drawing does not. Regenerate and commit the SVGs; do not hand-edit them.
 
 To eyeball a figure, rasterise it:
 

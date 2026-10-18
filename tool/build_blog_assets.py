@@ -23,7 +23,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from tool.blog.art import FigureError, collect  # noqa: E402
+from tool.blog.art import FigureError, collect, normalise_ids  # noqa: E402
 
 
 def _looks_like_svg(markup: str) -> bool:
@@ -65,7 +65,10 @@ def main(argv: list[str] | None = None) -> int:
 
     for figure in figures:
         try:
-            markup = figure.builder()
+            # The ids matplotlib derives from geometry depend on the Python
+            # build; the committed SVGs are verified by regenerating them, so
+            # they are made build-independent before they are written.
+            markup = normalise_ids(figure.builder())
         except Exception as exc:  # a broken figure must name itself
             print(f"error: figure '{figure.name}' failed: {exc!r}", file=sys.stderr)
             return 1

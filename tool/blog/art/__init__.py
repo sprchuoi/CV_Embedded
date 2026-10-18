@@ -20,6 +20,7 @@ obvious. Adding a figure means adding it to a module's ``FIGURES`` mapping;
 from __future__ import annotations
 
 import importlib
+import re
 from dataclasses import dataclass
 from typing import Callable
 
@@ -80,6 +81,39 @@ MODULES: dict[str, tuple[str, ...]] = {
 
 class FigureError(RuntimeError):
     """Raised when a figure module is missing, broken, or duplicated."""
+
+
+# matplotlib derives some element ids from a hash of the artist's geometry,
+# salted with ``svg.hashsalt``. The salt is fixed (plotstyle sets one), but the
+# hash input is a float rendering of the clip path, so the same figure can come
+# out with a different id on a different Python build and be byte-identical
+# everywhere else. The committed SVGs are checked by regenerating them in CI, so
+# one drifting id fails the build for no visual reason. Renaming the derived ids
+# to a sequence number, in order of first appearance, leaves the output
+# depending on the drawing alone.
+_HASHED_ID = re.compile(r"^[pm][0-9a-f]{10}$")
+
+
+def normalise_ids(markup: str) -> str:
+    """Replace matplotlib's hash-derived element ids with stable ones.
+
+    Only ids that look derived (``p`` or ``m`` followed by ten hex digits) are
+    touched. The readable ones matplotlib also emits -- ``figure_1``,
+    ``axes_1`` -- are left alone, so a diff of a figure still shows what
+    changed.
+    """
+    mapping: dict[str, str] = {}
+    counters: dict[str, int] = {}
+    for ident in re.findall(r'\bid="([^"]+)"', markup):
+        if _HASHED_ID.match(ident) and ident not in mapping:
+            prefix = ident[0]
+            counters[prefix] = counters.get(prefix, 0) + 1
+            mapping[ident] = f"{prefix}{counters[prefix]}"
+    for old, new in mapping.items():
+        markup = markup.replace(f'id="{old}"', f'id="{new}"')
+        markup = markup.replace(f"url(#{old})", f"url(#{new})")
+        markup = markup.replace(f'href="#{old}"', f'href="#{new}"')
+    return markup
 
 
 @dataclass(frozen=True)
