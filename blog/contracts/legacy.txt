@@ -1,0 +1,44 @@
+# Chapters published before the page contract existed.
+#
+# Every slug here predates blog/README.md's own rules being checkable, so it is
+# exempt from the structural rules -- a typo fix in an old chapter is never
+# blocked by a contract written after it.
+#
+# The list may only shrink, and that is enforced in both directions:
+#
+#   legacy-stale-exemption  a chapter that has been given a brief in
+#                           blog/contracts/ AND already satisfies every
+#                           structural rule must be deleted from this file --
+#                           the exemption is doing no work at that point.
+#                           `--report` prints the burn-down, rule by rule.
+#
+#   legacy-added            a slug that is not in LEGACY_BASELINE (in
+#                           tool/blog/contract.py) cannot be added here. Only a
+#                           chapter that predates the contract may be exempt; a
+#                           new chapter satisfies the contract or does not
+#                           publish. Weakening that has to be a visible edit to
+#                           the checker, not a line added to this file.
+#
+# One slug per line; blank lines and # comments are ignored.
+
+what-is-a-signal
+sampling-and-aliasing
+quantization-and-enob
+decibels-and-dynamic-range
+the-fft
+convolution-and-lti
+fir-filter-design
+ethernet-generations-and-the-data-processing-view
+ethernet-gain-and-the-link-budget
+reading-an-eye-diagram
+bert-ber-and-fec
+fft-and-dft-in-ethernet-compliance
+ethernet-compliance-test-in-practice
+coherent-optical-dsp-pipeline
+chromatic-dispersion-and-the-fde
+serdes-in-an-optical-module
+serdes-anatomy
+serdes-channels-and-the-link-budget
+serdes-equalisation
+serdes-clock-recovery-and-jitter
+serdes-fec-and-error-budget
