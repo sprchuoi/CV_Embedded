@@ -384,8 +384,11 @@ def fourier_square_partial_sums() -> str:
     ax3.axis("off")
     # the header carries subscript n as one monospace character (DejaVu Sans
     # Mono has U+2099), so the columns stay aligned and the label is not a
-    # literal underscore
-    rows = [f"{'n':>3s}   {'a\u2099':<10s}   {'b\u2099':<10s}"]
+    # literal underscore. The characters are bound outside the f-string because
+    # an escape sequence inside a replacement field is 3.12-only syntax, and
+    # this module has to import on the 3.11 floor.
+    a_sub, b_sub = "a\u2099", "b\u2099"
+    rows = [f"{'n':>3s}   {a_sub:<10s}   {b_sub:<10s}"]
     for n in range(TABLE_N + 1):
         rows.append(f"{n:3d}   {_num(a[n])}   {_num(b[n])}")
     ax3.text(0.010, 0.97, "\n".join(rows), transform=ax3.transAxes,

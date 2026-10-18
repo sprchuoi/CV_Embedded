@@ -290,9 +290,18 @@ present, so a 3.12-only construct inside one of them (a multi-line f-string,
 which is PEP 701) passed the unit tests on a 3.12 laptop and died as a
 `SyntaxError` in the figures job on the 3.11 runner.
 
+It happened a second time — an escape sequence inside an f-string replacement
+field — so the gap is closed locally too. `tool/tests/test_python_floor.py`
+re-reads every module under `tool/` and fails on a backslash inside an f-string
+*expression*, the form 3.11 rejects. It runs only on interpreters that can
+produce the syntax (3.12+), which is exactly the laptop that would otherwise
+miss it.
+
 If you add code to `tool/`, keep it 3.11-compatible — in particular, no newline
-inside a single-quoted f-string. Check with:
+inside a single-quoted f-string and no escape sequence inside a replacement
+field. Bind the escaped value to a name, then interpolate the name. Check with:
 
 ```sh
 python3 -m compileall -q tool
+python3 -m unittest discover -s tool/tests -t .
 ```
